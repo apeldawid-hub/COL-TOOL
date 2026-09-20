@@ -99,27 +99,56 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
     setErrorMessage(null);
     setLastChecked(new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
+    const currentVer = versionInfo?.version || APP_VERSION;
+
+    // 1. Sprawdzenie przez natywny silnik Electron Updater (dla zainstalowanej aplikacji .app)
     if (typeof window !== 'undefined' && (window as any).api?.checkForUpdates) {
       try {
         const res = await (window as any).api.checkForUpdates();
-        if (!res.success && res.message) {
-          if (res.isDev) {
-            // W trybie deweloperskim
-            setStatus('not-available');
-            setErrorMessage(res.message);
-          } else {
-            setStatus('error');
-            setErrorMessage(res.error || res.message);
+        if (res.success && res.updateInfo) {
+          const remoteVer = res.updateInfo.version;
+          if (remoteVer && remoteVer !== currentVer) {
+            setStatus('available');
+            setAvailableVersion(remoteVer);
+            setReleaseNotes(typeof res.updateInfo.releaseNotes === 'string' ? res.updateInfo.releaseNotes : 'Nowe usprawnienia i optymalizacje systemu.');
+            return;
           }
         }
+        
+        if (!res.success && !res.isDev) {
+          setStatus('error');
+          setErrorMessage(res.error || res.message || 'Błąd podczas komunikacji z serwerem aktualizacji.');
+          return;
+        }
       } catch (err: any) {
-        setStatus('error');
-        setErrorMessage(err?.message || 'Błąd połączenia z serwerem aktualizacji.');
+        console.warn('Natywny updater zwrócił błąd, sprawdzam GitHub API:', err);
       }
-    } else {
-      setTimeout(() => {
+    }
+
+    // 2. Bezpośrednie zapytanie do GitHub API (jako niezawodny fallback i w trybie dev)
+    try {
+      const response = await fetch('https://api.github.com/repos/apeldawid-hub/COL-TOOL/releases/latest');
+      if (response.ok) {
+        const data = await response.json();
+        const latestTag = (data.tag_name || '').replace(/^v/, '');
+        
+        if (latestTag && latestTag !== currentVer) {
+          setStatus('available');
+          setAvailableVersion(latestTag);
+          setReleaseNotes(data.body || 'Wydano nową wersję Starbucks Operations Suite.');
+          return;
+        } else {
+          setStatus('not-available');
+          return;
+        }
+      } else {
         setStatus('not-available');
-      }, 800);
+      }
+    } catch (fetchErr: any) {
+      console.error('Błąd pobierania z GitHub API:', fetchErr);
+      if (status === 'checking') {
+        setStatus('not-available');
+      }
     }
   };
 
