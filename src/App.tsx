@@ -77,6 +77,7 @@ export const App: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const [hasUpdateAvailable, setHasUpdateAvailable] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [activeViewerWeek, setActiveViewerWeek] = useState<{
     key: string;
@@ -96,6 +97,20 @@ export const App: React.FC = () => {
       }
     };
     initYears();
+
+    // Nasłuchiwanie automatycznych aktualizacji w tle
+    if (typeof window !== 'undefined' && (window as any).api?.onUpdaterEvent) {
+      const unsubscribe = (window as any).api.onUpdaterEvent((payload: any) => {
+        if (payload.status === 'available' || payload.status === 'downloaded') {
+          setHasUpdateAvailable(true);
+        } else if (payload.status === 'not-available') {
+          setHasUpdateAvailable(false);
+        }
+      });
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      };
+    }
   }, []);
 
   // Załadowanie danych dla wybranego roku i miesiąca
@@ -339,24 +354,23 @@ export const App: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-[#F4F7F5] flex overflow-hidden select-none">
       {/* Wysuwany Pasek Boczny po lewej */}
-      <Sidebar
-        activeModule={activeModule}
-        onSelectModule={setActiveModule}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        onOpenSettings={() => {
-          setIsSettingsOpen(true);
-        }}
-        onOpenBackupModal={() => setIsBackupModalOpen(true)}
-        onOpenImportModal={() => setIsImportModalOpen(true)}
-        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
-        onRefresh={loadMonthData}
-        isLoading={isLoading}
-        onLogout={() => {
-          setIsLoggedIn(false);
-          setActiveModule('dashboard');
-        }}
-      />
+        <Sidebar
+          activeModule={activeModule}
+          onSelectModule={setActiveModule}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenBackupModal={() => setIsBackupModalOpen(true)}
+          onOpenImportModal={() => setIsImportModalOpen(true)}
+          onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+          hasUpdateAvailable={hasUpdateAvailable}
+          onRefresh={loadMonthData}
+          isLoading={isLoading}
+          onLogout={() => {
+            setIsLoggedIn(false);
+            setLoggedInUser('Store Manager (SM)');
+          }}
+        />
 
       {/* Prawa strona: Header + Główna Przestrzeń Robocza */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">

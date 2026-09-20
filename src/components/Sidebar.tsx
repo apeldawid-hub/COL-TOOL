@@ -28,6 +28,7 @@ interface SidebarProps {
   onOpenBackupModal?: () => void;
   onOpenImportModal?: () => void;
   onOpenUpdateModal?: () => void;
+  hasUpdateAvailable?: boolean;
   onRefresh?: () => void;
   isLoading?: boolean;
   onLogout?: () => void;
@@ -100,6 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenBackupModal,
   onOpenImportModal,
   onOpenUpdateModal,
+  hasUpdateAvailable = false,
   onRefresh,
   isLoading,
   onLogout,
@@ -276,18 +278,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenUpdateModal && (
           <button
             onClick={onOpenUpdateModal}
-            title={isCollapsed ? 'Aktualizacje (v2.6.0)' : undefined}
-            className={`w-full flex items-center rounded-2xl text-xs font-semibold text-emerald-100/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer ${
+            title={isCollapsed ? (hasUpdateAvailable ? 'Dostępna nowa aktualizacja!' : 'Aktualizacje (v2.6.0)') : undefined}
+            className={`w-full flex items-center rounded-2xl text-xs font-semibold text-emerald-100/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer relative ${
               isCollapsed ? 'justify-center p-3' : 'px-3.5 py-2 justify-between'
-            }`}
+            } ${hasUpdateAvailable ? 'bg-emerald-900/40 border border-emerald-400/50 shadow-sm shadow-emerald-500/20 text-emerald-200' : ''}`}
           >
-            <div className="flex items-center space-x-3 truncate">
-              <Sparkles className="w-4 h-4 text-emerald-300 shrink-0" />
+            <div className="flex items-center space-x-3 truncate relative">
+              <div className="relative">
+                <Sparkles className={`w-4 h-4 ${hasUpdateAvailable ? 'text-emerald-300 animate-pulse' : 'text-emerald-300'} shrink-0`} />
+                {hasUpdateAvailable && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#1E3932] rounded-full animate-ping" />
+                )}
+                {hasUpdateAvailable && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#1E3932] rounded-full" />
+                )}
+              </div>
               {!isCollapsed && <span>Aktualizacje</span>}
             </div>
             {!isCollapsed && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-200 font-bold border border-emerald-400/30">
-                v2.6.0
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
+                hasUpdateAvailable
+                  ? 'bg-emerald-400 text-emerald-950 font-black shadow-xs animate-pulse'
+                  : 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30'
+              }`}>
+                {hasUpdateAvailable ? 'NOWA' : 'v2.6.0'}
               </span>
             )}
           </button>

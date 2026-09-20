@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Notification } from 'electron';
+import path from 'path';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
@@ -15,6 +16,9 @@ export interface AppVersionInfo {
 export class AppUpdater {
   private static instance: AppUpdater;
   private mainWindow: BrowserWindow | null = null;
+  private checkIntervalTimer: NodeJS.Timeout | null = null;
+  private readonly SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
   private updateStatus: {
     status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
     versionInfo?: any;
@@ -41,11 +45,48 @@ export class AppUpdater {
 
   public setMainWindow(win: BrowserWindow) {
     this.mainWindow = win;
+    // Po podpięciu okna głównego uruchom cykl sprawdzania w tle
+    this.startBackgroundCheckCycle();
   }
 
   private sendToRenderer(channel: string, payload: any) {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(channel, payload);
+    }
+  }
+
+  /**
+   * Uruchamia automatyczne sprawdzanie przy starcie oraz cykliczne co 6 godzin
+   */
+  public startBackgroundCheckCycle() {
+    if (this.checkIntervalTimer) {
+      clearInterval(this.checkIntervalTimer);
+      this.checkIntervalTimer = null;
+    }
+
+    // 1. Sprawdzenie przy starcie aplikacji (po 4 sekundach od uruchomienia okna)
+    setTimeout(() => {
+      console.log('🚀 [AutoUpdater] Uruchamianie cichego sprawdzenia aktualizacji przy starcie...');
+      this.silentCheckForUpdates();
+    }, 4000);
+
+    // 2. Cykliczne sprawdzanie w tle co 6 godzin
+    this.checkIntervalTimer = setInterval(() => {
+      console.log('⏰ [AutoUpdater] Uruchamianie cyklicznego sprawdzenia w tle (co 6h)...');
+      this.silentCheckForUpdates();
+    }, this.SIX_HOURS_MS);
+  }
+
+  private async silentCheckForUpdates() {
+    if (!app.isPackaged) {
+      console.log('ℹ️ [AutoUpdater] Tryb deweloperski — pomijanie automatycznego sprawdzania w tle.');
+      return;
+    }
+
+    try {
+      await autoUpdater.checkForUpdates();
+    } catch (err) {
+      console.warn('⚠️ [AutoUpdater] Ciche sprawdzenie w tle nie powiodło się (brak sieci):', err);
     }
   }
 
@@ -80,6 +121,8 @@ export class AppUpdater {
         status: 'available',
         versionInfo: info
       };
+
+      // Powiadomienie renderera (zielona kropka w pasku bocznym)
       this.sendToRenderer('app:updater-event', {
         event: 'update-available',
         status: 'available',
@@ -89,6 +132,29 @@ export class AppUpdater {
           releaseNotes: info.releaseNotes || 'Nowa wersja Starbucks Operations Suite z usprawnieniami i poprawkami.',
         }
       });
+
+      // Natywne powiadomienie macOS
+      try {
+        if (Notification.isSupported()) {
+          const notification = new Notification({
+            title: '☕ Dostępna nowa wersja Starbucks Operations Suite',
+            body: `Wydano nową wersję v${info.version}. Kliknij tutaj lub w Centrum Aktualizacji w aplikacji, aby ją pobrać.`,
+            silent: false
+          });
+
+          notification.on('click', () => {
+            if (this.mainWindow) {
+              if (this.mainWindow.isMinimized()) this.mainWindow.restore();
+              this.mainWindow.focus();
+              this.sendToRenderer('app:open-update-modal', {});
+            }
+          });
+
+          notification.show();
+        }
+      } catch (notifErr) {
+        console.warn('⚠️ [AutoUpdater] Nie udało się wyświetlić powiadomienia systemowego:', notifErr);
+      }
     });
 
     autoUpdater.on('update-not-available', (info) => {
@@ -149,6 +215,20 @@ export class AppUpdater {
         status: 'downloaded',
         info
       });
+
+      // Powiadomienie o gotowości do instalacji
+      try {
+        if (Notification.isSupported()) {
+          const notification = new Notification({
+            title: '🎉 Aktualizacja pobrana!',
+            body: `Wersja v${info.version} jest gotowa do zainstalowania. Zrestartuj aplikację, aby zastosować zmiany.`,
+            silent: false
+          });
+          notification.show();
+        }
+      } catch (e) {
+        // Ignoruj błąd powiadomienia
+      }
     });
   }
 
