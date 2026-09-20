@@ -19,6 +19,18 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** dla a
 >    - Każda kolejna wersja (np. `v2.7.0`, `v2.8.0`...) podmienia wyłącznie kod aplikacji (`dist/`, `dist-electron/`, `.app`).
 >    - Baza danych użytkownika na docelowym komputerze jest trwale odseparowana w systemowym folderze `~/Library/Application Support/Starbucks Operations Suite/` — instalacja nowej wersji kodu nigdy nie narusza ani nie kasuje wprowadzonych danych.
 
+### 🔄 0.1. Standardowy Cykl Pracy: Development ➔ Release on Demand
+
+1. **Wszystkie zmiany w trybie deweloperskim:**
+   - Wszelkie modyfikacje kodu, interfejsu, algorytmów oraz nowe moduły są tworzone i testowane lokalnie w środowisku deweloperskim (`npm run dev` z szybkim odświeżaniem Vite Hot-Reload).
+2. **Publikacja wydania WYŁĄCZNIE na wyraźne polecenie Użytkownika:**
+   - Nowa wersja produkcyjna oraz pakiety aktualizacji na GitHub (`COL-TOOL Releases`) są kompilowane i wysyłane **tylko wtedy, gdy Użytkownik wyda wyraźne polecenie publikacji/aktualizacji**.
+   - Procedura publikacji na żądanie:
+     1. Podbicie wersji w `package.json` (np. `2.6.0` $\rightarrow$ `2.7.0`).
+     2. Walidacja czystej kompilacji (`npm run build`).
+     3. Automatyczny deploy i publikacja pakietu (`npm run publish:mac`).
+     4. Zsynchronizowanie czystego kodu z gałęzią `main` w Git.
+
 ---
 
 ## 🏛️ 1. Wizja Platformy i Architektura Modułowa
