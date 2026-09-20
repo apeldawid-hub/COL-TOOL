@@ -13,6 +13,7 @@ import {
   Zap,
   Clock
 } from 'lucide-react';
+import { APP_VERSION } from '../version';
 
 interface AppUpdateModalProps {
   isOpen: boolean;
@@ -181,7 +182,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-gray-900">Starbucks Operations Suite</span>
                   <span className="px-2 py-0.5 text-xs font-black bg-[#006241] text-white rounded-full">
-                    v{versionInfo?.version || '2.6.0'}
+                    v{versionInfo?.version || APP_VERSION}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
@@ -223,7 +224,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                 <div className="text-xs">
                   <p className="font-bold text-emerald-900 text-sm">Twoja aplikacja jest w 100% aktualna!</p>
                   <p className="text-emerald-700 mt-0.5">
-                    Posiadasz najnowszą stabilną wersję <strong>v{versionInfo?.version || '2.6.0'}</strong> ze wszystkimi modułami operacyjnymi.
+                    Posiadasz najnowszą stabilną wersję <strong>v{versionInfo?.version || APP_VERSION}</strong> ze wszystkimi modułami operacyjnymi.
                   </p>
                 </div>
               </div>

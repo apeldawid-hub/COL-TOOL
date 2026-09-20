@@ -17,6 +17,7 @@ import {
   Send,
 } from 'lucide-react';
 import { logger, ClientLogEntry } from '../services/logger';
+import { APP_VERSION } from '../version';
 
 interface BugReporterModalProps {
   isOpen: boolean;
@@ -79,7 +80,7 @@ STARBUCKS OPERATIONS SUITE — ZGŁOSZENIE BŁĘDU
 Data zgłoszenia: ${timeStr}
 Kategoria:       ${category}
 Moduł:           ${moduleName}
-Wersja App:      ${appInfo?.version || '2.6.0'} (${appInfo?.platform || 'darwin'} ${appInfo?.arch || 'arm64'})
+Wersja App:      ${appInfo?.version || APP_VERSION} (${appInfo?.platform || 'darwin'} ${appInfo?.arch || 'arm64'})
 
 OPIS UŻYTKOWNIKA:
 ${description || '(Brak dodatkowego opisu)'}
@@ -120,7 +121,7 @@ ${logsSnippet || '(Brak zarejestrowanych wpisów)'}
         moduleName,
         userDescription: description,
         clientInfo: {
-          appVersion: appInfo?.version || '2.6.0',
+          appVersion: appInfo?.version || APP_VERSION,
           platform: appInfo?.platform || 'darwin',
           arch: appInfo?.arch || 'arm64',
           nodeVersion: appInfo?.nodeVersion || '',
@@ -162,7 +163,7 @@ ${logsSnippet || '(Brak zarejestrowanych wpisów)'}
         moduleName,
         userDescription: description,
         clientInfo: {
-          appVersion: appInfo?.version || '2.6.0',
+          appVersion: appInfo?.version || APP_VERSION,
           platform: appInfo?.platform || 'darwin',
           arch: appInfo?.arch || 'arm64',
           systemTime: new Date().toISOString(),
@@ -329,7 +330,7 @@ ${logsSnippet || '(Brak zarejestrowanych wpisów)'}
             <div className="flex items-center gap-2 text-slate-300">
               <Cpu className="w-4 h-4 text-emerald-400" />
               <span>
-                Środowisko: <strong className="text-white">v{appInfo?.version || '2.6.0'}</strong> (macOS {appInfo?.arch || 'arm64'})
+                Środowisko: <strong className="text-white">v{appInfo?.version || APP_VERSION}</strong> (macOS {appInfo?.arch || 'arm64'})
               </span>
             </div>
             <div className="text-slate-400">
