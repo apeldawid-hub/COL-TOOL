@@ -4,6 +4,23 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** dla a
 
 ---
 
+## 🔒 0. Żelazna Zasada Bezpieczeństwa: Zero Danych Wrażliwych w Git (Code-Only Repository Policy)
+
+> [!CRITICAL]
+> **BEZWZGLĘDNA REGUŁA DLA WSZYSTKICH AGENTÓW AI I DEPLOYMENTU:**
+> Repozytorium Git (`apeldawid-hub/COL-TOOL`) oraz pakiety aktualizacji publikowane online zawierają **WYŁĄCZNIE CZYSTY KOD ŹRÓDŁOWY APLIKACJI** (TypeScript, React, Electron, Tailwind CSS, ikony `.icns`/`.png`, skrypty budowania oraz dokumentację techniczną `AGENTS.md` / `README.md`).
+> 
+> 1. **Bezwzględny zakaz śledzenia i commitowania danych operacyjnych:**
+>    - Żadne pliki arkuszy Excel (`Grafik/`, `AOP/`, `COL CALC/`, `*.xlsx`, `*.xlsm`, `*.xls`)
+>    - Żadne pliki szkoleń i dokumentów wewnętrznych (`Szkolenia/`, `*.pdf`)
+>    - Żadne bazy danych i zrzuty tabel (`data/`, `IMPORT/`, `backups/`, `*.db`, `*.csv`)
+>    - Żadne poświadczenia i tokeny dostępowe (`.env`, `GH_TOKEN`)
+> 2. **Aktualizowany jest wyłącznie program:**
+>    - Każda kolejna wersja (np. `v2.7.0`, `v2.8.0`...) podmienia wyłącznie kod aplikacji (`dist/`, `dist-electron/`, `.app`).
+>    - Baza danych użytkownika na docelowym komputerze jest trwale odseparowana w systemowym folderze `~/Library/Application Support/Starbucks Operations Suite/` — instalacja nowej wersji kodu nigdy nie narusza ani nie kasuje wprowadzonych danych.
+
+---
+
 ## 🏛️ 1. Wizja Platformy i Architektura Modułowa
 
 Aplikacja jest rozwijana jako wielomodułowa platforma desktopowa dla Store Managera (SM) oraz District Managera (DM).
