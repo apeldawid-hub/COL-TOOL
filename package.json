@@ -1,0 +1,126 @@
+{
+  "name": "starbucks-operations-suite",
+  "productName": "Starbucks Operations Suite",
+  "version": "2.6.0",
+  "description": "Starbucks Operations Suite — TPLH Forecast, Managers Schedule, Trainings & COL Suite",
+  "main": "dist-electron/main.js",
+  "author": "Dawid Apel",
+  "homepage": "https://github.com/apeldawid-hub/COL-TOOL",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "icons": "node scripts/generate-icons.js",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:mac:arm64": "npm run build && electron-builder --mac --arm64",
+    "dist:mac:x64": "npm run build && electron-builder --mac --x64",
+    "dist:mac:universal": "npm run build && electron-builder --mac --universal",
+    "dist:dmg": "npm run build && electron-builder --mac dmg",
+    "publish:mac": "set -a; [ -f .env ] && . ./.env; set +a; npm run build && electron-builder --mac --arm64 --publish always",
+    "publish:mac:all": "set -a; [ -f .env ] && . ./.env; set +a; npm run build && electron-builder --mac --publish always"
+  },
+  "keywords": [
+    "starbucks",
+    "operations",
+    "tplh",
+    "schedule",
+    "labor",
+    "col",
+    "trainings"
+  ],
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "electron-updater": "^6.8.9",
+    "lucide-react": "^1.45.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1",
+    "sql.js": "^1.14.2",
+    "tailwind-merge": "^3.6.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/sql.js": "^1.4.11",
+    "@vitejs/plugin-react": "^6.1.1",
+    "autoprefixer": "^10.5.6",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vite-plugin-electron": "^1.1.2",
+    "vite-plugin-electron-renderer": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.starbucks.operations.suite",
+    "productName": "Starbucks Operations Suite",
+    "copyright": "Copyright © 2026 Starbucks Operations Suite",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "icon": "build/icon.icns",
+      "contents": [
+        {
+          "x": 140,
+          "y": 200
+        },
+        {
+          "x": 380,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 520,
+        "height": 360
+      }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "apeldawid-hub",
+        "repo": "COL-TOOL",
+        "private": true
+      }
+    ]
+  }
+}

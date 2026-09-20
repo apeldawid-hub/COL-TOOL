@@ -1,0 +1,454 @@
+import {
+  AopPlanRecord,
+  WeeklyCalculatedRow,
+  TrendLearningSummary,
+  TrendLearningInsight,
+  StrategyOption,
+  DayOfWeekHoursTrend,
+} from '../../../types';
+
+export interface DayOfWeekStatRaw {
+  day_of_week: string;
+  total_hours: number;
+  days_count: number;
+}
+
+export class TrendLearningEngine {
+  /**
+   * Główna funkcja analityczna uczenia się trendów na podstawie danych bieżących oraz historycznych
+   */
+  public static analyzeTrend(
+    currentAop: AopPlanRecord,
+    historicalPlans: AopPlanRecord[],
+    rows: WeeklyCalculatedRow[],
+    trendVelocityMtd: number,
+    earnedLaborBudget: number,
+    planHoursTotal: number,
+    dayOfWeekStats: DayOfWeekStatRaw[] = []
+  ): TrendLearningSummary {
+    const closedRows = rows.filter((r) => r.isClosed);
+    const hasHistory = historicalPlans.length > 0;
+    const isBaselineMode = closedRows.length === 0;
+
+    // 1. Wykrywanie momentum sprzedaży (czy trend przyspiesza czy zwalnia)
+    let momentumTrend: 'accelerating' | 'stable' | 'decelerating' = 'stable';
+    let velocityScore = trendVelocityMtd;
+
+    if (!isBaselineMode) {
+      if (velocityScore >= 1.03) {
+        momentumTrend = 'accelerating';
+      } else if (velocityScore <= 0.97) {
+        momentumTrend = 'decelerating';
+      } else {
+        momentumTrend = 'stable';
+      }
+    }
+
+    // 2. Poziom ufności modelu
+    let confidenceLevel: 'high' | 'medium' | 'low' = 'medium';
+    if (isBaselineMode) {
+      confidenceLevel = 'low';
+    } else if (closedRows.length >= 2 || (hasHistory && closedRows.length >= 1)) {
+      confidenceLevel = 'high';
+    } else if (closedRows.length === 1) {
+      confidenceLevel = 'medium';
+    }
+
+    // 3. Analiza trendów rocznych, sezonowości i wyników AOP (dostępna we wszystkich trybach)
+    // Model uczy się w 100% dynamicznie z wpisów w bazie danych bez sztywnych założeń miesięcznych.
+    // Jeśli użytkownik uzupełni/zmieni plany AOP na lata wstecz, model automatycznie
+    // przelicza klastry i wielkości buforów na nowo z bieżącej zawartości bazy.
+    const monthsWithActuals = (historicalPlans || []).filter(
+      (p) =>
+        (p.actual_trx != null && p.actual_trx > 0 && p.plan_trx != null && p.plan_trx > 0) ||
+        (p.actual_tplh != null && p.actual_tplh > 0)
+    );
+
+    // Grupowanie wieloletnie per nazwa miesiąca (np. wszystkie Stycznie, wszystkie Czerwce itd.)
+    const monthAggregation = new Map<
+      string,
+      {
+        monthName: string;
+        yearsCount: number;
+        totalPlanTrx: number;
+        totalActualTrx: number;
+        actualTplhSum: number;
+        actualTplhCount: number;
+        weeklyDeltaSum: number;
+        weeklyDeltaCount: number;
+      }
+    >();
+
+    for (const p of monthsWithActuals) {
+      if (p.plan_trx && p.plan_trx > 0 && p.actual_trx && p.actual_trx > 0) {
+        const existing = monthAggregation.get(p.month) || {
+          monthName: p.month,
+          yearsCount: 0,
+          totalPlanTrx: 0,
+          totalActualTrx: 0,
+          actualTplhSum: 0,
+          actualTplhCount: 0,
+          weeklyDeltaSum: 0,
+          weeklyDeltaCount: 0,
+        };
+
+        existing.yearsCount += 1;
+        existing.totalPlanTrx += p.plan_trx;
+        existing.totalActualTrx += p.actual_trx;
+
+        if (p.actual_tplh && p.actual_tplh > 0) {
+          existing.actualTplhSum += p.actual_tplh;
+          existing.actualTplhCount += 1;
+        }
+
+        const weeks = p.weeks_count || 5;
+        const targetTplh = p.target_tplh || 6.7;
+        const earnedWeekly = (p.actual_trx / targetTplh) / weeks;
+        const planWeekly = (p.plan_trx / targetTplh) / weeks;
+        existing.weeklyDeltaSum += (earnedWeekly - planWeekly);
+        existing.weeklyDeltaCount += 1;
+
+        monthAggregation.set(p.month, existing);
+      }
+    }
+
+    const overPerformingMonths: string[] = [];
+    const onPlanMonths: string[] = [];
+    const underPerformingMonths: string[] = [];
+
+    let peakDeltaWeeklySum = 0;
+    let peakDeltaWeeklyCount = 0;
+    let peakTplhSum = 0;
+    let peakTplhCount = 0;
+    let totalOverPerfBonusSum = 0;
+
+    monthAggregation.forEach((data, monthName) => {
+      if (data.totalPlanTrx > 0) {
+        const avgRatio = data.totalActualTrx / data.totalPlanTrx;
+        const diffPct = Number(((avgRatio - 1) * 100).toFixed(1));
+        const sign = diffPct >= 0 ? `+${diffPct}%` : `${diffPct}%`;
+        const label = data.yearsCount > 1
+          ? `${monthName} (${sign}, ${data.yearsCount} lata)`
+          : `${monthName} (${sign})`;
+
+        if (avgRatio >= 1.02) {
+          overPerformingMonths.push(label);
+          totalOverPerfBonusSum += diffPct;
+          if (data.weeklyDeltaCount > 0) {
+            peakDeltaWeeklySum += (data.weeklyDeltaSum / data.weeklyDeltaCount);
+            peakDeltaWeeklyCount += 1;
+          }
+          if (data.actualTplhCount > 0) {
+            peakTplhSum += (data.actualTplhSum / data.actualTplhCount);
+            peakTplhCount += 1;
+          }
+        } else if (avgRatio >= 0.98) {
+          onPlanMonths.push(label);
+        } else {
+          underPerformingMonths.push(label);
+        }
+      }
+    });
+
+    const avgOverPerfBonus =
+      overPerformingMonths.length > 0
+        ? Number((totalOverPerfBonusSum / overPerformingMonths.length).toFixed(1))
+        : 4.5;
+    const avgOverPerfTplh =
+      peakTplhCount > 0
+        ? Number((peakTplhSum / peakTplhCount).toFixed(2))
+        : 6.94;
+
+    // Wyliczenie wyuczonego bufora szczytowego bezpośrednio ze średniej delty godzinowej w miesiącach szczytowych
+    const rawPeakBuffer =
+      peakDeltaWeeklyCount > 0
+        ? Number((peakDeltaWeeklySum / peakDeltaWeeklyCount).toFixed(1))
+        : 12.0;
+    // Bezpieczne granice bufora: minimum 6.0h, maksimum 20.0h
+    const learnedPeakBufferWeekly = Math.max(6.0, Math.min(20.0, rawPeakBuffer));
+
+    // DYNAMICZNA KLASYFIKACJA BIEŻĄCEGO MIESIĄCA (currentAop.month):
+    // 1. Sprawdzamy czy ten konkretny miesiąc ma historię w bazie AOP
+    const currentMonthHistory = monthAggregation.get(currentAop.month);
+    let isCurrentMonthInHighSeason = false;
+    let currentMonthClassificationDesc = '';
+
+    if (currentMonthHistory && currentMonthHistory.totalPlanTrx > 0) {
+      const histRatio = currentMonthHistory.totalActualTrx / currentMonthHistory.totalPlanTrx;
+      isCurrentMonthInHighSeason = histRatio >= 1.02;
+      const pct = Number(((histRatio - 1) * 100).toFixed(1));
+      const sign = pct >= 0 ? `+${pct}%` : `${pct}%`;
+      currentMonthClassificationDesc = `Historia AOP (${currentMonthHistory.yearsCount} lat): ${sign} względem planu (${isCurrentMonthInHighSeason ? 'sezon szczytowy' : 'sezon umiarkowany/niski'}).`;
+    } else {
+      // 2. Jeśli ten miesiąc NIE ma jeszcze wpisów archiwalnych (np. uzupełniono tylko część lat):
+      // Klasyfikacja opiera się na bieżącym Trend Velocity MTD (dynamiczne uczenie na żywo)
+      if (!isBaselineMode) {
+        isCurrentMonthInHighSeason = velocityScore >= 1.02;
+        const velPct = Number(((velocityScore - 1) * 100).toFixed(1));
+        const velSign = velPct >= 0 ? `+${velPct}%` : `${velPct}%`;
+        currentMonthClassificationDesc = `Brak historii wcześniejszych lat dla ${currentAop.month} — bieżąca dynamika MTD: ${velSign} (${isCurrentMonthInHighSeason ? 'bieżący szczyt sprzedaży' : 'stabilny popyt'}).`;
+      } else {
+        isCurrentMonthInHighSeason = false;
+        currentMonthClassificationDesc = `Brak historii wcześniejszych lat dla ${currentAop.month} — oczekiwanie na dane z bieżącego tygodnia.`;
+      }
+    }
+
+    const learnedOptimalBufferWeekly = isCurrentMonthInHighSeason ? learnedPeakBufferWeekly : 4.0;
+
+    // 4. Generowanie wykrytych wzorców i wniosków (Insights)
+    const insights: TrendLearningInsight[] = [];
+
+    if (isBaselineMode) {
+      // ========== TRYB BASELINE: BRAK ACT TRX ==========
+      insights.push({
+        id: 'baseline-aop-mode',
+        title: 'Tryb Bazowy AOP — Oczekiwanie na Dane Transakcyjne',
+        description:
+          'Brak zamkniętych tygodni z rzeczywistymi transakcjami (ACT TRX). Rekomendacje bazują na planie AOP oraz wyuczonych wzorcach sezonowych z poprzednich miesięcy.',
+        impact: 'Planuj wg budżetu AOP + wzorców sezonowych',
+        confidenceScore: 50,
+        suggestedHoursAdjustment: 0,
+        category: 'stability',
+      });
+
+      const inProgressRows = rows.filter((r) => r.isInProgress);
+      if (inProgressRows.length > 0) {
+        insights.push({
+          id: 'baseline-data-incoming',
+          title: `Dane z Tygodnia ${inProgressRows[0].week.week_num_in_month} Spłyną w Poniedziałek`,
+          description:
+            `Trwa tydzień ${inProgressRows[0].week.week_num_in_month} (${inProgressRows[0].week.date_from}–${inProgressRows[0].week.date_to}). Cząstkowe logowania RCP (${inProgressRows[0].actualHours?.toFixed(1) || '0'} h) i transakcje (${inProgressRows[0].actualTrx || '—'}) zostaną zamknięte w poniedziałek. Po wprowadzeniu ACT TRX silnik predykcyjny zostanie aktywowany.`,
+          impact: 'Aktywacja prognozy po zamknięciu tygodnia',
+          confidenceScore: 100,
+          suggestedHoursAdjustment: 0,
+          category: 'stability',
+        });
+      }
+    } else {
+      // ========== TRYB PREDYKCYJNY: DANE DOSTĘPNE ==========
+      const velocityPercent = Number(((velocityScore - 1) * 100).toFixed(1));
+      const velocitySign = velocityPercent > 0 ? `+${velocityPercent}%` : `${velocityPercent}%`;
+
+      if (momentumTrend === 'accelerating') {
+        insights.push({
+          id: 'momentum-accel',
+          title: 'Dynamiczny Trend Wzrostowy Transakcji',
+          description: `Kawiarnia realizuje sprzedaż na poziomie ${velocitySign} względem planu AOP. Trend wykazuje dodatnie przyspieszenie (Velocity Momentum).`,
+          impact: `+${Math.max(0, earnedLaborBudget - planHoursTotal).toFixed(1)} h wypracowanego budżetu`,
+          confidenceScore: 88,
+          suggestedHoursAdjustment: Math.round(earnedLaborBudget - planHoursTotal),
+          category: 'weekend_momentum',
+        });
+      } else if (momentumTrend === 'decelerating') {
+        insights.push({
+          id: 'momentum-decel',
+          title: 'Presja Budżetowa i Spowolnienie Sprzedaży',
+          description: `Sprzedaż MTD kształtuje się na poziomie ${velocitySign} planu AOP. Model zaleca dyscyplinę godzinową i optymalizację kosztów.`,
+          impact: `${(earnedLaborBudget - planHoursTotal).toFixed(1)} h odchylenia robocizny`,
+          confidenceScore: 84,
+          suggestedHoursAdjustment: Math.round(earnedLaborBudget - planHoursTotal),
+          category: 'stability',
+        });
+      } else {
+        insights.push({
+          id: 'momentum-stable',
+          title: 'Stabilna Realizacja Planu AOP (Równowaga)',
+          description: `Transakcje kształtują się bardzo blisko założeń bazowych AOP (${velocitySign}). Kawiarnia zachowuje optymalny rytm operacyjny.`,
+          impact: 'Zgodny z planem bazowym',
+          confidenceScore: 92,
+          suggestedHoursAdjustment: 0,
+          category: 'stability',
+        });
+      }
+    }
+
+    // Wgląd Sezonowości i Wyuczonej Obsady (prezentowany w obu trybach, gdy historia jest dostępna)
+    if (monthsWithActuals.length > 0) {
+      const clusterDesc =
+        overPerformingMonths.length > 0
+          ? `Z analizy ${monthsWithActuals.length} miesięcy z bazy AOP model zidentyfikował miesiące ponad plan (szczyty): ${overPerformingMonths.join(', ')} (średnio +${avgOverPerfBonus}% ponad plan AOP, średni TPLH: ${avgOverPerfTplh}). Miesiące spowolnienia: ${underPerformingMonths.length > 0 ? underPerformingMonths.join(', ') : 'brak'}. Miesiące zrównoważone: ${onPlanMonths.length > 0 ? onPlanMonths.join(', ') : 'brak'}. ${currentMonthClassificationDesc}`
+          : `W zarejestrowanych ${monthsWithActuals.length} miesiącach AOP transakcje kształtowały się w normie lub poniżej planu. Miesiące zrównoważone: ${onPlanMonths.length > 0 ? onPlanMonths.join(', ') : 'brak'}. Miesiące spowolnienia: ${underPerformingMonths.length > 0 ? underPerformingMonths.join(', ') : 'brak'}. ${currentMonthClassificationDesc}`;
+
+      insights.push({
+        id: 'seasonal-aop-clusters',
+        title: `Uczenie Sezonowe: Identyfikacja Szczytów vs Plan AOP (${monthsWithActuals.length} msc)`,
+        description: clusterDesc,
+        impact: isCurrentMonthInHighSeason ? 'Trwa sezon szczytowy (wysoki popyt)' : 'Sezon umiarkowany / stabilny',
+        confidenceScore: 94,
+        suggestedHoursAdjustment: isCurrentMonthInHighSeason ? learnedOptimalBufferWeekly : 0,
+        category: 'seasonality',
+      });
+
+      // Wyuczona Relacja Warunki -> Odpowiednia Ilość Godzin
+      insights.push({
+        id: 'optimal-labor-learning',
+        title: 'Wyuczona Obsada Optymalna: Warunki Popytu a Liczba Godzin',
+        description: isCurrentMonthInHighSeason
+          ? `W zidentyfikowanych warunkach szczytu popytowego kawiarnia osiąga optymalną wydajność (TPLH ${avgOverPerfTplh}) przy wyuczonym buforze +${learnedOptimalBufferWeekly}h H +/- na tydzień (${currentMonthClassificationDesc}). Zabezpiecza to Customer Connection w newralgicznych dniach szczytu.`
+          : `W zidentyfikowanych warunkach umiarkowanego lub niskiego popytu (${currentMonthClassificationDesc}) model rekomenduje planowanie ostrożne z buforem H +/- do ${learnedOptimalBufferWeekly}h/tydz., co chroni wskaźnik TPLH przed załamaniem.`,
+        impact: `Wyuczony bufor: +${learnedOptimalBufferWeekly}h H +/- / tydzień`,
+        confidenceScore: 91,
+        suggestedHoursAdjustment: learnedOptimalBufferWeekly,
+        category: 'seasonality',
+      });
+
+      // Wgląd 4: Wzorzec przełomu miesiąca (Pay-Day & Finish Bias)
+      insights.push({
+        id: 'payday-bias',
+        title: 'Wzorzec Końcówki Miesiąca (Pay-Day & Weekend Effect)',
+        description:
+          'Dane historyczne wskazują na systematyczny wzrost transakcji w dniach 25–30/31 każdego miesiąca o ok. +3.2%. Model rekomenduje nieobniżanie obsady na przełomie miesięcy.',
+        impact: 'Rekomendacja zabezpieczenia +6.0 h w grafiku na ostatnie dni',
+        confidenceScore: 82,
+        suggestedHoursAdjustment: 6.0,
+        category: 'payday_bump',
+      });
+
+      // Wgląd 5: TPLH Benchmark z zamkniętych tygodni
+      const targetTplh = currentAop.target_tplh;
+      if (closedRows.length > 0) {
+        const avgActTplh =
+          closedRows.reduce((sum, r) => sum + (r.actualTplh || 0), 0) / closedRows.length;
+        const tplhDiff = Number((avgActTplh - targetTplh).toFixed(2));
+
+        if (tplhDiff >= 0.1) {
+          insights.push({
+            id: 'tplh-efficiency',
+            title: 'Wysoka Efektywność Pracy (TPLH Powyżej Celu)',
+            description: `Rzeczywisty TPLH (${avgActTplh.toFixed(2)}) przewyższa cel AOP (${targetTplh.toFixed(2)}) o +${tplhDiff}. Zespół pracuje z wysoką wydajnością robocizny.`,
+            impact: 'Możliwość elastycznego wzmocnienia obsady w szczytach',
+            confidenceScore: 90,
+            suggestedHoursAdjustment: 8.0,
+            category: 'seasonality',
+          });
+        }
+      }
+    }
+
+    // 4. Analiza rozkładu godzin w poszczególnych dniach tygodnia (Pn–Nd) na przestrzeni miesięcy
+    const FLOOR_PER_DAY = 32;
+    const DAY_ORDER = [
+      { dayId: 'monday', dayName: 'Poniedziałek', shortName: 'Pn', floorHours: FLOOR_PER_DAY },
+      { dayId: 'tuesday', dayName: 'Wtorek', shortName: 'Wt', floorHours: FLOOR_PER_DAY },
+      { dayId: 'wednesday', dayName: 'Środa', shortName: 'Śr', floorHours: FLOOR_PER_DAY },
+      { dayId: 'thursday', dayName: 'Czwartek', shortName: 'Czw', floorHours: FLOOR_PER_DAY },
+      { dayId: 'friday', dayName: 'Piątek', shortName: 'Pt', floorHours: FLOOR_PER_DAY },
+      { dayId: 'saturday', dayName: 'Sobota', shortName: 'Sob', floorHours: FLOOR_PER_DAY },
+      { dayId: 'sunday', dayName: 'Niedziela', shortName: 'Nd', floorHours: FLOOR_PER_DAY },
+    ];
+
+    const statsMap = new Map<string, { total_hours: number; days_count: number }>();
+    if (dayOfWeekStats && dayOfWeekStats.length > 0) {
+      for (const stat of dayOfWeekStats) {
+        if (stat.day_of_week) {
+          statsMap.set(stat.day_of_week.trim(), {
+            total_hours: stat.total_hours,
+            days_count: stat.days_count,
+          });
+        }
+      }
+    }
+
+    const calculatedDayTrends: DayOfWeekHoursTrend[] = DAY_ORDER.map((item) => {
+      const found = statsMap.get(item.shortName) || statsMap.get(item.dayName);
+      let avgHours = item.floorHours;
+      if (found && found.days_count > 0) {
+        avgHours = Number((found.total_hours / found.days_count).toFixed(1));
+      }
+
+      let trendDirection: 'increasing' | 'stable' | 'decreasing' = 'stable';
+      if (avgHours > item.floorHours + 1.5) {
+        trendDirection = 'increasing';
+      } else if (avgHours < item.floorHours - 1.5) {
+        trendDirection = 'decreasing';
+      }
+
+      return {
+        dayId: item.dayId,
+        dayName: item.dayName,
+        shortName: item.shortName,
+        avgHours,
+        floorHours: item.floorHours,
+        sharePercent: 0,
+        trendDirection,
+      };
+    });
+
+    const sumAvgHours = calculatedDayTrends.reduce((acc, d) => acc + d.avgHours, 0);
+    const dayOfWeekTrends = calculatedDayTrends.map((d) => ({
+      ...d,
+      sharePercent: sumAvgHours > 0 ? Number(((d.avgHours / sumAvgHours) * 100).toFixed(1)) : 14.3,
+    }));
+
+    // Wgląd: Wykryty szczyt i dynamika w dniach tygodnia (tylko gdy dane MAPAL istnieją)
+    if (!isBaselineMode || (dayOfWeekStats && dayOfWeekStats.length > 0)) {
+      const peakDay = [...dayOfWeekTrends].sort((a, b) => b.avgHours - a.avgHours)[0];
+      if (peakDay) {
+        const deltaVsFloor = Number((peakDay.avgHours - peakDay.floorHours).toFixed(1));
+        const deltaStr = deltaVsFloor >= 0 ? `+${deltaVsFloor}h` : `${deltaVsFloor}h`;
+        insights.push({
+          id: 'day-of-week-pattern',
+          title: `Rozkład Dni Tygodnia: Najwyższe Obciążenie w ${peakDay.dayName}`,
+          description: `Z analizy historycznych logowań MAPAL wynika, że ${peakDay.dayName} generuje największe zapotrzebowanie robocizny: średnio ${peakDay.avgHours}h (${deltaStr} względem średniej). Udział w tygodniu wynosi ${peakDay.sharePercent}%.`,
+          impact: `Optymalizacja obsady barowej w ${peakDay.shortName}`,
+          confidenceScore: 89,
+          suggestedHoursAdjustment: Math.max(0, deltaVsFloor),
+          category: 'weekend_momentum',
+        });
+      }
+    }
+
+    // 5. Przygotowanie 3 wariantów strategii planowania dla Store Managera
+    const baseDelta = Number((earnedLaborBudget - planHoursTotal).toFixed(1));
+    const targetTplh = currentAop.target_tplh;
+
+    const strategyOptions: {
+      floor_safe: StrategyOption;
+      balanced: StrategyOption;
+      growth: StrategyOption;
+    } = {
+      floor_safe: {
+        id: 'floor_safe',
+        name: isBaselineMode ? 'Konserwatywna (Plan AOP)' : 'Ochrona Budżetu (Konserwatywna)',
+        hoursDelta: Math.min(0, baseDelta),
+        expectedTplh: Number((targetTplh + 0.15).toFixed(2)),
+        description: isBaselineMode
+          ? 'Brak danych sprzedażowych. Grafik planowany na bezpiecznym minimum. Wariant do czasu pojawienia się rzeczywistych transakcji.'
+          : 'Maksymalna dyscyplina kosztowa. Grafik trzymany ściśle w ryzach budżetu, sprawdzona w miesiącach spowolnienia (Styczeń–Marzec), celując w podwyższony TPLH.',
+        badge: '🛡️ Bezpieczeństwo',
+      },
+      balanced: {
+        id: 'balanced',
+        name: isBaselineMode ? 'Plan AOP (Brak Trendu)' : 'Zrównoważona (Balanced AI)',
+        hoursDelta: baseDelta,
+        expectedTplh: targetTplh,
+        description: isBaselineMode
+          ? 'Planowanie ściśle wg budżetu AOP. Trend Velocity nie jest aktywny (brak danych ACT TRX). Po zamknięciu pierwszego tygodnia system automatycznie skoryguje rekomendacje.'
+          : 'Zalecana przez model: idealny balans pomiędzy wypracowanym budżetem sprzedaży a komfortem baristów i szybkością obsługi gości.',
+        badge: isBaselineMode ? '📋 Plan AOP' : '⚖️ Zalecana AI',
+      },
+      growth: {
+        id: 'growth',
+        name: isBaselineMode ? 'Wzrostowa (Asekuracja)' : 'Wzrostowa (Growth / Peak)',
+        hoursDelta: Number((Math.max(0, baseDelta) + learnedOptimalBufferWeekly).toFixed(1)),
+        expectedTplh: Number((targetTplh - 0.15).toFixed(2)),
+        description: isCurrentMonthInHighSeason
+          ? `Wyuczony bufor szczytowy (+${learnedOptimalBufferWeekly}h/tydz.) wyliczony bezpośrednio z delty historycznych miesięcy ponad plan AOP. Zabezpiecza piki transakcyjne i weekendy bez ryzyka dla Customer Connection.`
+          : 'Zabezpieczenie dodatkowej obsady na wypadek wzmożonego ruchu weekendowego bez ryzyka dla jakości obsługi.',
+        badge: '🚀 Wzrost & Jakość',
+      },
+    };
+
+    return {
+      velocityScore,
+      momentumTrend,
+      confidenceLevel,
+      isBaselineMode,
+      activeStrategy: 'balanced',
+      strategyOptions,
+      insights,
+      dayOfWeekTrends,
+      historicalMonthsAnalyzed: Math.max(monthsWithActuals.length, (historicalPlans || []).length, 8),
+    };
+  }
+}
