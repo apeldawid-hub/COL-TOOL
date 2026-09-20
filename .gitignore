@@ -27,3 +27,6 @@ yarn-error.log*
 
 # Electron builder cache
 .electron-builder-cache/
+
+# Local backup archives
+backups/
