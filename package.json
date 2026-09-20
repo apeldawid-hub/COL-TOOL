@@ -118,8 +118,7 @@
       {
         "provider": "github",
         "owner": "apeldawid-hub",
-        "repo": "COL-TOOL",
-        "private": true
+        "repo": "COL-TOOL"
       }
     ]
   }
