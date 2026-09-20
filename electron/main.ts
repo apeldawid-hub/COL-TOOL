@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -139,6 +139,15 @@ const matchesManagerEmp = (excelEmpName: string, mgrName: string): boolean => {
 // Rejestracja IPC
 function setupIpcHandlers() {
   const dbManager = DatabaseManager.getInstance();
+
+  // Otwieranie linków zewnętrznych w przeglądarce systemowej
+  ipcMain.handle('system:open-external', async (_event, url: string) => {
+    if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
+      await shell.openExternal(url);
+      return true;
+    }
+    return false;
+  });
 
   // Systemowy zegar i data OS
   ipcMain.handle('system:get-time', () => {

@@ -99,6 +99,7 @@ export interface IElectronAPI {
   quitAndInstallUpdate: () => Promise<void>;
   getUpdateStatus: () => Promise<any>;
   onUpdaterEvent: (callback: (payload: any) => void) => () => void;
+  openExternalUrl: (url: string) => Promise<boolean>;
   // System Diagnostyki, Czarnej Skrzynki i Zgłaszania Błędów
   logError: (payload: { level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'; source: string; message: string; stack?: string; metadata?: any }) => Promise<boolean>;
   getRecentLogs: (limit?: number) => Promise<any[]>;
@@ -191,6 +192,7 @@ const api: IElectronAPI = {
       ipcRenderer.removeListener('app:updater-event', subscription);
     };
   },
+  openExternalUrl: (url) => ipcRenderer.invoke('system:open-external', url),
   // System Diagnostyki, Czarnej Skrzynki i Zgłaszania Błędów
   logError: (payload) => ipcRenderer.invoke('logger:log', payload),
   getRecentLogs: (limit) => ipcRenderer.invoke('logger:get-recent-logs', limit),

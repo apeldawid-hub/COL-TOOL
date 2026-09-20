@@ -338,11 +338,59 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
           )}
 
           {status === 'error' && errorMessage && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-xs text-red-800">
-              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-red-900">Informacja o aktualizacji</p>
-                <p className="mt-0.5 text-red-700 leading-relaxed">{errorMessage}</p>
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl space-y-3">
+              <div className="flex items-start gap-3 text-xs text-red-800">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-red-900">
+                    {errorMessage.includes('Code signature') || errorMessage.includes('ShipIt') || errorMessage.includes('validation')
+                      ? 'Wymagana instalacja przez DMG (Zabezpieczenie macOS)'
+                      : 'Informacja o aktualizacji'}
+                  </p>
+                  <p className="mt-1 text-red-700 leading-relaxed">
+                    {errorMessage.includes('Code signature') || errorMessage.includes('ShipIt') || errorMessage.includes('validation')
+                      ? 'System macOS wymaga jednorazowego potwierdzenia podmiany aplikacji dla programów z podpisem ad-hoc (bez certyfikatu Apple Developer ID). Kliknij poniższy przycisk, aby pobrać oficjalny instalator DMG i przeciągnąć nową wersję do folderu Programy — wszystkie Twoje dane bazy SQLite zostaną w 100% zachowane!'
+                      : errorMessage}
+                  </p>
+                </div>
+              </div>
+
+              {/* Szybkie pobranie instalatora DMG */}
+              <div className="pt-2 border-t border-red-200/70 flex items-center justify-between gap-3">
+                <button
+                  onClick={() => {
+                    const tag = availableVersion || APP_VERSION;
+                    const isArm = versionInfo?.arch === 'arm64' || navigator.userAgent.includes('Mac');
+                    const dmgName = isArm 
+                      ? `Starbucks-Operations-Suite-${tag}-arm64.dmg`
+                      : `Starbucks-Operations-Suite-${tag}.dmg`;
+                    const url = `https://github.com/apeldawid-hub/COL-TOOL/releases/download/v${tag}/${dmgName}`;
+                    if (typeof window !== 'undefined' && (window as any).api?.openExternalUrl) {
+                      (window as any).api.openExternalUrl(url);
+                    } else {
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#006241] hover:bg-[#004d33] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-2 transition-transform hover:scale-[1.02]"
+                >
+                  <Download className="w-4 h-4 text-emerald-300" />
+                  Pobierz Instalator DMG (v{availableVersion || '2.7.0'})
+                </button>
+
+                <button
+                  onClick={() => {
+                    const url = 'https://github.com/apeldawid-hub/COL-TOOL/releases/latest';
+                    if (typeof window !== 'undefined' && (window as any).api?.openExternalUrl) {
+                      (window as any).api.openExternalUrl(url);
+                    } else {
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  className="px-3 py-2 bg-white border border-red-200 text-gray-700 hover:text-gray-900 text-xs font-semibold rounded-lg shadow-2xs hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                >
+                  <Laptop className="w-3.5 h-3.5 text-gray-500" />
+                  Wydania GitHub
+                </button>
               </div>
             </div>
           )}
