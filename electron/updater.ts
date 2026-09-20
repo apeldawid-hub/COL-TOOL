@@ -50,6 +50,17 @@ export class AppUpdater {
   }
 
   private configureUpdater() {
+    // Bezpośrednia konfiguracja kanału aktualizacji dla apeldawid-hub/COL-TOOL
+    try {
+      autoUpdater.setFeedURL({
+        provider: 'github',
+        owner: 'apeldawid-hub',
+        repo: 'COL-TOOL'
+      });
+    } catch (e) {
+      console.warn('⚠️ [AutoUpdater] Błąd setFeedURL:', e);
+    }
+
     // Nie pobieraj automatycznie w tle - daj użytkownikowi kontrolę w UI
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;

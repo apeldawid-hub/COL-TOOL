@@ -75,7 +75,13 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
         } else if (payload.event === 'update-downloaded') {
           setStatus('downloaded');
         } else if (payload.event === 'error') {
-          setErrorMessage(payload.error || 'Wystąpił błąd podczas sprawdzania aktualizacji.');
+          let errStr = payload.error || 'Wystąpił błąd podczas sprawdzania aktualizacji.';
+          if (errStr.includes('404')) {
+            errStr = 'Nie odnaleziono nowszego wydania na GitHubie lub wydanie jest jeszcze przetwarzane.';
+          } else if (errStr.length > 200) {
+            errStr = errStr.slice(0, 180) + '... (Sprawdź połączenie z internetem)';
+          }
+          setErrorMessage(errStr);
         }
       });
 
