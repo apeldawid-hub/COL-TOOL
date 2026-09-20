@@ -70,6 +70,7 @@ export interface IElectronAPI {
   createDatabaseBackup: (reason?: string) => Promise<{ success: boolean; filename: string; filePath: string; sizeBytes: number; timestamp: string; reason: string; message: string }>;
   getDatabaseBackups: () => Promise<Array<{ filename: string; filePath: string; sizeBytes: number; timestamp: string; formattedDate: string; reason: string }>>;
   restoreDatabaseBackup: (filename: string) => Promise<{ success: boolean; message: string }>;
+  restoreDatabaseBackupBuffer: (buffer: ArrayBuffer) => Promise<{ success: boolean; message: string }>;
   getDatabaseStatus: () => Promise<{ dbPath: string; exists: boolean; sizeBytes: number; lastModified: string; backupsCount: number; latestBackup?: any }>;
   // Moduł Centrum Danych & Paczek Historycznych (Clean Slate & Import Hub)
   exportHistoricalPackage: (customTargetDir?: string) => Promise<{ success: boolean; message: string; details?: any }>;
@@ -165,6 +166,7 @@ const api: IElectronAPI = {
   createDatabaseBackup: (reason) => ipcRenderer.invoke('db:create-backup', reason),
   getDatabaseBackups: () => ipcRenderer.invoke('db:list-backups'),
   restoreDatabaseBackup: (filename) => ipcRenderer.invoke('db:restore-backup', filename),
+  restoreDatabaseBackupBuffer: (buffer) => ipcRenderer.invoke('db:restore-backup-buffer', buffer),
   getDatabaseStatus: () => ipcRenderer.invoke('db:get-database-status'),
   // Moduł Centrum Danych & Paczek Historycznych (Clean Slate & Import Hub)
   exportHistoricalPackage: (customTargetDir?: string) => ipcRenderer.invoke('db:export-historical-package', customTargetDir),

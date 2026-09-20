@@ -1602,6 +1602,14 @@ function setupIpcHandlers() {
     return res;
   });
 
+  ipcMain.handle('db:restore-backup-buffer', (_event, buffer: ArrayBuffer) => {
+    const res = BackupManager.getInstance().restoreFromBuffer(buffer);
+    if (res.success && mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return res;
+  });
+
   ipcMain.handle('db:get-database-status', () => {
     return BackupManager.getInstance().getDatabaseStatus();
   });

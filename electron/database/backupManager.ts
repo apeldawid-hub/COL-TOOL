@@ -189,6 +189,43 @@ export class BackupManager {
   }
 
   /**
+   * Przywraca bazę danych bezpośrednio z bufora binarnego (np. z pliku wgrany w kreatorze Onboarding)
+   */
+  public restoreFromBuffer(buffer: ArrayBuffer | Buffer): { success: boolean; message: string } {
+    const dbManager = DatabaseManager.getInstance();
+    const dbFilePath = dbManager.getDbFilePath();
+
+    const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+
+    // Walidacja nagłówka SQLite (SQLite format 3)
+    if (nodeBuffer.length < 16 || !nodeBuffer.subarray(0, 16).toString('utf-8').startsWith('SQLite format 3')) {
+      throw new Error('Przekazany plik nie jest poprawną bazą danych SQLite format 3.');
+    }
+
+    // 1. Bezpieczeństwo: Kopia ratunkowa aktualnej bazy przed nadpisaniem
+    if (fs.existsSync(dbFilePath)) {
+      try {
+        this.createBackup('pre_restore_safety');
+      } catch (e) {
+        console.warn('Ostrzeżenie: Nie udało się utworzyć kopii ratunkowej przed przywracaniem:', e);
+      }
+    }
+
+    // 2. Zapisz bufor do pliku docelowego bazy SQLite
+    fs.writeFileSync(dbFilePath, nodeBuffer);
+
+    // 3. Przeładuj bazę w silniku SQLite
+    dbManager.reloadFromDisk();
+
+    console.log(`🔄 Pomyślnie przywrócono bazę danych z bufora (${(nodeBuffer.length / (1024 * 1024)).toFixed(2)} MB).`);
+
+    return {
+      success: true,
+      message: `Pomyślnie przywrócono bazę danych ze wskazanego pliku (${(nodeBuffer.length / (1024 * 1024)).toFixed(2)} MB).`
+    };
+  }
+
+  /**
    * Pobiera aktualny status bazy danych i podsumowanie kopii zapasowych
    */
   public getDatabaseStatus(): DatabaseStatus {

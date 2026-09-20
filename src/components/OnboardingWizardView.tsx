@@ -1,5 +1,5 @@
 // src/components/OnboardingWizardView.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Store,
   UserCheck,
@@ -166,8 +166,27 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
   const [backupState, setBackupState] = useState<UploadSlotState>({
     file: null,
     status: 'idle',
-    message: 'Wybierz lub upuść plik kopii zapasowej bazy SQLite (.db)',
+    message: 'Wybierz plik kopii zapasowej SQLite (.db) z listy lub wgraj z dysku',
   });
+  const [systemBackups, setSystemBackups] = useState<any[]>([]);
+  const [selectedBackupFilename, setSelectedBackupFilename] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).api?.getDatabaseBackups) {
+      (window as any).api.getDatabaseBackups().then((backups: any[]) => {
+        if (Array.isArray(backups) && backups.length > 0) {
+          setSystemBackups(backups);
+          // Domyślnie zaznacz najnowszą kopię
+          setSelectedBackupFilename(backups[0].filename);
+          setBackupState({
+            file: null,
+            status: 'valid',
+            message: `Wybrano automatyczną kopię: ${backups[0].filename} (${(backups[0].sizeBytes / (1024 * 1024)).toFixed(2)} MB)`,
+          });
+        }
+      }).catch(console.error);
+    }
+  }, []);
 
   // Podsumowanie AOP na żywo
   const aopSummary = useMemo(() => {
@@ -442,6 +461,15 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
           .map((sf) => sf.scheduleData);
         if (schedulesToCommit.length > 0 && api?.commitMultipleSchedulesImport) {
           await api.commitMultipleSchedulesImport({ schedules: schedulesToCommit });
+        }
+      } else if (dataSourceOption === 'B') {
+        if (backupState.file && api?.restoreDatabaseBackupBuffer) {
+          const buffer = await backupState.file.arrayBuffer();
+          const res = await api.restoreDatabaseBackupBuffer(buffer);
+          console.log('✅ Przywrócono bazę danych z wgranego pliku:', res);
+        } else if (selectedBackupFilename && api?.restoreDatabaseBackup) {
+          const res = await api.restoreDatabaseBackup(selectedBackupFilename);
+          console.log('✅ Przywrócono bazę danych z istniejącej kopii:', res);
         }
       }
     } catch (err) {
@@ -830,11 +858,43 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
 
                   {/* Strefa Backupu w Opcji B */}
                   {dataSourceOption === 'B' && (
-                    <div className="mt-3 pt-3 border-t border-emerald-900/40" onClick={(e) => e.stopPropagation()}>
+                    <div className="mt-3 pt-3 border-t border-emerald-900/40 space-y-3" onClick={(e) => e.stopPropagation()}>
+                      {/* Wybór z istniejących kopii systemowych */}
+                      {systemBackups.length > 0 && (
+                        <div className="space-y-1.5 text-left">
+                          <label className="text-[11px] font-bold text-slate-300 block">
+                            Dostępne kopie zapasowe w systemie:
+                          </label>
+                          <select
+                            value={selectedBackupFilename || ''}
+                            onChange={(e) => {
+                              const fname = e.target.value;
+                              setSelectedBackupFilename(fname);
+                              const b = systemBackups.find((item) => item.filename === fname);
+                              setBackupState({
+                                file: null,
+                                status: 'valid',
+                                message: b 
+                                  ? `Wybrano: ${b.filename} (${(b.sizeBytes / (1024 * 1024)).toFixed(2)} MB, ${b.formattedDate})`
+                                  : 'Wybrano kopię z listy.',
+                              });
+                            }}
+                            className="w-full px-3 py-2 bg-[#0d1611] border border-purple-800/60 rounded-xl text-xs text-white focus:outline-none focus:border-purple-400"
+                          >
+                            {systemBackups.map((b) => (
+                              <option key={b.filename} value={b.filename} className="bg-[#121a15] text-white">
+                                {b.formattedDate} — {b.reason} ({(b.sizeBytes / (1024 * 1024)).toFixed(2)} MB)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Lub wgranie pliku z dysku */}
                       <div className="p-3 bg-[#0d1611] rounded-xl border border-dashed border-purple-800/60 text-center space-y-1.5">
-                        <label className="px-3 py-1.5 bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 border border-purple-600/40 rounded-xl text-xs font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5">
+                        <label className="px-3.5 py-1.5 bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 border border-purple-600/40 rounded-xl text-xs font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5">
                           <Upload className="w-3.5 h-3.5" />
-                          <span>Wskaż plik .db</span>
+                          <span>Wskaż inny plik .db z dysku</span>
                           <input
                             type="file"
                             accept=".db,.sqlite"
@@ -844,7 +904,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                             }}
                           />
                         </label>
-                        <div className="text-[11px] text-slate-400">{backupState.message}</div>
+                        <div className="text-[11px] text-slate-300 font-medium">{backupState.message}</div>
                       </div>
                     </div>
                   )}
