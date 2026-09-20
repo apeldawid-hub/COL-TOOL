@@ -73,13 +73,19 @@ src/
 │
 ├── components/
 │   ├── LoginView.tsx            # Ekran logowania Starbucks z wyborem profilu SM/DM/ASM
+│   ├── OnboardingWizardView.tsx # Pełnoekranowe Menu Startowe / Kreator Pierwszego Uruchomienia
 │   ├── Sidebar.tsx              # Wysuwany pasek boczny z modułami i narzędziami (collapsible)
 │   ├── DashboardView.tsx        # Domyślny pulpit podsumowania po zalogowaniu
 │   ├── ModulePlaceholderView.tsx# Szablon modułów w budowie (Analiza, IBS&IMS)
 │   ├── Header.tsx               # Pasek kontekstu, selektory okresu AOP i profilu
-│   └── DatabaseBackupModal.tsx  # Modal kopii zapasowych SQLite
+│   ├── DatabaseBackupModal.tsx  # Modal kopii zapasowych SQLite
+│   ├── ErrorBoundary.tsx        # Globalna Tarcza Antyawaryjna (Starbucks Crash Screen)
+│   ├── BugReporterModal.tsx     # Centrum Zgłaszania Błędów & Diagnostyki
+│   ├── AppUpdateModal.tsx       # Modal sprawdzania i instalacji aktualizacji
+│   └── UnifiedSettingsModal.tsx # Centralny modal konfiguracji modułów
 ├── services/
-│   └── systemClock.ts           # Centralny zegar systemowy i stan temporalny miesięcy
+│   ├── systemClock.ts           # Centralny zegar systemowy i stan temporalny miesięcy
+│   └── logger.ts                # Klient logowania, telemetria i bufor Czarnej Skrzynki
 ├── hooks/
 │   └── useSystemClock.ts        # Reaktywny hook zegara systemowego
 ├── types/

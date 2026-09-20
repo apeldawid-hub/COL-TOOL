@@ -7,7 +7,38 @@ import { MapalParser } from './mapalParser';
 
 const XLSX: any = (xlsxModule as any).default || xlsxModule;
 
-export type DetectedReportType = 'AOP_PL' | 'MAPAL_FICHAJES' | 'UNKNOWN';
+export type DetectedReportType = 'AOP_PL' | 'MAPAL_FICHAJES' | 'MANAGER_SCHEDULE' | 'UNKNOWN';
+
+export interface ManagerScheduleShiftPreview {
+  day: number;
+  date: string;
+  employeeName: string;
+  shiftCode: string;
+  hours: number;
+  customStartTime?: string;
+  customEndTime?: string;
+}
+
+export interface ManagerScheduleEmployeePreview {
+  name: string;
+  role: string;
+  contractType: string;
+  contractHoursRatio: number;
+  hourlyRate: number;
+  sortOrder: number;
+}
+
+export interface SchedulePreviewData {
+  year: number;
+  month: number;
+  monthName: string;
+  fileName?: string;
+  employees: ManagerScheduleEmployeePreview[];
+  shifts: ManagerScheduleShiftPreview[];
+  events?: { day: number; eventText: string }[];
+  totalShiftsCount: number;
+  totalHours: number;
+}
 
 export interface AopMonthPreview {
   key: string;
@@ -72,6 +103,8 @@ export interface ParseReportPreviewResult {
     uniqueEmployeesCount: number;
     records: MapalRecordPreview[];
   };
+  // Schedule Preview
+  scheduleData?: SchedulePreviewData;
   validation: {
     isValid: boolean;
     warnings: string[];
@@ -128,6 +161,8 @@ export class UniversalReportParser {
         return await this.parseAopForPreview(workbook);
       } else if (detectedType === 'MAPAL_FICHAJES') {
         return await this.parseMapalForPreview(workbook, buffer);
+      } else if (detectedType === 'MANAGER_SCHEDULE') {
+        return await this.parseScheduleForPreview(workbook);
       } else {
         return {
           success: false,
@@ -136,9 +171,9 @@ export class UniversalReportParser {
           validation: {
             isValid: false,
             warnings: [],
-            errors: ['Nie rozpoznano struktury raportu AOP P&L ani MAPAL Fichajes.']
+            errors: ['Nie rozpoznano struktury raportu AOP P&L, MAPAL Fichajes ani Grafiku Managerskiego.']
           },
-          message: 'Nie udało się automatycznie rozpoznać formatu raportu. Upewnij się, że przesyłasz oficjalny raport AOP P&L lub raport MAPAL Fichajes.'
+          message: 'Nie udało się automatycznie rozpoznać formatu raportu. Upewnij się, że przesyłasz oficjalny raport AOP P&L, raport MAPAL Fichajes lub plik Grafiku Managerskiego (.xlsm).'
         };
       }
     } catch (err: any) {
@@ -157,6 +192,11 @@ export class UniversalReportParser {
    * Automatyczna detekcja struktury pliku Excel
    */
   private static detectReportType(workbook: any): DetectedReportType {
+    // Sprawdzenie nazw arkuszy pod kątem grafiku
+    const hasScheduleSheet = workbook.SheetNames.some((s: string) => 
+      /Grafik|Schedule|Managers|Menedżer/i.test(s)
+    );
+
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     if (!worksheet) return 'UNKNOWN';
@@ -171,7 +211,14 @@ export class UniversalReportParser {
       .map(row => (Array.isArray(row) ? row.join(' ') : ''))
       .join('\n');
 
-    // 1. Sprawdzenie formatu AOP P&L
+    // 1. Sprawdzenie formatu Grafiku Managerskiego
+    const hasScheduleHeaders = /GRAFIK MANAGERSKI|MANAGER|Pozycja|Dni OFF|Godziny wypracowane|Bilans \(\+\/\- h\)/i.test(flatContent);
+    const hasShiftCodes = /\b(AM|PM|AMN|PMN|SAM|SPM|SUP|MIB|NC)\b/.test(flatContent);
+    if (hasScheduleSheet || (hasScheduleHeaders && hasShiftCodes)) {
+      return 'MANAGER_SCHEDULE';
+    }
+
+    // 2. Sprawdzenie formatu AOP P&L
     const hasPnlHierarchy = /PnL Equity Hierarchy|P&L Level/i.test(flatContent);
     const hasSalesAndTrx = /SALES/i.test(flatContent) && (/TRANSACTIONS/i.test(flatContent) || /Net Sales/i.test(flatContent));
     const hasAppliedFilters = /Applied filters|District is SBX|Restaurant Code/i.test(flatContent);
@@ -181,7 +228,7 @@ export class UniversalReportParser {
       return 'AOP_PL';
     }
 
-    // 2. Sprawdzenie formatu MAPAL Fichajes
+    // 3. Sprawdzenie formatu MAPAL Fichajes
     const hasFichajesTerms = /Empleado|Employee|Fichaje|Tiempo computable|Computable Time/i.test(flatContent);
     const hasStoreAndTimes = /Hora inicio|Hora fin|Total horas|Business Day|Contract Type/i.test(flatContent);
     const hasMapalHeader = rawRows.some(row => 
@@ -822,6 +869,366 @@ export class UniversalReportParser {
   }
 
   /**
+   * Parsowanie pliku Grafiku Managerskiego (.xlsm / .xlsx)
+   */
+  private static async parseScheduleForPreview(workbook: any): Promise<ParseReportPreviewResult> {
+    // Znajdź arkusz grafiku
+    let targetSheetName = workbook.SheetNames.find((s: string) => /Grafik/i.test(s)) || workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[targetSheetName];
+    if (!worksheet) {
+      return {
+        success: false,
+        reportType: 'MANAGER_SCHEDULE',
+        reportTypeName: 'Grafik Managerski',
+        validation: { isValid: false, warnings: [], errors: ['Nie znaleziono arkusza grafiku.'] },
+        message: 'Brak arkusza grafiku w wybranym pliku.'
+      };
+    }
+
+    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+
+    // 1. Detekcja Miesiąca i Roku
+    const monthNamesPl = [
+      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+    ];
+
+    let detectedMonth = 9;
+    let detectedMonthName = 'Wrzesień';
+    let detectedYear = 2026;
+
+    // Przeszukaj pierwsze 10 wierszy i nazwę arkusza
+    const headerSearchText = (targetSheetName + ' ' + rows.slice(0, 10).map(r => Array.isArray(r) ? r.join(' ') : '').join(' ')).toLowerCase();
+
+    for (let m = 0; m < monthNamesPl.length; m++) {
+      const plName = monthNamesPl[m].toLowerCase();
+      const baseStem = plName.slice(0, 4);
+      if (headerSearchText.includes(plName) || headerSearchText.includes(baseStem)) {
+        detectedMonth = m + 1;
+        detectedMonthName = monthNamesPl[m];
+        break;
+      }
+    }
+
+    const yearMatch = headerSearchText.match(/\b(202[0-9])\b/);
+    if (yearMatch) {
+      detectedYear = parseInt(yearMatch[1], 10);
+    }
+
+    const totalDaysInMonth = new Date(detectedYear, detectedMonth, 0).getDate();
+
+    // 2. Znalezienie wiersza nagłówka dni (dni 1..30/31) oraz kolumn
+    let headerRowIdx = -1;
+    let colEtatIdx = -1;
+    let colManagerIdx = -1;
+    let colRoleIdx = -1;
+    let dayColMap: Record<number, number> = {};
+
+    for (let r = 0; r < Math.min(15, rows.length); r++) {
+      const row = rows[r];
+      if (!Array.isArray(row)) continue;
+
+      let foundDaysCount = 0;
+      const currentDayMap: Record<number, number> = {};
+
+      row.forEach((cell, colIdx) => {
+        const str = String(cell ?? '').trim();
+        const num = parseInt(str, 10);
+        if (!isNaN(num) && num >= 1 && num <= 31 && String(num) === str) {
+          currentDayMap[num] = colIdx;
+          foundDaysCount++;
+        }
+        if (/Etat|Contract/i.test(str)) colEtatIdx = colIdx;
+        if (/Manager|Pracownik|Imię|Nazwisko/i.test(str)) colManagerIdx = colIdx;
+        if (/Pozycja|Rola|Stanowisko/i.test(str)) colRoleIdx = colIdx;
+      });
+
+      if (foundDaysCount >= 20) {
+        headerRowIdx = r;
+        dayColMap = currentDayMap;
+        break;
+      }
+    }
+
+    if (colEtatIdx === -1) colEtatIdx = 0;
+    if (colManagerIdx === -1) colManagerIdx = 1;
+    if (colRoleIdx === -1) colRoleIdx = 2;
+
+    if (headerRowIdx === -1) {
+      return {
+        success: false,
+        reportType: 'MANAGER_SCHEDULE',
+        reportTypeName: 'Grafik Managerski',
+        validation: { isValid: false, warnings: [], errors: ['Nie znaleziono wiersza z dniami miesiąca (1–31).'] },
+        message: 'Nie udało się rozpoznać struktury siatki dni grafiku managerskiego.'
+      };
+    }
+
+    const defaultShiftHours: Record<string, number> = {
+      'AM': 8.0, 'PM': 8.0, 'AMN': 6.0, 'PMN': 7.0, 'SAM': 8.0, 'SPM': 8.0, 'SUP': 8.0,
+      'MIB': 8.0, 'AMB': 8.0, 'PMB': 8.0, 'MI4': 4.0, 'BT': 8.0, 'NC': 8.0, 'TAM': 8.0,
+      'TPM': 8.0, 'RET': 8.0, 'T': 8.0, 'PRE': 8.0, 'MEE': 3.0, 'OFF': 0.0, 'H': 8.0, 'L4': 8.0,
+      'M': 0.0, 'Z': 0.0, 'FULL': 0.0
+    };
+
+    const employees: ManagerScheduleEmployeePreview[] = [];
+    const shifts: ManagerScheduleShiftPreview[] = [];
+    const events: { day: number; eventText: string }[] = [];
+    let totalScheduleHours = 0;
+
+    for (let r = headerRowIdx + 1; r < rows.length; r++) {
+      const row = rows[r];
+      if (!Array.isArray(row) || row.length === 0) continue;
+
+      const rawName = String(row[colManagerIdx] || '').trim();
+      const firstCell = String(row[0] || '').trim();
+
+      if (!rawName && !firstCell) continue;
+      if (/Ważne wydarzenia|Wydarzenia/i.test(firstCell) || /Ważne wydarzenia/i.test(rawName)) {
+        for (let d = 1; d <= totalDaysInMonth; d++) {
+          const cIdx = dayColMap[d];
+          if (cIdx !== undefined && row[cIdx]) {
+            const evText = String(row[cIdx]).trim();
+            if (evText) events.push({ day: d, eventText: evText });
+          }
+        }
+        continue;
+      }
+
+      if (/Obsada|Otwarcie|Zamknięcie|Podsumowanie|Dni OFF|Norma|Bilans/i.test(firstCell) || /Obsada|Otwarcie|Zamknięcie/i.test(rawName)) {
+        continue;
+      }
+
+      if (!rawName || rawName.length < 3) continue;
+
+      const rawEtat = String(row[colEtatIdx] || 'FULL').trim().toUpperCase();
+      let contractRatio = 1.0;
+      if (rawEtat.includes('0.75') || rawEtat.includes('3/4')) contractRatio = 0.75;
+      else if (rawEtat.includes('0.5') || rawEtat.includes('1/2')) contractRatio = 0.5;
+
+      const rawRole = String(row[colRoleIdx] || 'SSV').trim().toUpperCase();
+      let role = 'SSV';
+      if (rawRole.includes('SM') && !rawRole.includes('ASM')) role = 'SM';
+      else if (rawRole.includes('ASM')) role = 'ASM';
+
+      employees.push({
+        name: rawName,
+        role,
+        contractType: rawEtat || 'FULL',
+        contractHoursRatio: contractRatio,
+        hourlyRate: role === 'SM' ? 42.0 : role === 'ASM' ? 36.0 : 32.5,
+        sortOrder: employees.length + 1
+      });
+
+      for (let d = 1; d <= totalDaysInMonth; d++) {
+        const cIdx = dayColMap[d];
+        const rawShift = cIdx !== undefined ? String(row[cIdx] || '').trim().toUpperCase() : '';
+        const shiftCode = rawShift || 'OFF';
+        const dateStr = `${detectedYear}-${String(detectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+        let hours = defaultShiftHours[shiftCode] ?? 8.0;
+        const customHoursMatch = shiftCode.match(/(\d+(?:[.,]\d+)?)\s*h?$/);
+        if (customHoursMatch) {
+          hours = parseFloat(customHoursMatch[1].replace(',', '.'));
+        }
+
+        if (shiftCode !== 'OFF') {
+          totalScheduleHours += hours;
+        }
+
+        shifts.push({
+          day: d,
+          date: dateStr,
+          employeeName: rawName,
+          shiftCode,
+          hours
+        });
+      }
+    }
+
+    if (employees.length === 0) {
+      return {
+        success: false,
+        reportType: 'MANAGER_SCHEDULE',
+        reportTypeName: 'Grafik Managerski',
+        validation: { isValid: false, warnings: [], errors: ['Nie znaleziono wierszy pracowników w arkuszu.'] },
+        message: 'Nie udało się odczytać zespołu kierowników z arkusza grafiku.'
+      };
+    }
+
+    return {
+      success: true,
+      reportType: 'MANAGER_SCHEDULE',
+      reportTypeName: `Grafik Managerski (${detectedMonthName} ${detectedYear})`,
+      year: detectedYear,
+      scheduleData: {
+        year: detectedYear,
+        month: detectedMonth,
+        monthName: detectedMonthName,
+        employees,
+        shifts,
+        events,
+        totalShiftsCount: shifts.length,
+        totalHours: Number(totalScheduleHours.toFixed(1))
+      },
+      validation: {
+        isValid: true,
+        warnings: [],
+        errors: []
+      },
+      message: `✨ Pomyślnie sparsowano Grafik Managerski: ${detectedMonthName} ${detectedYear} (${employees.length} menedżerów, ${shifts.length} zmian, suma: ${totalScheduleHours.toFixed(1)}h).`
+    };
+  }
+
+  /**
+   * Zapis pojedynczego grafiku do bazy SQLite
+   */
+  public static async commitScheduleData(
+    schedule: SchedulePreviewData
+  ): Promise<UniversalImportResult> {
+    try {
+      const dbManager = DatabaseManager.getInstance();
+      await dbManager.init();
+      const db = dbManager.getDb();
+
+      const { year, month, employees, shifts, events } = schedule;
+
+      // 1. Synchronizacja manager_employees i manager_monthly_roster
+      const empMap: Record<string, number> = {};
+
+      for (const emp of employees) {
+        db.run(`
+          INSERT OR IGNORE INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, 1)
+        `, [emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, emp.sortOrder]);
+
+        const res = db.exec(`SELECT id FROM manager_employees WHERE name = ?`, [emp.name]);
+        if (res.length > 0 && res[0].values.length > 0) {
+          const empId = Number(res[0].values[0][0]);
+          empMap[emp.name] = empId;
+
+          db.run(`
+            INSERT OR REPLACE INTO manager_monthly_roster
+            (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+          `, [year, month, empId, emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, emp.sortOrder]);
+        }
+      }
+
+      // 2. Wstawienie zmian do manager_schedule_shifts
+      db.run(`DELETE FROM manager_schedule_shifts WHERE year = ? AND month = ?`, [year, month]);
+
+      const shiftStmt = db.prepare(`
+        INSERT OR REPLACE INTO manager_schedule_shifts (year, month, day, date, employee_id, shift_code, hours, custom_start_time, custom_end_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const s of shifts) {
+        const empId = empMap[s.employeeName];
+        if (empId) {
+          shiftStmt.run([
+            year,
+            month,
+            s.day,
+            s.date,
+            empId,
+            s.shiftCode,
+            s.hours,
+            s.customStartTime || null,
+            s.customEndTime || null
+          ]);
+        }
+      }
+      shiftStmt.free();
+
+      // 3. Wstawienie wydarzeń
+      if (events && events.length > 0) {
+        db.run(`DELETE FROM manager_schedule_events WHERE year = ? AND month = ?`, [year, month]);
+        const evStmt = db.prepare(`
+          INSERT INTO manager_schedule_events (year, month, day, event_text)
+          VALUES (?, ?, ?, ?)
+        `);
+        for (const ev of events) {
+          evStmt.run([year, month, ev.day, ev.eventText]);
+        }
+        evStmt.free();
+      }
+
+      dbManager.persist();
+
+      return {
+        success: true,
+        reportType: 'MANAGER_SCHEDULE',
+        reportTypeName: `Grafik Managerski (${schedule.monthName} ${year})`,
+        importedCount: shifts.length,
+        year,
+        message: `✨ Zapisano grafik na ${schedule.monthName} ${year} (${employees.length} menedżerów, ${shifts.length} zmian).`
+      };
+    } catch (err: any) {
+      console.error('Błąd commitScheduleData:', err);
+      return {
+        success: false,
+        reportType: 'MANAGER_SCHEDULE',
+        reportTypeName: 'Grafik Managerski',
+        importedCount: 0,
+        message: `Błąd zapisu grafiku do bazy: ${err.message || String(err)}`
+      };
+    }
+  }
+
+  /**
+   * Zapis wielu grafików naraz do bazy SQLite
+   */
+  public static async commitMultipleSchedules(
+    schedules: SchedulePreviewData[]
+  ): Promise<UniversalImportResult> {
+    try {
+      if (!schedules || schedules.length === 0) {
+        return {
+          success: true,
+          reportType: 'MANAGER_SCHEDULE',
+          reportTypeName: 'Grafiki Managerskie',
+          importedCount: 0,
+          message: 'Brak grafików do zaimportowania.'
+        };
+      }
+
+      try {
+        BackupManager.getInstance().createBackup('pre_import_schedules');
+      } catch (_) {}
+
+      let totalShifts = 0;
+      for (const s of schedules) {
+        const res = await this.commitScheduleData(s);
+        if (res.success) {
+          totalShifts += res.importedCount;
+        }
+      }
+
+      try {
+        BackupManager.getInstance().createBackup('post_import_schedules');
+      } catch (_) {}
+
+      return {
+        success: true,
+        reportType: 'MANAGER_SCHEDULE',
+        reportTypeName: 'Grafiki Managerskie',
+        importedCount: totalShifts,
+        message: `✨ Pomyślnie zaimportowano ${schedules.length} grafików miesięcznych (łącznie ${totalShifts} zmian).`
+      };
+    } catch (err: any) {
+      console.error('Błąd commitMultipleSchedules:', err);
+      return {
+        success: false,
+        reportType: 'MANAGER_SCHEDULE',
+        reportTypeName: 'Grafiki Managerskie',
+        importedCount: 0,
+        message: `Błąd zbiorczego zapisu grafików: ${err.message || String(err)}`
+      };
+    }
+  }
+
+  /**
    * Bezpośredni import (all-in-one dla skryptów lub CLI)
    */
   public static async parseAndImport(
@@ -842,6 +1249,8 @@ export class UniversalReportParser {
       return await this.commitAopData(preview.aopData.year, preview.aopData.months);
     } else if (preview.reportType === 'MAPAL_FICHAJES' && preview.mapalData) {
       return await this.commitMapalData(preview.mapalData.records);
+    } else if (preview.reportType === 'MANAGER_SCHEDULE' && preview.scheduleData) {
+      return await this.commitScheduleData(preview.scheduleData);
     } else {
       return {
         success: false,

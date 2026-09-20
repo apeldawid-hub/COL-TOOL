@@ -1,19 +1,64 @@
 import React, { useState } from 'react';
-import { Store, ShieldCheck, Database, ArrowRight, Sparkles, Coffee, UserCheck } from 'lucide-react';
+import { Store, ArrowRight, Mail, User, Shield } from 'lucide-react';
+import { APP_VERSION, APP_SHORT_NAME } from '../version';
 
 interface LoginViewProps {
   onLogin: (userName?: string) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
-  const [selectedRole, setSelectedRole] = useState<'SM' | 'DM' | 'ASM'>('SM');
+  // Odczyt skonfigurowanych danych lokalu i użytkownika z konfiguracji początkowej
+  const storeName = (() => {
+    try {
+      return localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki';
+    } catch {
+      return '108120 SBX Warszawa Janki';
+    }
+  })();
+
+  const unitCode = (() => {
+    try {
+      return localStorage.getItem('sbx_unit_code') || '18120';
+    } catch {
+      return '18120';
+    }
+  })();
+
+  const configuredUserName = (() => {
+    try {
+      return localStorage.getItem('sbx_user_name') || '';
+    } catch {
+      return '';
+    }
+  })();
+
+  const configuredUserEmail = (() => {
+    try {
+      return localStorage.getItem('sbx_user_email') || '';
+    } catch {
+      return '';
+    }
+  })();
+
+  const configuredRoleLabel = (() => {
+    try {
+      const r = localStorage.getItem('sbx_user_role');
+      if (r && r.includes('ASM')) return 'Assistant Store Manager (ASM)';
+      return 'Store Manager (SM)';
+    } catch {
+      return 'Store Manager (SM)';
+    }
+  })();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setTimeout(() => {
-      onLogin(selectedRole === 'SM' ? 'Store Manager (SM)' : selectedRole === 'DM' ? 'District Manager (DM)' : 'Assistant Store Manager (ASM)');
+      const roleAbbr = configuredRoleLabel.includes('ASM') ? 'ASM' : 'SM';
+      const finalUser = configuredUserName ? `${configuredUserName} (${roleAbbr})` : configuredRoleLabel;
+      onLogin(finalUser);
     }, 250);
   };
 
@@ -40,9 +85,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
         <div className="flex items-center space-x-2 bg-white/80 backdrop-blur-xs px-3.5 py-1.5 rounded-full border border-[#D0DCD6] text-xs shadow-2xs">
           <Store className="w-3.5 h-3.5 text-[#CBA258]" />
-          <span className="font-bold text-[#1E3932]">108120 Janki</span>
+          <span className="font-bold text-[#1E3932]">{storeName}</span>
           <span className="text-stone-300">•</span>
-          <span className="text-stone-500">Kod: <strong>18120</strong></span>
+          <span className="text-stone-500">Kod: <strong>{unitCode}</strong></span>
         </div>
       </header>
 
@@ -66,78 +111,44 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             </p>
           </div>
 
-          {/* Wybór profilu logowania */}
+          {/* Formularz logowania z danymi skonfigurowanej sesji */}
           <form onSubmit={handleLoginSubmit} className="space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-[#5C6F68] uppercase tracking-wider mb-2">
-                Wybierz Profil Operacyjny
-              </label>
-
-              <div className="grid grid-cols-3 gap-2 p-1 bg-[#F0F4F2] rounded-2xl border border-[#D0DCD6]">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('SM')}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                    selectedRole === 'SM'
-                      ? 'bg-[#006241] text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-                  }`}
-                >
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span>Store Mgr (SM)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('ASM')}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                    selectedRole === 'ASM'
-                      ? 'bg-[#006241] text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-                  }`}
-                >
-                  <Coffee className="w-3.5 h-3.5" />
-                  <span>Asystent (ASM)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('DM')}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${
-                    selectedRole === 'DM'
-                      ? 'bg-[#006241] text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#CBA258]" />
-                  <span>District Mgr</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Informacja o kawiarni */}
-            <div className="bg-[#F8FAF9] rounded-2xl p-4 border border-[#E2E8E5] space-y-2 text-xs">
+            <div className="bg-[#F8FAF9] rounded-2xl p-5 border border-[#E2E8E5] space-y-3 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-stone-500 font-medium">Lokalizacja domyślna:</span>
+                <span className="text-stone-500 font-medium">Lokalizacja:</span>
                 <span className="font-bold text-[#1E3932] flex items-center gap-1.5">
                   <Store className="w-3.5 h-3.5 text-[#006241]" />
-                  108120 SBX Warszawa Janki
+                  {storeName}
                 </span>
               </div>
+
+              {configuredUserName && (
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-500 font-medium">Kierownik:</span>
+                  <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-stone-500" />
+                    {configuredUserName}
+                  </span>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
-                <span className="text-stone-500 font-medium">Baza operacyjna:</span>
-                <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                  <Database className="w-3 h-3 text-emerald-600" />
-                  SQLite WebAssembly (Aktywna)
+                <span className="text-stone-500 font-medium">Rola:</span>
+                <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1.5">
+                  <Shield className="w-3 h-3 text-emerald-600" />
+                  {configuredRoleLabel}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-stone-500 font-medium">Połączenie MAPAL:</span>
-                <span className="font-semibold text-emerald-700 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Zweryfikowane (4 346 logowań)
-                </span>
-              </div>
+
+              {configuredUserEmail && (
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-500 font-medium">Adres e-mail:</span>
+                  <span className="font-mono text-stone-600 text-[11px] flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-stone-400" />
+                    {configuredUserEmail}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Przycisk Logowania */}
@@ -153,10 +164,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         </div>
       </main>
 
-      {/* Stopka z informacją o wersji */}
-      <footer className="px-8 py-4 text-center text-xs text-stone-400 relative z-10">
-        <p>Starbucks Operations Suite • Wersja v2.2 (Seasonal AI & Labor Management)</p>
-        <p className="text-[11px] text-stone-400 mt-0.5">Dedykowane środowisko desktopowe dla kawiarni 108120 Janki</p>
+      {/* Stopka z informacją o prawach i wersji */}
+      <footer className="px-8 py-4 text-center text-xs text-stone-400 relative z-10 space-y-0.5">
+        <p className="font-medium text-stone-500 text-xs">
+          Starbucks Operations Suite ® • All Rights Reserved
+        </p>
+        <p className="text-[11px] font-semibold tracking-wider text-stone-400/80">
+          {APP_SHORT_NAME} v{APP_VERSION}
+        </p>
       </footer>
     </div>
   );

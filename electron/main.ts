@@ -8,6 +8,33 @@ import { MapalParser } from './importer/mapalParser';
 import { UniversalReportParser } from './importer/universalReportParser';
 
 import { AppUpdater } from './updater';
+import { CrashLogManager } from './crashLogManager';
+import { GitHubReporter } from './githubReporter';
+
+// Rejestracja globalnego łapania awarii w procesie głównym Electron
+process.on('uncaughtException', (error) => {
+  CrashLogManager.getInstance().log('FATAL', 'ElectronMain:uncaughtException', error.message, error.stack);
+  GitHubReporter.getInstance().submitIssue({
+    category: 'FATAL_PROCESS',
+    moduleName: 'ElectronMain',
+    userDescription: `Krytyczny błąd procesu Electron: ${error.message}`,
+    errorStack: error.stack,
+    isAutomatic: true,
+  }).catch(() => {});
+});
+
+process.on('unhandledRejection', (reason) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  CrashLogManager.getInstance().log('ERROR', 'ElectronMain:unhandledRejection', msg, stack);
+  GitHubReporter.getInstance().submitIssue({
+    category: 'UNHANDLED_REJECTION',
+    moduleName: 'ElectronMain',
+    userDescription: `Nieobsłużony Promise Rejection w procesie Electron: ${msg}`,
+    errorStack: stack,
+    isAutomatic: true,
+  }).catch(() => {});
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1510,6 +1537,22 @@ function setupIpcHandlers() {
     return result;
   });
 
+  ipcMain.handle('import:commit-schedule', async (_event, payload: { scheduleData: any }) => {
+    const result = await UniversalReportParser.commitScheduleData(payload.scheduleData);
+    if (result.success && mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return result;
+  });
+
+  ipcMain.handle('import:commit-multiple-schedules', async (_event, payload: { schedules: any[] }) => {
+    const result = await UniversalReportParser.commitMultipleSchedules(payload.schedules);
+    if (result.success && mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return result;
+  });
+
   // Uniwersalny import jednokrokowy (legacy/fallback)
   const handleUniversalImportFile = async (filePath: string) => {
     const result = await UniversalReportParser.parseAndImport(filePath);
@@ -1631,6 +1674,33 @@ function setupIpcHandlers() {
       mainWindow.webContents.send('data:refreshed');
     }
     return id;
+  });
+
+  // System Diagnostyki, Czarnej Skrzynki i Zgłaszania Błędów
+  ipcMain.handle('logger:log', (_event, payload: { level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'; source: string; message: string; stack?: string; metadata?: any }) => {
+    CrashLogManager.getInstance().log(payload.level, payload.source, payload.message, payload.stack, payload.metadata);
+    return true;
+  });
+
+  ipcMain.handle('logger:get-recent-logs', (_event, limit?: number) => {
+    return CrashLogManager.getInstance().getRecentLogs(limit);
+  });
+
+  ipcMain.handle('logger:open-logs-folder', () => {
+    return CrashLogManager.getInstance().openLogsFolder();
+  });
+
+  ipcMain.handle('logger:save-bug-report', (_event, payload: any) => {
+    return CrashLogManager.getInstance().saveBugReport(payload);
+  });
+
+  ipcMain.handle('logger:export-diagnostics', (_event, customTargetDir?: string) => {
+    return CrashLogManager.getInstance().exportDiagnosticPackage(customTargetDir);
+  });
+
+  // Integracja z GitHub Issues
+  ipcMain.handle('github:submit-issue', (_event, payload: any) => {
+    return GitHubReporter.getInstance().submitIssue(payload);
   });
 }
 

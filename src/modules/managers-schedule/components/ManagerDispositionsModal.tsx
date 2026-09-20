@@ -33,8 +33,6 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
   onSaveBatch,
   isReadOnly: customIsReadOnly
 }) => {
-  if (!isOpen) return null;
-
   const isReadOnly = Boolean(customIsReadOnly ?? data.isMonthClosed);
 
   // Stan lokalny matrycy dyspozycji: empId -> day -> disposition (domyślnie puste = FULL)
@@ -66,6 +64,8 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
 
   // Sprawdzenie czy nastąpiły jakiekolwiek zmiany względem stanu wejściowego
   const [hasChanges, setHasChanges] = useState(false);
+
+  if (!isOpen) return null;
 
   // Funkcja zmiany wartości komórki
   const updateCell = (empId: number, day: number, newDispo: DispositionType) => {

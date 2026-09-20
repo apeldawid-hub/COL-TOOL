@@ -2,10 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { LoginView } from './components/LoginView';
+import { OnboardingWizardView } from './components/OnboardingWizardView';
 import { DashboardView } from './components/DashboardView';
 import { ModulePlaceholderView } from './components/ModulePlaceholderView';
 import { DatabaseBackupModal } from './components/DatabaseBackupModal';
 import { AppUpdateModal } from './components/AppUpdateModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { BugReporterModal } from './components/BugReporterModal';
 import {
   LaborForecastView,
   ImportModal,
@@ -38,9 +41,26 @@ const DEFAULT_MONTHS = [
 ];
 
 export const App: React.FC = () => {
-  // Stan sesji logowania (aplikacja startuje z ekranem logowania)
+  // Stan pierwszego uruchomienia / Menu Startowego (Onboarding)
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sbx_onboarding_completed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Stan sesji logowania (aplikacja startuje z ekranem logowania lub kreatorem)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [loggedInUser, setLoggedInUser] = useState<string>('Store Manager (SM)');
+  const [loggedInUser, setLoggedInUser] = useState<string>(() => {
+    try {
+      const savedName = localStorage.getItem('sbx_user_name');
+      const savedRole = localStorage.getItem('sbx_user_role');
+      if (savedName && savedRole) return `${savedName} (${savedRole.replace(/[^A-Z]/g, '')})`;
+      if (savedRole) return savedRole;
+    } catch {}
+    return 'Store Manager (SM)';
+  });
 
   // Aktywny moduł aplikacji (domyślnie 'dashboard' po zalogowaniu)
   const [activeModule, setActiveModule] = useState<AppModule>('dashboard');
@@ -79,6 +99,7 @@ export const App: React.FC = () => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isBugReporterOpen, setIsBugReporterOpen] = useState<boolean>(false);
   const [activeViewerWeek, setActiveViewerWeek] = useState<{
     key: string;
     label: string;
@@ -340,6 +361,34 @@ export const App: React.FC = () => {
     }
   }
 
+  // 1. Ekran Powitalny / Menu Startowe (Pierwsze uruchomienie po instalacji)
+  if (!hasCompletedOnboarding) {
+    return (
+      <OnboardingWizardView
+        onComplete={(config) => {
+          try {
+            localStorage.setItem('sbx_onboarding_completed', 'true');
+            localStorage.setItem('sbx_user_name', config.userName);
+            localStorage.setItem('sbx_user_role', config.role);
+            localStorage.setItem('sbx_user_email', config.userEmail);
+          } catch {}
+          setLoggedInUser(config.userName ? `${config.userName} (${config.role.replace(/[^A-Z]/g, '')})` : config.role);
+          setHasCompletedOnboarding(true);
+          setIsLoggedIn(true);
+          setActiveModule('dashboard');
+          loadMonthData();
+
+          if (config.dataSourceOption === 'A') {
+            setIsImportModalOpen(true);
+          } else if (config.dataSourceOption === 'B') {
+            setIsBackupModalOpen(true);
+          }
+        }}
+      />
+    );
+  }
+
+  // 2. Standardowy Ekran Logowania (kolejne uruchomienia)
   if (!isLoggedIn) {
     return (
       <LoginView
@@ -360,10 +409,7 @@ export const App: React.FC = () => {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenBackupModal={() => setIsBackupModalOpen(true)}
           onOpenImportModal={() => setIsImportModalOpen(true)}
-          onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
-          hasUpdateAvailable={hasUpdateAvailable}
           onRefresh={loadMonthData}
           isLoading={isLoading}
           onLogout={() => {
@@ -384,68 +430,80 @@ export const App: React.FC = () => {
         <main className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-5 py-4 pb-24 w-full">
           {/* GŁÓWNY PULPIT PO ZALOGOWANIU */}
           {activeModule === 'dashboard' && (
-            <DashboardView
-              onNavigate={setActiveModule}
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-            />
+            <ErrorBoundary moduleName="Dashboard" fallbackTitle="Błąd w pulpicie głównym">
+              <DashboardView
+                onNavigate={setActiveModule}
+                selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+              />
+            </ErrorBoundary>
           )}
 
           {/* MODUŁ 2: MANAGERS SCHEDULE */}
           {activeModule === 'managers_schedule' && (
-            <ManagerScheduleView
-              currentYear={selectedYear}
-              currentMonthName={selectedMonth}
-            />
+            <ErrorBoundary moduleName="Managers Schedule" fallbackTitle="Błąd w module Grafiku Managerskiego">
+              <ManagerScheduleView
+                currentYear={selectedYear}
+                currentMonthName={selectedMonth}
+              />
+            </ErrorBoundary>
           )}
 
           {/* MODUŁ 1: TPLH FORECAST & LABOR BALANCING */}
           {activeModule === 'labor_forecast' && (
-            <LaborForecastView
-              currentYear={selectedYear}
-              currentMonthName={selectedMonth}
-              aopPlan={aopPlan}
-              summary={summary}
-              weeks={weeks}
-              onPeriodChange={(y, m) => {
-                setSelectedYear(y);
-                setSelectedMonth(m);
-                setTargetWeekKeyOverride(null);
-              }}
-              onSaveTrx={handleSaveTrx}
-              onSaveScheduledHours={handleSaveScheduledHours}
-              onSelectTargetWeek={(key) => setTargetWeekKeyOverride(key)}
-              onRefresh={loadMonthData}
-              selectedStrategy={selectedStrategy}
-              onSelectStrategy={setSelectedStrategy}
-              managerShifts={managerShifts}
-              shiftDefinitions={shiftDefinitions}
-              managerEmployees={managerEmployees}
-            />
+            <ErrorBoundary moduleName="Labor Forecast" fallbackTitle="Błąd w module TPLH Forecast & Labor">
+              <LaborForecastView
+                currentYear={selectedYear}
+                currentMonthName={selectedMonth}
+                aopPlan={aopPlan}
+                summary={summary}
+                weeks={weeks}
+                onPeriodChange={(y, m) => {
+                  setSelectedYear(y);
+                  setSelectedMonth(m);
+                  setTargetWeekKeyOverride(null);
+                }}
+                onSaveTrx={handleSaveTrx}
+                onSaveScheduledHours={handleSaveScheduledHours}
+                onSelectTargetWeek={(key) => setTargetWeekKeyOverride(key)}
+                onRefresh={loadMonthData}
+                selectedStrategy={selectedStrategy}
+                onSelectStrategy={setSelectedStrategy}
+                managerShifts={managerShifts}
+                shiftDefinitions={shiftDefinitions}
+                managerEmployees={managerEmployees}
+              />
+            </ErrorBoundary>
           )}
 
           {/* MODUŁ 3: SZKOLENIA (STARBUCKS TRAINING SUITE) */}
           {activeModule === 'trainings' && (
-            <TrainingsView
-              selectedYear={selectedYear}
-              selectedMonth={DEFAULT_MONTHS.indexOf(selectedMonth) + 1}
-            />
+            <ErrorBoundary moduleName="Trainings Suite" fallbackTitle="Błąd w module Szkoleń">
+              <TrainingsView
+                selectedYear={selectedYear}
+                selectedMonth={DEFAULT_MONTHS.indexOf(selectedMonth) + 1}
+              />
+            </ErrorBoundary>
           )}
 
           {/* MODUŁ 4: COL CALCULATOR (REPLIKA 1:1 EXCEL) */}
           {activeModule === 'col_calculator' && (
-            <ColCalculatorView
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-            />
+            <ErrorBoundary moduleName="COL Calculator" fallbackTitle="Błąd w kalkulatorze COL">
+              <ColCalculatorView
+                selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+              />
+            </ErrorBoundary>
           )}
 
           {/* SCRATCH MODUŁY W PRZYGOTOWANIU: ANALIZA, IBS & IMS */}
           {(activeModule === 'analytics' || activeModule === 'ibs_ims') && (
-            <ModulePlaceholderView
-              module={activeModule}
-              onNavigate={setActiveModule}
-            />
+            <ErrorBoundary moduleName="Analytics / Scratch" fallbackTitle="Błąd w module pomocniczym">
+              <ModulePlaceholderView
+                module={activeModule}
+                onNavigate={setActiveModule}
+              />
+            </ErrorBoundary>
           )}
         </main>
       </div>
@@ -473,6 +531,17 @@ export const App: React.FC = () => {
         onOpenBackupModal={() => {
           setIsBackupModalOpen(true);
         }}
+        onOpenUpdateModal={() => {
+          setIsUpdateModalOpen(true);
+        }}
+        hasUpdateAvailable={hasUpdateAvailable}
+        onOpenBugReporter={() => {
+          setIsBugReporterOpen(true);
+        }}
+        onRerunOnboarding={() => {
+          setHasCompletedOnboarding(false);
+          setIsSettingsOpen(false);
+        }}
       />
 
       {/* Okno Modalne Kopii Zapasowych Bazy Danych SQLite */}
@@ -489,6 +558,18 @@ export const App: React.FC = () => {
       <AppUpdateModal
         isOpen={isUpdateModalOpen}
         onClose={() => setIsUpdateModalOpen(false)}
+      />
+
+      {/* Okno Modalne Zgłaszania Błędów i Czarnej Skrzynki */}
+      <BugReporterModal
+        isOpen={isBugReporterOpen}
+        onClose={() => setIsBugReporterOpen(false)}
+        initialError={{
+          moduleName: activeModule === 'labor_forecast' ? 'Labor Forecast' :
+                      activeModule === 'managers_schedule' ? 'Managers Schedule' :
+                      activeModule === 'trainings' ? 'Trainings Suite' :
+                      activeModule === 'col_calculator' ? 'COL Calculator' : 'System Core',
+        }}
       />
     </div>
   );

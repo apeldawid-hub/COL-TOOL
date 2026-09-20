@@ -29,6 +29,8 @@ export interface IElectronAPI {
   parseReportBuffer: (buffer: ArrayBuffer) => Promise<any>;
   commitAopImport: (payload: { year: number; months: any[] }) => Promise<{ success: boolean; message: string; reportType: string; importedCount: number }>;
   commitMapalImport: (payload: { records: any[] }) => Promise<{ success: boolean; message: string; reportType: string; importedCount: number }>;
+  commitScheduleImport: (payload: { scheduleData: any }) => Promise<{ success: boolean; message: string; reportType: string; importedCount: number }>;
+  commitMultipleSchedulesImport: (payload: { schedules: any[] }) => Promise<{ success: boolean; message: string; reportType: string; totalMonths: number; totalShifts: number; totalEvents: number }>;
   getSystemTime: () => Promise<{ iso: string; timestamp: string; hours: number; minutes: number; seconds: number; day: number; month: number; year: number }>;
   onRefreshData: (callback: () => void) => void;
   // Moduł 2: Managers Schedule
@@ -97,6 +99,13 @@ export interface IElectronAPI {
   quitAndInstallUpdate: () => Promise<void>;
   getUpdateStatus: () => Promise<any>;
   onUpdaterEvent: (callback: (payload: any) => void) => () => void;
+  // System Diagnostyki, Czarnej Skrzynki i Zgłaszania Błędów
+  logError: (payload: { level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'; source: string; message: string; stack?: string; metadata?: any }) => Promise<boolean>;
+  getRecentLogs: (limit?: number) => Promise<any[]>;
+  openLogsFolder: () => Promise<boolean>;
+  saveBugReport: (payload: any) => Promise<{ success: boolean; filePath: string; reportId: string; message: string }>;
+  exportDiagnosticPackage: (customTargetDir?: string) => Promise<{ success: boolean; filePath: string; message: string }>;
+  submitGitHubIssue: (payload: any) => Promise<{ success: boolean; mode: 'api' | 'browser'; issueUrl?: string; issueNumber?: number; message: string }>;
 }
 
 const api: IElectronAPI = {
@@ -128,6 +137,8 @@ const api: IElectronAPI = {
   parseReportBuffer: (buffer) => ipcRenderer.invoke('import:parse-report-buffer', buffer),
   commitAopImport: (payload) => ipcRenderer.invoke('import:commit-aop', payload),
   commitMapalImport: (payload) => ipcRenderer.invoke('import:commit-mapal', payload),
+  commitScheduleImport: (payload) => ipcRenderer.invoke('import:commit-schedule', payload),
+  commitMultipleSchedulesImport: (payload) => ipcRenderer.invoke('import:commit-multiple-schedules', payload),
   getSystemTime: () => ipcRenderer.invoke('system:get-time'),
   onRefreshData: (callback) => {
     ipcRenderer.on('data:refreshed', () => callback());
@@ -180,6 +191,13 @@ const api: IElectronAPI = {
       ipcRenderer.removeListener('app:updater-event', subscription);
     };
   },
+  // System Diagnostyki, Czarnej Skrzynki i Zgłaszania Błędów
+  logError: (payload) => ipcRenderer.invoke('logger:log', payload),
+  getRecentLogs: (limit) => ipcRenderer.invoke('logger:get-recent-logs', limit),
+  openLogsFolder: () => ipcRenderer.invoke('logger:open-logs-folder'),
+  saveBugReport: (payload) => ipcRenderer.invoke('logger:save-bug-report', payload),
+  exportDiagnosticPackage: (customTargetDir) => ipcRenderer.invoke('logger:export-diagnostics', customTargetDir),
+  submitGitHubIssue: (payload) => ipcRenderer.invoke('github:submit-issue', payload),
 };
 
 contextBridge.exposeInMainWorld('api', api);

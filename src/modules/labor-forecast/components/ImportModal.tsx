@@ -87,6 +87,34 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Podsumowanie AOP na żywo z edytowanych danych
+  const aopSummary = useMemo(() => {
+    const totalSales = aopMonths.reduce((acc, m) => acc + (m.plan_sales || 0), 0);
+    const totalTrx = aopMonths.reduce((acc, m) => acc + (m.plan_trx || 0), 0);
+    const totalCol = aopMonths.reduce((acc, m) => acc + (m.plan_col_pln || 0), 0);
+    const totalBudgetHours = aopMonths.reduce((acc, m) => acc + (m.labor_budget || 0), 0);
+    const avgTplh = aopMonths.length > 0 ? Number((aopMonths.reduce((acc, m) => acc + m.target_tplh, 0) / aopMonths.length).toFixed(2)) : 6.7;
+    const avgColPct = totalSales > 0 ? Number(((totalCol / totalSales) * 100).toFixed(2)) : 0;
+
+    return { totalSales, totalTrx, totalCol, totalBudgetHours, avgTplh, avgColPct };
+  }, [aopMonths]);
+
+  // Filtrowane rekordy MAPAL
+  const filteredMapalRecords = useMemo(() => {
+    if (!searchEmployee.trim()) return mapalRecords;
+    const q = searchEmployee.toLowerCase().trim();
+    return mapalRecords.filter((r) => r.employee.toLowerCase().includes(q));
+  }, [mapalRecords, searchEmployee]);
+
+  const mapalSummary = useMemo(() => {
+    const totalHours = Number(mapalRecords.reduce((acc, r) => acc + (r.computable_time || 0), 0).toFixed(2));
+    const uniqueEmployees = new Set(mapalRecords.map((r) => r.employee)).size;
+    const dates = mapalRecords.map((r) => r.date).sort();
+    const minDate = dates[0] || '';
+    const maxDate = dates[dates.length - 1] || '';
+    return { totalHours, count: mapalRecords.length, uniqueEmployees, minDate, maxDate };
+  }, [mapalRecords]);
+
   if (!isOpen) return null;
 
   const resetState = () => {
@@ -243,18 +271,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     });
   };
 
-  // Podsumowanie AOP na żywo z edytowanych danych
-  const aopSummary = useMemo(() => {
-    const totalSales = aopMonths.reduce((acc, m) => acc + (m.plan_sales || 0), 0);
-    const totalTrx = aopMonths.reduce((acc, m) => acc + (m.plan_trx || 0), 0);
-    const totalCol = aopMonths.reduce((acc, m) => acc + (m.plan_col_pln || 0), 0);
-    const totalBudgetHours = aopMonths.reduce((acc, m) => acc + (m.labor_budget || 0), 0);
-    const avgTplh = aopMonths.length > 0 ? Number((aopMonths.reduce((acc, m) => acc + m.target_tplh, 0) / aopMonths.length).toFixed(2)) : 6.7;
-    const avgColPct = totalSales > 0 ? Number(((totalCol / totalSales) * 100).toFixed(2)) : 0;
-
-    return { totalSales, totalTrx, totalCol, totalBudgetHours, avgTplh, avgColPct };
-  }, [aopMonths]);
-
   // Edycja godzin MAPAL
   const handleMapalHoursChange = (index: number, hours: number) => {
     setMapalRecords((prev) => {
@@ -270,22 +286,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const handleRemoveMapalRecord = (index: number) => {
     setMapalRecords((prev) => prev.filter((_, idx) => idx !== index));
   };
-
-  // Filtrowane rekordy MAPAL
-  const filteredMapalRecords = useMemo(() => {
-    if (!searchEmployee.trim()) return mapalRecords;
-    const q = searchEmployee.toLowerCase().trim();
-    return mapalRecords.filter((r) => r.employee.toLowerCase().includes(q));
-  }, [mapalRecords, searchEmployee]);
-
-  const mapalSummary = useMemo(() => {
-    const totalHours = Number(mapalRecords.reduce((acc, r) => acc + (r.computable_time || 0), 0).toFixed(2));
-    const uniqueEmployees = new Set(mapalRecords.map((r) => r.employee)).size;
-    const dates = mapalRecords.map((r) => r.date).sort();
-    const minDate = dates[0] || '';
-    const maxDate = dates[dates.length - 1] || '';
-    return { totalHours, count: mapalRecords.length, uniqueEmployees, minDate, maxDate };
-  }, [mapalRecords]);
 
   // 2. Zatwierdzenie AOP i zapis do SQLite
   const handleCommitAop = async () => {

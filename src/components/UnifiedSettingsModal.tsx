@@ -37,11 +37,13 @@ import {
   ArrowDown,
   Calendar,
   Info,
-  Check
+  Check,
+  Bug,
 } from 'lucide-react';
 import { POLISH_MONTHS, AVAILABLE_YEARS } from './ModuleDateBar';
 import { SystemClock } from '../services/systemClock';
 import { ManagerScheduleEngine } from '../modules/managers-schedule/services/managerScheduleEngine';
+import { APP_VERSION, APP_SHORT_NAME } from '../version';
 
 export type SettingsTabId = 'labor_forecast' | 'managers_schedule' | 'trainings' | 'col_calculator' | 'system';
 
@@ -53,6 +55,10 @@ interface UnifiedSettingsModalProps {
   selectedMonth: string;
   onRefreshData?: () => void;
   onOpenBackupModal?: () => void;
+  onOpenUpdateModal?: () => void;
+  hasUpdateAvailable?: boolean;
+  onOpenBugReporter?: () => void;
+  onRerunOnboarding?: () => void;
 }
 
 const DEFAULT_NC_RULES: NcRuleRecord[] = [
@@ -71,6 +77,10 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
   selectedMonth,
   onRefreshData,
   onOpenBackupModal,
+  onOpenUpdateModal,
+  hasUpdateAvailable,
+  onOpenBugReporter,
+  onRerunOnboarding,
 }) => {
   // Mapowanie aktywnego modułu na zakładkę ustawień (dynamiczne pozycjonowanie)
   const getInitialTab = (mod: AppModule): SettingsTabId => {
@@ -1403,55 +1413,193 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
             {/* ======================================================== */}
             {/* ZAKŁADKA 5: SYSTEM & BAZA */}
             {/* ======================================================== */}
-            {activeTab === 'system' && (
-              <div className="space-y-6">
-                <div className="border-b border-stone-200 pb-4">
-                  <h3 className="text-lg font-black text-stone-900">
-                    Jednostka 108120 Janki & Zarządzanie Bazą Danych
-                  </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    Kopie zapasowe SQLite, diagnostyka silnika oraz parametry jednostki operacyjnej.
-                  </p>
-                </div>
+            {activeTab === 'system' && (() => {
+              const currentStoreName = (() => {
+                try { return localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki'; } catch { return '108120 SBX Warszawa Janki'; }
+              })();
+              const currentUnitCode = (() => {
+                try { return localStorage.getItem('sbx_unit_code') || '18120'; } catch { return '18120'; }
+              })();
+              const currentUserName = (() => {
+                try { return localStorage.getItem('sbx_user_name') || 'Nie podano'; } catch { return 'Nie podano'; }
+              })();
+              const currentUserEmail = (() => {
+                try { return localStorage.getItem('sbx_user_email') || 'Brak'; } catch { return 'Brak'; }
+              })();
+              const currentUserRole = (() => {
+                try { return localStorage.getItem('sbx_user_role') || 'Store Manager (SM)'; } catch { return 'Store Manager (SM)'; }
+              })();
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Store className="w-5 h-5 text-[#006241]" />
-                      <h4 className="text-sm font-bold text-stone-900">Dane Kawiarni</h4>
-                    </div>
-                    <div className="text-xs space-y-1 text-stone-600">
-                      <div>Nazwa: <strong>Starbucks Warszawa Janki</strong></div>
-                      <div>Numer kawiarni: <strong>108120</strong></div>
-                      <div>Kod jednostki (Unit Code): <strong>18120</strong> (alias 384)</div>
-                      <div>Podstawa Floor Hours: <strong>32.0 h/dobę</strong> (224.0 h/tydz.)</div>
-                    </div>
-                  </div>
-
-                  <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Database className="w-5 h-5 text-[#006241]" />
-                      <h4 className="text-sm font-bold text-stone-900">Kopie Zapasowe SQLite</h4>
-                    </div>
-                    <p className="text-xs text-stone-600">
-                      Zarządzaj migawkami bazy danych przed importami MAPAL lub publikacją wersji.
+              return (
+                <div className="space-y-6">
+                  <div className="border-b border-stone-200 pb-4">
+                    <h3 className="text-lg font-black text-stone-900">
+                      Ustawienia Systemowe & Baza Danych
+                    </h3>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Diagnostyka silnika SQLite, integracja ewidencji MAPAL oraz parametry jednostki operacyjnej.
                     </p>
-                    {onOpenBackupModal && (
-                      <button
-                        onClick={() => {
-                          onClose();
-                          onOpenBackupModal();
-                        }}
-                        className="px-4 py-2 bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Database className="w-4 h-4" />
-                        Otwórz Menedżer Kopii Zapasowych
-                      </button>
-                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Karta 1: Dane Kawiarni i Użytkownika */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Store className="w-5 h-5 text-[#006241]" />
+                        <h4 className="text-sm font-bold text-stone-900">Jednostka & Profil Operacyjny</h4>
+                      </div>
+                      <div className="text-xs space-y-1.5 text-stone-600">
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Kawiarnia:</span>
+                          <strong className="text-stone-900">{currentStoreName}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Kod jednostki (Unit Code):</span>
+                          <strong className="text-stone-900">{currentUnitCode}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Zalogowany Kierownik:</span>
+                          <strong className="text-[#006241]">{currentUserName}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Rola w systemie:</span>
+                          <span className="font-semibold text-stone-800">{currentUserRole}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Służbowy e-mail:</span>
+                          <span className="font-mono text-stone-700 text-[11px]">{currentUserEmail}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Karta 2: Baza Operacyjna & MAPAL */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                        <h4 className="text-sm font-bold text-stone-900">Baza Operacyjna & Integracje</h4>
+                      </div>
+                      <div className="text-xs space-y-2 text-stone-600">
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-500">Baza Danych:</span>
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-md font-bold text-[10px] flex items-center gap-1">
+                            <Database className="w-3 h-3 text-emerald-600" />
+                            SQLite Desktop (Aktywna)
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-500">Ewidencja MAPAL:</span>
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 border border-blue-300 rounded-md font-bold text-[10px] flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-blue-600" />
+                            Zsynchronizowana
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-500">Baza Floor Hours:</span>
+                          <span className="font-bold text-stone-800">32.0 h / dobę (224.0 h / tydz.)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Karta 3: Kopie Zapasowe SQLite */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Database className="w-5 h-5 text-[#006241]" />
+                        <h4 className="text-sm font-bold text-stone-900">Kopie Zapasowe SQLite</h4>
+                      </div>
+                      <p className="text-xs text-stone-600">
+                        Zarządzaj migawkami bazy danych przed importami raportów lub przywracaj punkty zapisu.
+                      </p>
+                      {onOpenBackupModal && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onOpenBackupModal();
+                          }}
+                          className="w-full py-2 px-3 bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Database className="w-4 h-4" />
+                          <span>Otwórz Menedżer Kopii</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Karta 4: Aktualizacje Systemu */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-emerald-600" />
+                          <h4 className="text-sm font-bold text-stone-900">Aktualizacje Aplikacji</h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">
+                          v{APP_VERSION}
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-600">
+                        Sprawdź dostępność nowych wydań i pobierz najnowsze pakiety usprawnień.
+                      </p>
+                      {onOpenUpdateModal && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onOpenUpdateModal();
+                          }}
+                          className="w-full py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span>{hasUpdateAvailable ? 'Dostępna nowa wersja!' : 'Centrum Aktualizacji'}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Karta 5: Zgłaszanie Błędów & Diagnostyka */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Bug className="w-5 h-5 text-amber-600" />
+                        <h4 className="text-sm font-bold text-stone-900">Zgłoś Błąd / Diagnostyka</h4>
+                      </div>
+                      <p className="text-xs text-stone-600">
+                        Wyślij zgłoszenie z automatycznym dołączeniem logów Czarnej Skrzynki.
+                      </p>
+                      {onOpenBugReporter && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onOpenBugReporter();
+                          }}
+                          className="w-full py-2 px-3 bg-stone-800 hover:bg-stone-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Bug className="w-4 h-4" />
+                          <span>Zgłoś Uwagi / Problem</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Karta 6: Kreator Startowy */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <RotateCcw className="w-5 h-5 text-[#006241]" />
+                        <h4 className="text-sm font-bold text-stone-900">Kreator Pierwszego Uruchomienia</h4>
+                      </div>
+                      <p className="text-xs text-stone-600">
+                        Uruchom ponownie pełny kreator konfiguracji kawiarni i importu danych.
+                      </p>
+                      {onRerunOnboarding && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onRerunOnboarding();
+                          }}
+                          className="w-full py-2 px-3 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-stone-300"
+                        >
+                          <RotateCcw className="w-4 h-4 text-[#006241]" />
+                          <span>Uruchom Kreator Startowy</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>
