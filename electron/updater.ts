@@ -1,5 +1,8 @@
 import { app, BrowserWindow, ipcMain, Notification } from 'electron';
 import path from 'path';
+import fs from 'fs';
+import https from 'https';
+import { spawn } from 'child_process';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
@@ -18,6 +21,8 @@ export class AppUpdater {
   private mainWindow: BrowserWindow | null = null;
   private checkIntervalTimer: NodeJS.Timeout | null = null;
   private readonly SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+  private downloadedZipPath: string | null = null;
+  private targetDownloadUrl: string | null = null;
 
   private updateStatus: {
     status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
@@ -45,7 +50,6 @@ export class AppUpdater {
 
   public setMainWindow(win: BrowserWindow) {
     this.mainWindow = win;
-    // Po podpięciu okna głównego uruchom cykl sprawdzania w tle
     this.startBackgroundCheckCycle();
   }
 
@@ -55,16 +59,13 @@ export class AppUpdater {
     }
   }
 
-  /**
-   * Uruchamia automatyczne sprawdzanie przy starcie oraz cykliczne co 6 godzin
-   */
   public startBackgroundCheckCycle() {
     if (this.checkIntervalTimer) {
       clearInterval(this.checkIntervalTimer);
       this.checkIntervalTimer = null;
     }
 
-    // 1. Sprawdzenie przy starcie aplikacji (po 4 sekundach od uruchomienia okna)
+    // 1. Sprawdzenie przy starcie aplikacji (po 4 sekundach)
     setTimeout(() => {
       console.log('🚀 [AutoUpdater] Uruchamianie cichego sprawdzenia aktualizacji przy starcie...');
       this.silentCheckForUpdates();
@@ -78,21 +79,30 @@ export class AppUpdater {
   }
 
   private async silentCheckForUpdates() {
-    if (!app.isPackaged) {
-      console.log('ℹ️ [AutoUpdater] Tryb deweloperski — pomijanie automatycznego sprawdzania w tle.');
-      return;
-    }
+    if (!app.isPackaged) return;
 
     try {
-      await autoUpdater.checkForUpdates();
+      const release = await this.fetchLatestReleaseFromGitHub();
+      if (release && release.version !== app.getVersion()) {
+        this.updateStatus = {
+          status: 'available',
+          versionInfo: release
+        };
+        this.targetDownloadUrl = release.downloadUrl;
+        this.sendToRenderer('app:updater-event', {
+          event: 'update-available',
+          status: 'available',
+          info: release
+        });
+      }
     } catch (err) {
-      console.warn('⚠️ [AutoUpdater] Ciche sprawdzenie w tle nie powiodło się (brak sieci):', err);
+      console.warn('⚠️ [AutoUpdater] Ciche sprawdzenie w tle nie powiodło się:', err);
     }
   }
 
   private configureUpdater() {
-    // Bezpośrednia konfiguracja kanału aktualizacji dla apeldawid-hub/COL-TOOL
     try {
+      autoUpdater.logger = console;
       autoUpdater.setFeedURL({
         provider: 'github',
         owner: 'apeldawid-hub',
@@ -102,138 +112,250 @@ export class AppUpdater {
       console.warn('⚠️ [AutoUpdater] Błąd setFeedURL:', e);
     }
 
-    // Nie pobieraj automatycznie w tle - daj użytkownikowi kontrolę w UI
     autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.autoInstallOnAppQuit = false;
+  }
 
-    autoUpdater.on('checking-for-update', () => {
-      console.log('🔄 [AutoUpdater] Sprawdzanie dostępności aktualizacji...');
-      this.updateStatus = { status: 'checking' };
-      this.sendToRenderer('app:updater-event', {
-        event: 'checking-for-update',
-        status: 'checking'
-      });
-    });
-
-    autoUpdater.on('update-available', (info) => {
-      console.log('✨ [AutoUpdater] Dostępna nowa wersja:', info.version);
-      this.updateStatus = {
-        status: 'available',
-        versionInfo: info
+  /**
+   * Pobiera informacje o najnowszym wydaniu bezpośrednio z GitHub API
+   */
+  public async fetchLatestReleaseFromGitHub(): Promise<{
+    version: string;
+    releaseDate: string;
+    releaseNotes: string;
+    downloadUrl: string;
+    zipName: string;
+  } | null> {
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.github.com',
+        path: '/repos/apeldawid-hub/COL-TOOL/releases/latest',
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Starbucks-Operations-Suite-Updater',
+          'Accept': 'application/vnd.github.v3+json'
+        }
       };
 
-      // Powiadomienie renderera (zielona kropka w pasku bocznym)
-      this.sendToRenderer('app:updater-event', {
-        event: 'update-available',
-        status: 'available',
-        info: {
-          version: info.version,
-          releaseDate: info.releaseDate,
-          releaseNotes: info.releaseNotes || 'Nowa wersja Starbucks Operations Suite z usprawnieniami i poprawkami.',
-        }
-      });
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              const release = JSON.parse(data);
+              const rawTag = release.tag_name || '';
+              const version = rawTag.replace(/^v/, '');
+              const isArm = process.arch === 'arm64';
+              
+              // Poszukaj odpowiedniego archiwum .zip
+              // Dla Apple Silicon: Starbucks-Operations-Suite-X.X.X-arm64-mac.zip
+              // Dla Intel: Starbucks-Operations-Suite-X.X.X-mac.zip
+              const assets = release.assets || [];
+              let matchedAsset = assets.find((a: any) => 
+                isArm ? a.name.includes('arm64-mac.zip') : (a.name.includes('-mac.zip') && !a.name.includes('arm64'))
+              );
 
-      // Natywne powiadomienie macOS
-      try {
-        if (Notification.isSupported()) {
-          const notification = new Notification({
-            title: '☕ Dostępna nowa wersja Starbucks Operations Suite',
-            body: `Wydano nową wersję v${info.version}. Kliknij tutaj lub w Centrum Aktualizacji w aplikacji, aby ją pobrać.`,
-            silent: false
-          });
+              if (!matchedAsset) {
+                // Fallback do dowolnego .zip
+                matchedAsset = assets.find((a: any) => a.name.endsWith('-mac.zip') || a.name.endsWith('.zip'));
+              }
 
-          notification.on('click', () => {
-            if (this.mainWindow) {
-              if (this.mainWindow.isMinimized()) this.mainWindow.restore();
-              this.mainWindow.focus();
-              this.sendToRenderer('app:open-update-modal', {});
+              const downloadUrl = matchedAsset 
+                ? matchedAsset.browser_download_url 
+                : `https://github.com/apeldawid-hub/COL-TOOL/releases/download/v${version}/Starbucks-Operations-Suite-${version}-${isArm ? 'arm64-' : ''}mac.zip`;
+
+              resolve({
+                version,
+                releaseDate: release.published_at || new Date().toISOString(),
+                releaseNotes: release.body || 'Nowa wersja Starbucks Operations Suite z usprawnieniami.',
+                downloadUrl,
+                zipName: matchedAsset ? matchedAsset.name : `sos-update-${version}.zip`
+              });
+            } catch (err) {
+              reject(err);
             }
-          });
-
-          notification.show();
-        }
-      } catch (notifErr) {
-        console.warn('⚠️ [AutoUpdater] Nie udało się wyświetlić powiadomienia systemowego:', notifErr);
-      }
-    });
-
-    autoUpdater.on('update-not-available', (info) => {
-      console.log('✅ [AutoUpdater] Aplikacja jest aktualna:', info?.version || app.getVersion());
-      this.updateStatus = {
-        status: 'not-available',
-        versionInfo: info
-      };
-      this.sendToRenderer('app:updater-event', {
-        event: 'update-not-available',
-        status: 'not-available',
-        info: {
-          version: app.getVersion()
-        }
-      });
-    });
-
-    autoUpdater.on('error', (err) => {
-      console.error('❌ [AutoUpdater] Błąd aktualizacji:', err);
-      const errMsg = err?.message || 'Wystąpił nieznany błąd podczas sprawdzania aktualizacji.';
-      this.updateStatus = {
-        status: 'error',
-        error: errMsg
-      };
-      this.sendToRenderer('app:updater-event', {
-        event: 'error',
-        status: 'error',
-        error: errMsg
-      });
-    });
-
-    autoUpdater.on('download-progress', (progressObj) => {
-      const percent = Math.round(progressObj.percent * 10) / 10;
-      this.updateStatus = {
-        status: 'downloading',
-        progress: {
-          percent,
-          bytesPerSecond: progressObj.bytesPerSecond,
-          transferred: progressObj.transferred,
-          total: progressObj.total
-        }
-      };
-      this.sendToRenderer('app:updater-event', {
-        event: 'download-progress',
-        status: 'downloading',
-        progress: this.updateStatus.progress
-      });
-    });
-
-    autoUpdater.on('update-downloaded', (info) => {
-      console.log('🎉 [AutoUpdater] Aktualizacja została pobrana i jest gotowa do instalacji:', info.version);
-      this.updateStatus = {
-        status: 'downloaded',
-        versionInfo: info
-      };
-      this.sendToRenderer('app:updater-event', {
-        event: 'update-downloaded',
-        status: 'downloaded',
-        info
+          } else {
+            reject(new Error(`GitHub API HTTP ${res.statusCode}`));
+          }
+        });
       });
 
-      // Powiadomienie o gotowości do instalacji
-      try {
-        if (Notification.isSupported()) {
-          const notification = new Notification({
-            title: '🎉 Aktualizacja pobrana!',
-            body: `Wersja v${info.version} jest gotowa do zainstalowania. Zrestartuj aplikację, aby zastosować zmiany.`,
-            silent: false
-          });
-          notification.show();
-        }
-      } catch (e) {
-        // Ignoruj błąd powiadomienia
-      }
+      req.on('error', (err) => reject(err));
+      req.end();
     });
   }
 
+  /**
+   * Niezależne pobieranie paczki ZIP z postępem (Bypass dla macOS ShipIt)
+   */
+  public async downloadCustomZip(url: string): Promise<string> {
+    const tempZipPath = path.join(app.getPath('temp'), `sos-update-${Date.now()}.zip`);
+    this.downloadedZipPath = tempZipPath;
+
+    return new Promise((resolve, reject) => {
+      const followRedirects = (currentUrl: string, redirectCount = 0) => {
+        if (redirectCount > 5) {
+          return reject(new Error('Zbyt wiele przekierowań podczas pobierania aktualizacji.'));
+        }
+
+        const req = https.get(currentUrl, {
+          headers: { 'User-Agent': 'Starbucks-Operations-Suite-Updater' }
+        }, (res) => {
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            return followRedirects(res.headers.location, redirectCount + 1);
+          }
+
+          if (res.statusCode !== 200) {
+            return reject(new Error(`Błąd pobierania pliku: HTTP ${res.statusCode}`));
+          }
+
+          const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+          let transferredBytes = 0;
+          let lastTime = Date.now();
+          let lastBytes = 0;
+
+          const fileStream = fs.createWriteStream(tempZipPath);
+
+          res.on('data', (chunk) => {
+            transferredBytes += chunk.length;
+            const now = Date.now();
+            const elapsed = (now - lastTime) / 1000;
+
+            if (elapsed >= 0.3 || transferredBytes === totalBytes) {
+              const bytesPerSecond = elapsed > 0 ? Math.round((transferredBytes - lastBytes) / elapsed) : 0;
+              const percent = totalBytes > 0 ? Math.round((transferredBytes / totalBytes) * 1000) / 10 : 0;
+
+              this.updateStatus = {
+                status: 'downloading',
+                progress: {
+                  percent,
+                  bytesPerSecond,
+                  transferred: transferredBytes,
+                  total: totalBytes
+                }
+              };
+
+              this.sendToRenderer('app:updater-event', {
+                event: 'download-progress',
+                status: 'downloading',
+                progress: this.updateStatus.progress
+              });
+
+              lastTime = now;
+              lastBytes = transferredBytes;
+            }
+          });
+
+          res.pipe(fileStream);
+
+          fileStream.on('finish', () => {
+            fileStream.close(() => {
+              this.updateStatus = {
+                status: 'downloaded',
+                versionInfo: this.updateStatus.versionInfo
+              };
+              this.sendToRenderer('app:updater-event', {
+                event: 'update-downloaded',
+                status: 'downloaded',
+                info: this.updateStatus.versionInfo
+              });
+              resolve(tempZipPath);
+            });
+          });
+
+          fileStream.on('error', (err) => {
+            fs.unlink(tempZipPath, () => {});
+            reject(err);
+          });
+        });
+
+        req.on('error', (err) => {
+          fs.unlink(tempZipPath, () => {});
+          reject(err);
+        });
+      };
+
+      followRedirects(url);
+    });
+  }
+
+  /**
+   * Automatyczna podmiana aplikacji i restart na macOS (Obejście Apple Developer ID)
+   */
+  public executeInPlaceMacUpdate(): boolean {
+    if (!this.downloadedZipPath || !fs.existsSync(this.downloadedZipPath)) {
+      console.error('Brak pobranego pliku aktualizacji ZIP.');
+      return false;
+    }
+
+    try {
+      // Wyznacz ścieżkę do bieżącego pakietu .app
+      const execPath = process.execPath;
+      const appMatch = execPath.match(/^(.+?\.app)(\/Contents\/MacOS\/.*)?$/);
+      const appBundlePath = appMatch ? appMatch[1] : path.resolve(execPath, '../../..');
+
+      const tempExtractDir = path.join(app.getPath('temp'), `sos_extract_${Date.now()}`);
+      const scriptPath = path.join(app.getPath('temp'), `sos_updater_${Date.now()}.sh`);
+      const currentPid = process.pid;
+
+      const bashScript = `#!/usr/bin/env bash
+PID=${currentPid}
+ZIP_PATH="${this.downloadedZipPath}"
+APP_PATH="${appBundlePath}"
+EXTRACT_DIR="${tempExtractDir}"
+
+# 1. Czekaj na zakończenie procesu aplikacji
+while kill -0 $PID 2>/dev/null; do
+  sleep 0.1
+done
+
+# 2. Rozpakuj nową wersję
+mkdir -p "$EXTRACT_DIR"
+unzip -q -o "$ZIP_PATH" -d "$EXTRACT_DIR"
+
+# 3. Znajdź nową aplikację .app
+NEW_APP=$(find "$EXTRACT_DIR" -maxdepth 2 -name "*.app" | head -n 1)
+
+if [ -n "$NEW_APP" ] && [ -d "$NEW_APP" ]; then
+  # 4. Zdejmij flagę kwarantanny macOS Gatekeeper
+  xattr -rd com.apple.quarantine "$NEW_APP" 2>/dev/null || true
+  
+  # 5. Podmień pliki aplikacji
+  rm -rf "$APP_PATH"
+  mv "$NEW_APP" "$APP_PATH"
+  
+  # 6. Zdejmij kwarantannę z podmienionej aplikacji
+  xattr -rd com.apple.quarantine "$APP_PATH" 2>/dev/null || true
+  
+  # 7. Posprzątaj pliki tymczasowe
+  rm -rf "$EXTRACT_DIR" "$ZIP_PATH"
+  
+  # 8. Uruchom zaktualizowaną aplikację
+  open "$APP_PATH"
+fi
+`;
+
+      fs.writeFileSync(scriptPath, bashScript, { mode: 0o755 });
+
+      console.log('🚀 [AutoUpdater] Uruchamianie niezależnego skryptu podmiany macOS:', scriptPath);
+
+      const child = spawn('/bin/bash', [scriptPath], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
+
+      // Zakończ natychmiast proces obecnej aplikacji
+      app.exit(0);
+      return true;
+    } catch (err) {
+      console.error('Błąd podczas uruchamiania instalatora in-place:', err);
+      return false;
+    }
+  }
+
   private registerIpcHandlers() {
-    // Pobranie informacji o wersji
     ipcMain.handle('app:get-version-info', (): AppVersionInfo => {
       return {
         version: app.getVersion(),
@@ -246,48 +368,84 @@ export class AppUpdater {
       };
     });
 
-    // Sprawdzenie dostępności aktualizacji
     ipcMain.handle('app:check-for-updates', async () => {
-      if (!app.isPackaged) {
-        return {
-          success: false,
-          isDev: true,
-          message: 'Sprawdzanie automatycznych aktualizacji jest dostępne w zainstalowanej wersji produkcyjnej (.app / .dmg).'
-        };
-      }
-
+      this.updateStatus = { status: 'checking' };
       try {
-        const result = await autoUpdater.checkForUpdates();
-        return {
-          success: true,
-          updateInfo: result?.updateInfo
-        };
+        const release = await this.fetchLatestReleaseFromGitHub();
+        if (!release) {
+          this.updateStatus = { status: 'not-available' };
+          return { success: true, isDev: !app.isPackaged, message: 'Brak nowszych wydań.' };
+        }
+
+        const isNewer = release.version !== app.getVersion();
+        this.targetDownloadUrl = release.downloadUrl;
+
+        if (isNewer) {
+          this.updateStatus = {
+            status: 'available',
+            versionInfo: release
+          };
+          return {
+            success: true,
+            updateInfo: {
+              version: release.version,
+              releaseDate: release.releaseDate,
+              releaseNotes: release.releaseNotes
+            }
+          };
+        } else {
+          this.updateStatus = { status: 'not-available' };
+          return {
+            success: true,
+            isDev: !app.isPackaged,
+            message: 'Aplikacja jest aktualna.'
+          };
+        }
       } catch (err: any) {
+        this.updateStatus = { status: 'error', error: err?.message };
         return {
           success: false,
-          error: err?.message || 'Błąd podczas komunikacji z serwerem aktualizacji.'
+          error: err?.message || 'Błąd komunikacji z serwerem wydań GitHub.'
         };
       }
     });
 
-    // Pobranie aktualizacji
     ipcMain.handle('app:download-update', async () => {
       try {
-        await autoUpdater.downloadUpdate();
+        let url = this.targetDownloadUrl;
+        if (!url) {
+          const release = await this.fetchLatestReleaseFromGitHub();
+          url = release?.downloadUrl || null;
+        }
+
+        if (!url) {
+          throw new Error('Nie znaleziono adresu URL do pobrania paczki aktualizacji.');
+        }
+
+        this.updateStatus = { status: 'downloading' };
+        await this.downloadCustomZip(url);
         return { success: true };
       } catch (err: any) {
-        return { success: false, error: err?.message };
+        this.updateStatus = { status: 'error', error: err?.message };
+        return { success: false, error: err?.message || 'Błąd pobierania paczki aktualizacji.' };
       }
     });
 
-    // Restart i instalacja
     ipcMain.handle('app:quit-and-install', () => {
-      autoUpdater.quitAndInstall(false, true);
+      if (process.platform === 'darwin') {
+        const success = this.executeInPlaceMacUpdate();
+        if (!success) {
+          // Fallback do standardowej metody
+          autoUpdater.quitAndInstall(false, true);
+        }
+      } else {
+        autoUpdater.quitAndInstall(false, true);
+      }
     });
 
-    // Pobranie aktualnego stanu
     ipcMain.handle('app:get-update-status', () => {
       return this.updateStatus;
     });
   }
 }
+
