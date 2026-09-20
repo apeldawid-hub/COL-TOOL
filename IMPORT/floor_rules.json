@@ -1,0 +1,51 @@
+[
+  {
+    "day_id": "monday",
+    "day_name": "Poniedziałek",
+    "shifts_count": 5,
+    "hours_per_shift": 8,
+    "total_day_hours": 40
+  },
+  {
+    "day_id": "tuesday",
+    "day_name": "Wtorek",
+    "shifts_count": 5,
+    "hours_per_shift": 8,
+    "total_day_hours": 40
+  },
+  {
+    "day_id": "wednesday",
+    "day_name": "Środa",
+    "shifts_count": 5,
+    "hours_per_shift": 8,
+    "total_day_hours": 40
+  },
+  {
+    "day_id": "thursday",
+    "day_name": "Czwartek",
+    "shifts_count": 5,
+    "hours_per_shift": 8,
+    "total_day_hours": 40
+  },
+  {
+    "day_id": "friday",
+    "day_name": "Piątek",
+    "shifts_count": 5,
+    "hours_per_shift": 8,
+    "total_day_hours": 40
+  },
+  {
+    "day_id": "saturday",
+    "day_name": "Sobota",
+    "shifts_count": 5,
+    "hours_per_shift": 8,
+    "total_day_hours": 40
+  },
+  {
+    "day_id": "sunday",
+    "day_name": "Niedziela",
+    "shifts_count": 4,
+    "hours_per_shift": 8,
+    "total_day_hours": 32
+  }
+]

@@ -1,0 +1,104 @@
+import { contextBridge, ipcRenderer } from 'electron';
+
+export interface IElectronAPI {
+  getAopPlan: (year: number, month: string) => Promise<any>;
+  getAvailableYears: () => Promise<number[]>;
+  getMonthsForYear: (year: number) => Promise<string[]>;
+  getWeeksForMonth: (year: number, month: string) => Promise<any[]>;
+  getActualHoursForMonth: (year: number, month: string) => Promise<Record<string, number>>;
+  getWeeklyActualTrxMap: (year: number, month: string) => Promise<Record<string, number | null>>;
+  saveWeeklyTrx: (weekKey: string, trx: number | null) => Promise<boolean>;
+  getWeeklyScheduledHoursMap: (year: number, month: string) => Promise<Record<string, number>>;
+  saveWeeklyScheduledHours: (weekKey: string, hours: number | null) => Promise<boolean>;
+  getLaborRecords: (weekKey: string) => Promise<any[]>;
+  getAopPlansForYear: (year: number) => Promise<any[]>;
+  saveAopPlan: (plan: any) => Promise<boolean>;
+  saveYearlyAop: (plans: any[]) => Promise<boolean>;
+  getFloorRules: () => Promise<any[]>;
+  saveFloorRules: (rules: any[]) => Promise<boolean>;
+  getNcRules: () => Promise<any[]>;
+  saveNcRules: (rules: any[]) => Promise<boolean>;
+  getDayOfWeekStats: () => Promise<any[]>;
+  openFileDialog: () => Promise<string | null>;
+  importFichajesFile: (filePath: string) => Promise<{ success: boolean; importedCount: number; message: string }>;
+  importFichajesBuffer: (buffer: ArrayBuffer) => Promise<{ success: boolean; importedCount: number; message: string }>;
+  getSystemTime: () => Promise<{ iso: string; timestamp: string; hours: number; minutes: number; seconds: number; day: number; month: number; year: number }>;
+  onRefreshData: (callback: () => void) => void;
+  // Moduł 2: Managers Schedule
+  getManagerScheduleData: (year: number, month: number) => Promise<{
+    employees: any[];
+    shiftDefinitions: any[];
+    shifts: any[];
+    events: any[];
+    monthlyNorm?: any;
+    boundaryShifts?: any;
+    rcpLogs?: Record<number, Record<number, { hours: number; unitCode?: string; unitName?: string }>>;
+    hasCompleteRcpLogs?: boolean;
+  }>;
+  saveManagerShift: (shift: any) => Promise<boolean>;
+  saveManagerDisposition: (payload: { year: number; month: number; day: number; date: string; employee_id: number; disposition: string }) => Promise<boolean>;
+  saveBatchManagerDispositions: (payload: { year: number; month: number; items: Array<{ day: number; employee_id: number; disposition: string; date?: string }> }) => Promise<boolean>;
+  saveManagerEvent: (event: any) => Promise<boolean>;
+  manageEmployees: (employees: any[]) => Promise<boolean>;
+  saveShiftDefinitions: (shifts: any[]) => Promise<boolean>;
+  deleteShiftDefinition: (code: string) => Promise<boolean>;
+  getScheduleVersions: (year: number, month: number) => Promise<any[]>;
+  saveScheduleVersion: (payload: any) => Promise<boolean>;
+  restoreScheduleVersion: (versionId: number) => Promise<boolean>;
+  saveMonthlyNorm: (norm: any) => Promise<boolean>;
+  resetMonthlyNorm: (year: number, month: number) => Promise<boolean>;
+  getTorQuarterData: (year: number, quarter: number) => Promise<{
+    employees: any[];
+    shifts: any[];
+    monthlyNorms: Record<number, any>;
+    months: number[];
+    actualRcpByMonth?: Record<number, Record<number, number>>;
+    hasActualRcpByMonth?: Record<number, boolean>;
+  }>;
+}
+
+const api: IElectronAPI = {
+  getAopPlan: (year, month) => ipcRenderer.invoke('db:get-aop-plan', year, month),
+  getAvailableYears: () => ipcRenderer.invoke('db:get-available-years'),
+  getMonthsForYear: (year) => ipcRenderer.invoke('db:get-months-for-year', year),
+  getWeeksForMonth: (year, month) => ipcRenderer.invoke('db:get-weeks-for-month', year, month),
+  getActualHoursForMonth: (year, month) => ipcRenderer.invoke('db:get-actual-hours-for-month', year, month),
+  getWeeklyActualTrxMap: (year, month) => ipcRenderer.invoke('db:get-weekly-actual-trx-map', year, month),
+  saveWeeklyTrx: (weekKey, trx) => ipcRenderer.invoke('db:save-weekly-trx', weekKey, trx),
+  getWeeklyScheduledHoursMap: (year, month) => ipcRenderer.invoke('db:get-weekly-scheduled-hours-map', year, month),
+  saveWeeklyScheduledHours: (weekKey, hours) => ipcRenderer.invoke('db:save-weekly-scheduled-hours', weekKey, hours),
+  getLaborRecords: (weekKey) => ipcRenderer.invoke('db:get-labor-records', weekKey),
+  getAopPlansForYear: (year) => ipcRenderer.invoke('db:get-aop-plans-for-year', year),
+  saveAopPlan: (plan) => ipcRenderer.invoke('db:save-aop-plan', plan),
+  saveYearlyAop: (plans) => ipcRenderer.invoke('db:save-yearly-aop', plans),
+  getFloorRules: () => ipcRenderer.invoke('db:get-floor-rules'),
+  saveFloorRules: (rules) => ipcRenderer.invoke('db:save-floor-rules', rules),
+  getNcRules: () => ipcRenderer.invoke('db:get-nc-rules'),
+  saveNcRules: (rules) => ipcRenderer.invoke('db:save-nc-rules', rules),
+  getDayOfWeekStats: () => ipcRenderer.invoke('db:get-day-of-week-stats'),
+  openFileDialog: () => ipcRenderer.invoke('dialog:open-file'),
+  importFichajesFile: (filePath) => ipcRenderer.invoke('import:fichajes-file', filePath),
+  importFichajesBuffer: (buffer) => ipcRenderer.invoke('import:fichajes-buffer', buffer),
+  getSystemTime: () => ipcRenderer.invoke('system:get-time'),
+  onRefreshData: (callback) => {
+    ipcRenderer.on('data:refreshed', () => callback());
+  },
+  // Moduł 2: Managers Schedule
+  getManagerScheduleData: (year, month) => ipcRenderer.invoke('db:get-manager-schedule-data', year, month),
+  saveManagerShift: (shift) => ipcRenderer.invoke('db:save-manager-shift', shift),
+  saveManagerDisposition: (payload) => ipcRenderer.invoke('db:save-manager-disposition', payload),
+  saveBatchManagerDispositions: (payload) => ipcRenderer.invoke('db:save-batch-manager-dispositions', payload),
+  saveManagerEvent: (event) => ipcRenderer.invoke('db:save-manager-event', event),
+  manageEmployees: (employees) => ipcRenderer.invoke('db:manage-employees', employees),
+  saveShiftDefinitions: (shifts) => ipcRenderer.invoke('db:save-shift-definitions', shifts),
+  deleteShiftDefinition: (code) => ipcRenderer.invoke('db:delete-shift-definition', code),
+  getScheduleVersions: (year, month) => ipcRenderer.invoke('db:get-schedule-versions', year, month),
+  saveScheduleVersion: (payload) => ipcRenderer.invoke('db:save-schedule-version', payload),
+  restoreScheduleVersion: (versionId) => ipcRenderer.invoke('db:restore-schedule-version', versionId),
+  saveMonthlyNorm: (norm) => ipcRenderer.invoke('db:save-monthly-norm', norm),
+  resetMonthlyNorm: (year, month) => ipcRenderer.invoke('db:reset-monthly-norm', year, month),
+  getTorQuarterData: (year, quarter) => ipcRenderer.invoke('db:get-tor-quarter-data', year, quarter),
+};
+
+contextBridge.exposeInMainWorld('api', api);
+

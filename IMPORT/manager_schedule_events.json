@@ -1,0 +1,1541 @@
+[
+  {
+    "id": 257,
+    "year": 2026,
+    "month": 1,
+    "day": 2,
+    "date": "2026-01-02",
+    "event_text": "Zastępstwo Dma | Mocna Obstawa",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 258,
+    "year": 2026,
+    "month": 1,
+    "day": 5,
+    "date": "2026-01-05",
+    "event_text": "Zastępstwo Dma | Mocna Obstawa",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 259,
+    "year": 2026,
+    "month": 1,
+    "day": 7,
+    "date": "2026-01-07",
+    "event_text": "Zastępstwo Dma | Start Promo | Ola BHP",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 260,
+    "year": 2026,
+    "month": 1,
+    "day": 8,
+    "date": "2026-01-08",
+    "event_text": "Zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 261,
+    "year": 2026,
+    "month": 1,
+    "day": 9,
+    "date": "2026-01-09",
+    "event_text": "Zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 262,
+    "year": 2026,
+    "month": 1,
+    "day": 12,
+    "date": "2026-01-12",
+    "event_text": "Zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 263,
+    "year": 2026,
+    "month": 1,
+    "day": 13,
+    "date": "2026-01-13",
+    "event_text": "Zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 264,
+    "year": 2026,
+    "month": 1,
+    "day": 14,
+    "date": "2026-01-14",
+    "event_text": "Zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 265,
+    "year": 2026,
+    "month": 1,
+    "day": 15,
+    "date": "2026-01-15",
+    "event_text": "Zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 266,
+    "year": 2026,
+    "month": 1,
+    "day": 16,
+    "date": "2026-01-16",
+    "event_text": "Zastępstwo Dma | przekazanie regionu",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 267,
+    "year": 2026,
+    "month": 1,
+    "day": 21,
+    "date": "2026-01-21",
+    "event_text": "Roadshow",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 268,
+    "year": 2026,
+    "month": 1,
+    "day": 22,
+    "date": "2026-01-22",
+    "event_text": "Road Show",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 269,
+    "year": 2026,
+    "month": 1,
+    "day": 30,
+    "date": "2026-01-30",
+    "event_text": "Support Wilanów",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 270,
+    "year": 2026,
+    "month": 1,
+    "day": 31,
+    "date": "2026-01-31",
+    "event_text": "Support Wilanow",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 271,
+    "year": 2026,
+    "month": 2,
+    "day": 4,
+    "date": "2026-02-04",
+    "event_text": "Wizyta Clair/Jessica",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 272,
+    "year": 2026,
+    "month": 2,
+    "day": 5,
+    "date": "2026-02-05",
+    "event_text": "Szkolenie First Aid/ Wizyta Clair/Jessica",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 273,
+    "year": 2026,
+    "month": 2,
+    "day": 9,
+    "date": "2026-02-09",
+    "event_text": "Kamil RET za styczeń",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 274,
+    "year": 2026,
+    "month": 2,
+    "day": 10,
+    "date": "2026-02-10",
+    "event_text": "KickOFF Renowacja GLF | P&L Call",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 275,
+    "year": 2026,
+    "month": 2,
+    "day": 11,
+    "date": "2026-02-11",
+    "event_text": "PPA z zespołem | Zuza INV",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 276,
+    "year": 2026,
+    "month": 2,
+    "day": 13,
+    "date": "2026-02-13",
+    "event_text": "Dawid audyty WAW2 i WAW1",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 277,
+    "year": 2026,
+    "month": 2,
+    "day": 16,
+    "date": "2026-02-16",
+    "event_text": "PPA Dawid | PPV",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 278,
+    "year": 2026,
+    "month": 2,
+    "day": 17,
+    "date": "2026-02-17",
+    "event_text": "GLF Call | Dawid RM L5",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 279,
+    "year": 2026,
+    "month": 2,
+    "day": 19,
+    "date": "2026-02-19",
+    "event_text": "Dawid Białystok z Asią i Bartkiem",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 280,
+    "year": 2026,
+    "month": 2,
+    "day": 24,
+    "date": "2026-02-24",
+    "event_text": "GLF Call | Preventive",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 281,
+    "year": 2026,
+    "month": 2,
+    "day": 26,
+    "date": "2026-02-26",
+    "event_text": "Kamil Support Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 282,
+    "year": 2026,
+    "month": 2,
+    "day": 27,
+    "date": "2026-02-27",
+    "event_text": "SM Meeting",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 283,
+    "year": 2026,
+    "month": 3,
+    "day": 1,
+    "date": "2026-03-01",
+    "event_text": "Zamknięcie kawiarni",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 284,
+    "year": 2026,
+    "month": 3,
+    "day": 2,
+    "date": "2026-03-02",
+    "event_text": "Zmiany na Wilanowie",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 285,
+    "year": 2026,
+    "month": 3,
+    "day": 3,
+    "date": "2026-03-03",
+    "event_text": "Zmiany na Wianowie | Werka Nowy Świat",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 286,
+    "year": 2026,
+    "month": 3,
+    "day": 4,
+    "date": "2026-03-04",
+    "event_text": "Zmiany na Wilanowie | Kamil AM Sadyba | Ola PM Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 287,
+    "year": 2026,
+    "month": 3,
+    "day": 5,
+    "date": "2026-03-05",
+    "event_text": "Ola PM na Piasecznie + Kamil PM Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 288,
+    "year": 2026,
+    "month": 3,
+    "day": 6,
+    "date": "2026-03-06",
+    "event_text": "Zmiany na Wilanowie + Ola support na Sadybie + Kamil SanPark",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 289,
+    "year": 2026,
+    "month": 3,
+    "day": 7,
+    "date": "2026-03-07",
+    "event_text": "Kamlil i Dawid -> pierwsze porządki w kawiarni | Ola Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 290,
+    "year": 2026,
+    "month": 3,
+    "day": 8,
+    "date": "2026-03-08",
+    "event_text": "Kamil PM Nowy Świat | Dawid AM Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 291,
+    "year": 2026,
+    "month": 3,
+    "day": 9,
+    "date": "2026-03-09",
+    "event_text": "Przygotowanie kawiarni do otwarcia + RollOut GLF live",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 292,
+    "year": 2026,
+    "month": 3,
+    "day": 10,
+    "date": "2026-03-10",
+    "event_text": "Re-Otwarcie | Weronika PM na Wilanowie",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 293,
+    "year": 2026,
+    "month": 3,
+    "day": 11,
+    "date": "2026-03-11",
+    "event_text": "Prezentacja strategii WAW1 | Zuza Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 294,
+    "year": 2026,
+    "month": 3,
+    "day": 12,
+    "date": "2026-03-12",
+    "event_text": "Białystok | Kamil AM Nowy Świat",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 295,
+    "year": 2026,
+    "month": 3,
+    "day": 13,
+    "date": "2026-03-13",
+    "event_text": "Ola Workshopy SSV",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 296,
+    "year": 2026,
+    "month": 3,
+    "day": 15,
+    "date": "2026-03-15",
+    "event_text": "Zuza Nowy Świat | Weronika Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 297,
+    "year": 2026,
+    "month": 3,
+    "day": 17,
+    "date": "2026-03-17",
+    "event_text": "Zuza MID 4 na magazyn",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 298,
+    "year": 2026,
+    "month": 3,
+    "day": 18,
+    "date": "2026-03-18",
+    "event_text": "L-O-A + PowerBi/BCR | Kamil Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 299,
+    "year": 2026,
+    "month": 3,
+    "day": 19,
+    "date": "2026-03-19",
+    "event_text": "LOA z baristami",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 300,
+    "year": 2026,
+    "month": 3,
+    "day": 21,
+    "date": "2026-03-21",
+    "event_text": "Kamil PM na Piasecznie",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 301,
+    "year": 2026,
+    "month": 3,
+    "day": 23,
+    "date": "2026-03-23",
+    "event_text": "Zuza Support Sadyba",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 302,
+    "year": 2026,
+    "month": 3,
+    "day": 24,
+    "date": "2026-03-24",
+    "event_text": "Dawid SCF Legia",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 303,
+    "year": 2026,
+    "month": 3,
+    "day": 25,
+    "date": "2026-03-25",
+    "event_text": "Kamil SCF Legia",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 304,
+    "year": 2026,
+    "month": 3,
+    "day": 28,
+    "date": "2026-03-28",
+    "event_text": "Zuza Nowy Świat",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 305,
+    "year": 2026,
+    "month": 3,
+    "day": 29,
+    "date": "2026-03-29",
+    "event_text": "Niedziela Handlowa",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 306,
+    "year": 2026,
+    "month": 3,
+    "day": 31,
+    "date": "2026-03-31",
+    "event_text": "Kamil i Zuza INV (pierwsza w GLF)",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 307,
+    "year": 2026,
+    "month": 4,
+    "day": 8,
+    "date": "2026-04-08",
+    "event_text": "OnBoarding Maćka na Białystok",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 308,
+    "year": 2026,
+    "month": 4,
+    "day": 10,
+    "date": "2026-04-10",
+    "event_text": "P&L Call | FU Ola",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 309,
+    "year": 2026,
+    "month": 4,
+    "day": 15,
+    "date": "2026-04-15",
+    "event_text": "OCV + Kielce | Ola PM Wilanów",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 310,
+    "year": 2026,
+    "month": 4,
+    "day": 17,
+    "date": "2026-04-17",
+    "event_text": "Głaskanie Kotów - CSR",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 311,
+    "year": 2026,
+    "month": 4,
+    "day": 18,
+    "date": "2026-04-18",
+    "event_text": "Werka Support SanPark",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 312,
+    "year": 2026,
+    "month": 4,
+    "day": 22,
+    "date": "2026-04-22",
+    "event_text": "Kamil PM Piaseczno",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 313,
+    "year": 2026,
+    "month": 4,
+    "day": 23,
+    "date": "2026-04-23",
+    "event_text": "SMMeeting",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 314,
+    "year": 2026,
+    "month": 4,
+    "day": 24,
+    "date": "2026-04-24",
+    "event_text": "Głaskanie Kotów - CSR",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 315,
+    "year": 2026,
+    "month": 4,
+    "day": 26,
+    "date": "2026-04-26",
+    "event_text": "Kamil AM na Piasecznie | Dawid BCH",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 316,
+    "year": 2026,
+    "month": 4,
+    "day": 28,
+    "date": "2026-04-28",
+    "event_text": "Coffee Show",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 317,
+    "year": 2026,
+    "month": 4,
+    "day": 30,
+    "date": "2026-04-30",
+    "event_text": "Zastępstwo za Dma | Maciek Certyfikacja",
+    "created_at": "2026-09-13 19:08:01"
+  },
+  {
+    "id": 318,
+    "year": 2026,
+    "month": 5,
+    "day": 1,
+    "date": "2026-05-01",
+    "event_text": "Weronika szkolenie BAR | Otwarcie 10-20",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 319,
+    "year": 2026,
+    "month": 5,
+    "day": 2,
+    "date": "2026-05-02",
+    "event_text": "Weronika szkolenie BAR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 320,
+    "year": 2026,
+    "month": 5,
+    "day": 3,
+    "date": "2026-05-03",
+    "event_text": "(Otwarcie 10-20)",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 321,
+    "year": 2026,
+    "month": 5,
+    "day": 4,
+    "date": "2026-05-04",
+    "event_text": "Maciek start szkolenia z prowadzenia zmiany | Support Ola SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 322,
+    "year": 2026,
+    "month": 5,
+    "day": 7,
+    "date": "2026-05-07",
+    "event_text": "Weronika certyfikacja BAR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 323,
+    "year": 2026,
+    "month": 5,
+    "day": 11,
+    "date": "2026-05-11",
+    "event_text": "Weronika start szkolenia z prowadzenia zmiany | Dawid zastępstwo za Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 324,
+    "year": 2026,
+    "month": 5,
+    "day": 12,
+    "date": "2026-05-12",
+    "event_text": "Dawid zastępstwo za Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 325,
+    "year": 2026,
+    "month": 5,
+    "day": 13,
+    "date": "2026-05-13",
+    "event_text": "Coffee Show | Dawid zastępstwo za Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 326,
+    "year": 2026,
+    "month": 5,
+    "day": 14,
+    "date": "2026-05-14",
+    "event_text": "Weronika FU z Dawidem | Dawid zastępstwo za Dma | Maciek Rekrutacja Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 327,
+    "year": 2026,
+    "month": 5,
+    "day": 15,
+    "date": "2026-05-15",
+    "event_text": "Dawid zastępstwo za Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 328,
+    "year": 2026,
+    "month": 5,
+    "day": 19,
+    "date": "2026-05-19",
+    "event_text": "Maciek samodzielne otwarcie",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 329,
+    "year": 2026,
+    "month": 5,
+    "day": 20,
+    "date": "2026-05-20",
+    "event_text": "Weronika samodzielne zmaknięcie",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 330,
+    "year": 2026,
+    "month": 5,
+    "day": 25,
+    "date": "2026-05-25",
+    "event_text": "Maciek szkolenie ASM .Weronika samodzielne otwarcie + szkolenie z zamówień + dostawić bar | Support Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 331,
+    "year": 2026,
+    "month": 5,
+    "day": 27,
+    "date": "2026-05-27",
+    "event_text": "Support `Sadyba\\",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 332,
+    "year": 2026,
+    "month": 5,
+    "day": 28,
+    "date": "2026-05-28",
+    "event_text": "Weronika i Maciek - przygotowanie do certyfikacji",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 333,
+    "year": 2026,
+    "month": 5,
+    "day": 29,
+    "date": "2026-05-29",
+    "event_text": "Certyfikacja Maćka i Weroniki | Support Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 334,
+    "year": 2026,
+    "month": 5,
+    "day": 31,
+    "date": "2026-05-31",
+    "event_text": "Maciek i Weronika szkolenie z inv | Werka Support | Dostawić bar + Maciek robi samodzielny zamek",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 335,
+    "year": 2026,
+    "month": 6,
+    "day": 1,
+    "date": "2026-06-01",
+    "event_text": "Dawid Apel - przygotowanie do P&L call z Dawidem S.",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 336,
+    "year": 2026,
+    "month": 6,
+    "day": 2,
+    "date": "2026-06-02",
+    "event_text": "P&L Call",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 337,
+    "year": 2026,
+    "month": 6,
+    "day": 3,
+    "date": "2026-06-03",
+    "event_text": "Przygotowanie do MidRoadShow | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 338,
+    "year": 2026,
+    "month": 6,
+    "day": 4,
+    "date": "2026-06-04",
+    "event_text": "Boże Ciało - Zuza zmiana 4h",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 339,
+    "year": 2026,
+    "month": 6,
+    "day": 5,
+    "date": "2026-06-05",
+    "event_text": "Mocny dzień | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 340,
+    "year": 2026,
+    "month": 6,
+    "day": 6,
+    "date": "2026-06-06",
+    "event_text": "Mocny dzień",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 341,
+    "year": 2026,
+    "month": 6,
+    "day": 7,
+    "date": "2026-06-07",
+    "event_text": "Zuza PM 6h | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 342,
+    "year": 2026,
+    "month": 6,
+    "day": 8,
+    "date": "2026-06-08",
+    "event_text": "Szkolenie Rekrutacyjne | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 343,
+    "year": 2026,
+    "month": 6,
+    "day": 9,
+    "date": "2026-06-09",
+    "event_text": "MidRoadShow | Support SanPark Weronika Strzałkowska certyfikacja bar - prowadzi Dawid Apel",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 344,
+    "year": 2026,
+    "month": 6,
+    "day": 11,
+    "date": "2026-06-11",
+    "event_text": "Support SanPark | Event Dla galerii handlowej",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 345,
+    "year": 2026,
+    "month": 6,
+    "day": 12,
+    "date": "2026-06-12",
+    "event_text": "Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 346,
+    "year": 2026,
+    "month": 6,
+    "day": 13,
+    "date": "2026-06-13",
+    "event_text": "Event w Teresinie",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 347,
+    "year": 2026,
+    "month": 6,
+    "day": 14,
+    "date": "2026-06-14",
+    "event_text": "Dawid SUP Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 348,
+    "year": 2026,
+    "month": 6,
+    "day": 16,
+    "date": "2026-06-16",
+    "event_text": "| SM Meeting | PPV | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 349,
+    "year": 2026,
+    "month": 6,
+    "day": 18,
+    "date": "2026-06-18",
+    "event_text": "Hania zmiana 7h | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 350,
+    "year": 2026,
+    "month": 6,
+    "day": 19,
+    "date": "2026-06-19",
+    "event_text": "Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 351,
+    "year": 2026,
+    "month": 6,
+    "day": 20,
+    "date": "2026-06-20",
+    "event_text": "Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 352,
+    "year": 2026,
+    "month": 6,
+    "day": 21,
+    "date": "2026-06-21",
+    "event_text": "Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 353,
+    "year": 2026,
+    "month": 6,
+    "day": 22,
+    "date": "2026-06-22",
+    "event_text": "SSV szkolenie | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 354,
+    "year": 2026,
+    "month": 6,
+    "day": 23,
+    "date": "2026-06-23",
+    "event_text": "Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 355,
+    "year": 2026,
+    "month": 6,
+    "day": 24,
+    "date": "2026-06-24",
+    "event_text": "Otwarcie Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 356,
+    "year": 2026,
+    "month": 6,
+    "day": 25,
+    "date": "2026-06-25",
+    "event_text": "Otwarcie Białystok | Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 357,
+    "year": 2026,
+    "month": 6,
+    "day": 26,
+    "date": "2026-06-26",
+    "event_text": "Otwarcie Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 358,
+    "year": 2026,
+    "month": 6,
+    "day": 28,
+    "date": "2026-06-28",
+    "event_text": "Otwarcie Białystok | Niedziela Handlowa",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 359,
+    "year": 2026,
+    "month": 6,
+    "day": 29,
+    "date": "2026-06-29",
+    "event_text": "Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 360,
+    "year": 2026,
+    "month": 6,
+    "day": 30,
+    "date": "2026-06-30",
+    "event_text": "Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 361,
+    "year": 2026,
+    "month": 7,
+    "day": 1,
+    "date": "2026-07-01",
+    "event_text": "Kamil PR | Brian Niccol w Polsce od 17, Dawid S. przyjeżdża na 16 do końca | Dawid A. Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 362,
+    "year": 2026,
+    "month": 7,
+    "day": 2,
+    "date": "2026-07-02",
+    "event_text": "Kamil SanPark | Brian Niccol w Polsce | Dawid A. Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 363,
+    "year": 2026,
+    "month": 7,
+    "day": 3,
+    "date": "2026-07-03",
+    "event_text": "Dawid A. Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 364,
+    "year": 2026,
+    "month": 7,
+    "day": 4,
+    "date": "2026-07-04",
+    "event_text": "Kamil SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 365,
+    "year": 2026,
+    "month": 7,
+    "day": 5,
+    "date": "2026-07-05",
+    "event_text": "Kamil SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 366,
+    "year": 2026,
+    "month": 7,
+    "day": 6,
+    "date": "2026-07-06",
+    "event_text": "Zuza SanPark | Dawid A. Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 367,
+    "year": 2026,
+    "month": 7,
+    "day": 7,
+    "date": "2026-07-07",
+    "event_text": "Zuza SanPark | Dawid A. Białystok",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 368,
+    "year": 2026,
+    "month": 7,
+    "day": 8,
+    "date": "2026-07-08",
+    "event_text": "Zuza SanPark | Dawid S. zastępstwo Dma | Dawid A. szkolenie z girnetu",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 369,
+    "year": 2026,
+    "month": 7,
+    "day": 9,
+    "date": "2026-07-09",
+    "event_text": "Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 370,
+    "year": 2026,
+    "month": 7,
+    "day": 10,
+    "date": "2026-07-10",
+    "event_text": "Kamil SanPark | Dawid S. zastępstwo Dma | Dawid A - Nowy Świat",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 371,
+    "year": 2026,
+    "month": 7,
+    "day": 11,
+    "date": "2026-07-11",
+    "event_text": "Kamil SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 372,
+    "year": 2026,
+    "month": 7,
+    "day": 12,
+    "date": "2026-07-12",
+    "event_text": "Kamil SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 373,
+    "year": 2026,
+    "month": 7,
+    "day": 13,
+    "date": "2026-07-13",
+    "event_text": "Kamil SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 374,
+    "year": 2026,
+    "month": 7,
+    "day": 14,
+    "date": "2026-07-14",
+    "event_text": "Weronika SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 375,
+    "year": 2026,
+    "month": 7,
+    "day": 15,
+    "date": "2026-07-15",
+    "event_text": "Zuza SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 376,
+    "year": 2026,
+    "month": 7,
+    "day": 16,
+    "date": "2026-07-16",
+    "event_text": "Zuza SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 377,
+    "year": 2026,
+    "month": 7,
+    "day": 17,
+    "date": "2026-07-17",
+    "event_text": "Kamil SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 378,
+    "year": 2026,
+    "month": 7,
+    "day": 20,
+    "date": "2026-07-20",
+    "event_text": "Kamil SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 379,
+    "year": 2026,
+    "month": 7,
+    "day": 21,
+    "date": "2026-07-21",
+    "event_text": "Kamil SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 380,
+    "year": 2026,
+    "month": 7,
+    "day": 22,
+    "date": "2026-07-22",
+    "event_text": "Zuza SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 381,
+    "year": 2026,
+    "month": 7,
+    "day": 23,
+    "date": "2026-07-23",
+    "event_text": "Zuza SanPark | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 382,
+    "year": 2026,
+    "month": 7,
+    "day": 24,
+    "date": "2026-07-24",
+    "event_text": "Weronika Support Marriot | Dawid S. zastępstwo Dma",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 383,
+    "year": 2026,
+    "month": 7,
+    "day": 27,
+    "date": "2026-07-27",
+    "event_text": "Zuza SanPark | przekazanie Regionu Dawid S. | Dawid A. FU IDP",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 384,
+    "year": 2026,
+    "month": 7,
+    "day": 28,
+    "date": "2026-07-28",
+    "event_text": "Zuza SanPark | Rollout Promo Autumn",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 385,
+    "year": 2026,
+    "month": 7,
+    "day": 29,
+    "date": "2026-07-29",
+    "event_text": "SM Meeting | Zuza SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 386,
+    "year": 2026,
+    "month": 7,
+    "day": 30,
+    "date": "2026-07-30",
+    "event_text": "Kamil SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 387,
+    "year": 2026,
+    "month": 7,
+    "day": 31,
+    "date": "2026-07-31",
+    "event_text": "Kamil SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 388,
+    "year": 2026,
+    "month": 8,
+    "day": 1,
+    "date": "2026-08-01",
+    "event_text": "Werka NŚ",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 389,
+    "year": 2026,
+    "month": 8,
+    "day": 3,
+    "date": "2026-08-03",
+    "event_text": "ASM Day/ Otwarcie Miesiąca",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 390,
+    "year": 2026,
+    "month": 8,
+    "day": 4,
+    "date": "2026-08-04",
+    "event_text": "SM Day",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 391,
+    "year": 2026,
+    "month": 8,
+    "day": 5,
+    "date": "2026-08-05",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 392,
+    "year": 2026,
+    "month": 8,
+    "day": 6,
+    "date": "2026-08-06",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 393,
+    "year": 2026,
+    "month": 8,
+    "day": 7,
+    "date": "2026-08-07",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 394,
+    "year": 2026,
+    "month": 8,
+    "day": 10,
+    "date": "2026-08-10",
+    "event_text": "ASM Day",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 395,
+    "year": 2026,
+    "month": 8,
+    "day": 11,
+    "date": "2026-08-11",
+    "event_text": "SM Day",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 396,
+    "year": 2026,
+    "month": 8,
+    "day": 12,
+    "date": "2026-08-12",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 397,
+    "year": 2026,
+    "month": 8,
+    "day": 13,
+    "date": "2026-08-13",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 398,
+    "year": 2026,
+    "month": 8,
+    "day": 14,
+    "date": "2026-08-14",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 399,
+    "year": 2026,
+    "month": 8,
+    "day": 17,
+    "date": "2026-08-17",
+    "event_text": "ASM Day | Hania Piaseczno AM",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 400,
+    "year": 2026,
+    "month": 8,
+    "day": 18,
+    "date": "2026-08-18",
+    "event_text": "SM Day",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 401,
+    "year": 2026,
+    "month": 8,
+    "day": 19,
+    "date": "2026-08-19",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 402,
+    "year": 2026,
+    "month": 8,
+    "day": 20,
+    "date": "2026-08-20",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 403,
+    "year": 2026,
+    "month": 8,
+    "day": 21,
+    "date": "2026-08-21",
+    "event_text": "Kamil PR",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 404,
+    "year": 2026,
+    "month": 8,
+    "day": 24,
+    "date": "2026-08-24",
+    "event_text": "ASM Day | Gabi PM Piaseczno",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 405,
+    "year": 2026,
+    "month": 8,
+    "day": 25,
+    "date": "2026-08-25",
+    "event_text": "SM Day | Zuza PM Piaseczno",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 406,
+    "year": 2026,
+    "month": 8,
+    "day": 26,
+    "date": "2026-08-26",
+    "event_text": "Kamil PR | Support Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 407,
+    "year": 2026,
+    "month": 8,
+    "day": 27,
+    "date": "2026-08-27",
+    "event_text": "Kamil PR | Support Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 408,
+    "year": 2026,
+    "month": 8,
+    "day": 28,
+    "date": "2026-08-28",
+    "event_text": "SMMeet Kielce - Kamil Jedzie",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 409,
+    "year": 2026,
+    "month": 8,
+    "day": 30,
+    "date": "2026-08-30",
+    "event_text": "Niedziela handlowa",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 410,
+    "year": 2026,
+    "month": 8,
+    "day": 31,
+    "date": "2026-08-31",
+    "event_text": "ASM Day",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 411,
+    "year": 2026,
+    "month": 9,
+    "day": 1,
+    "date": "2026-09-01",
+    "event_text": "START PUMPKINA | Gabi MID na Sadybie",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 412,
+    "year": 2026,
+    "month": 9,
+    "day": 2,
+    "date": "2026-09-02",
+    "event_text": "Kamil Support Arkadia | Dawid A. support na Nowym Świecie",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 413,
+    "year": 2026,
+    "month": 9,
+    "day": 4,
+    "date": "2026-09-04",
+    "event_text": "Kamil Support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 414,
+    "year": 2026,
+    "month": 9,
+    "day": 8,
+    "date": "2026-09-08",
+    "event_text": "Gabi PM Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 415,
+    "year": 2026,
+    "month": 9,
+    "day": 9,
+    "date": "2026-09-09",
+    "event_text": "Gabi PM Sadyba | Dawid PM SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 416,
+    "year": 2026,
+    "month": 9,
+    "day": 11,
+    "date": "2026-09-11",
+    "event_text": "Dawid Preventive | Werka SUP Am Metro Wilanowska",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 417,
+    "year": 2026,
+    "month": 9,
+    "day": 14,
+    "date": "2026-09-14",
+    "event_text": "Dawid Kielce",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 418,
+    "year": 2026,
+    "month": 9,
+    "day": 15,
+    "date": "2026-09-15",
+    "event_text": "Weronika PM Sadyba | Dawid Kielce | Dawid A. NC SM",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 419,
+    "year": 2026,
+    "month": 9,
+    "day": 16,
+    "date": "2026-09-16",
+    "event_text": "Zuza PM Sadyba | Dawid Kielce",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 420,
+    "year": 2026,
+    "month": 9,
+    "day": 17,
+    "date": "2026-09-17",
+    "event_text": "Dawid Kielce | Kamil PM Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 421,
+    "year": 2026,
+    "month": 9,
+    "day": 18,
+    "date": "2026-09-18",
+    "event_text": "Dawid Kielce | Werka PM Sadyba",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 422,
+    "year": 2026,
+    "month": 9,
+    "day": 23,
+    "date": "2026-09-23",
+    "event_text": "Dawid S. SCF",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 423,
+    "year": 2026,
+    "month": 9,
+    "day": 24,
+    "date": "2026-09-24",
+    "event_text": "Dawid A. SCF",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 424,
+    "year": 2026,
+    "month": 9,
+    "day": 25,
+    "date": "2026-09-25",
+    "event_text": "Gabi support SanPark",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 425,
+    "year": 2026,
+    "month": 9,
+    "day": 26,
+    "date": "2026-09-26",
+    "event_text": "Gala Hakersi",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 426,
+    "year": 2026,
+    "month": 9,
+    "day": 27,
+    "date": "2026-09-27",
+    "event_text": "Partners Meeting i Mgrs meeting",
+    "created_at": "2026-09-13 19:08:02"
+  },
+  {
+    "id": 427,
+    "year": 2026,
+    "month": 9,
+    "day": 29,
+    "date": "2026-09-29",
+    "event_text": "PPK Rollout Autumn",
+    "created_at": "2026-09-13 19:08:02"
+  }
+]

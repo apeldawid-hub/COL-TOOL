@@ -1,0 +1,30 @@
+[
+  {
+    "week_key": "2026_Wrzesień_W1",
+    "actual_trx": 2496,
+    "manual_hours_override": null,
+    "updated_at": "2026-09-20 06:48:32",
+    "scheduled_hours": null
+  },
+  {
+    "week_key": "2026_Wrzesień_W3",
+    "actual_trx": 2007,
+    "manual_hours_override": null,
+    "updated_at": "2026-09-20 06:46:37",
+    "scheduled_hours": 371
+  },
+  {
+    "week_key": "2026_Wrzesień_W2",
+    "actual_trx": 2501,
+    "manual_hours_override": null,
+    "updated_at": "2026-09-15 08:57:41",
+    "scheduled_hours": 347
+  },
+  {
+    "week_key": "2026_Wrzesień_W4",
+    "actual_trx": null,
+    "manual_hours_override": null,
+    "updated_at": "2026-09-14 09:00:52",
+    "scheduled_hours": 345
+  }
+]

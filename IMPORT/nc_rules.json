@@ -1,0 +1,37 @@
+[
+  {
+    "id": "sm_admin",
+    "name": "Administracja Store Managera (SM)",
+    "category": "Zarządzanie",
+    "monthly_hours": 20,
+    "is_mandatory": 1
+  },
+  {
+    "id": "barista_training",
+    "name": "Szkolenia Baristyczne & Onboarding",
+    "category": "Rozwój",
+    "monthly_hours": 12,
+    "is_mandatory": 1
+  },
+  {
+    "id": "inventory",
+    "name": "Inwentaryzacja Miesięczna & Audyt",
+    "category": "Operacje",
+    "monthly_hours": 6,
+    "is_mandatory": 1
+  },
+  {
+    "id": "team_meeting",
+    "name": "Zebranie Załogi Kawiarni",
+    "category": "Zespół",
+    "monthly_hours": 4,
+    "is_mandatory": 1
+  },
+  {
+    "id": "deep_clean",
+    "name": "Głębokie Czyszczenie Sprzętu (Deep Clean)",
+    "category": "Czystość",
+    "monthly_hours": 8,
+    "is_mandatory": 1
+  }
+]

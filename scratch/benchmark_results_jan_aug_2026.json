@@ -1,0 +1,1454 @@
+[
+  {
+    "month": 1,
+    "monthName": "Styczeń",
+    "nominalFullTime": 168,
+    "employeesCount": 6,
+    "historical": {
+      "totalHours": 704,
+      "openingCount": 28,
+      "closingCount": 30,
+      "midCount": 0,
+      "ncCount": 17,
+      "offCount": 98,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 5,
+      "consecutiveOffBlocks": 31,
+      "isolatedSingleOff": 16,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 2
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 9
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 7
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 6,
+          "closings": 7
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV IN TRAINING",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 2,
+          "closings": 2
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 2,
+          "closings": 3
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 740,
+      "openingCount": 31,
+      "closingCount": 31,
+      "midCount": 2,
+      "ncCount": 17,
+      "offCount": 92,
+      "violationsCount": 0,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 70,
+      "fullWeekendsOff": 5,
+      "consecutiveOffBlocks": 24,
+      "isolatedSingleOff": 24,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 160,
+          "balance": 0,
+          "weekendDays": 2,
+          "closings": 2
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 163,
+          "balance": 3,
+          "weekendDays": 7,
+          "closings": 7
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 120,
+          "planned": 126,
+          "balance": 6,
+          "weekendDays": 4,
+          "closings": 6
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 80,
+          "planned": 85,
+          "balance": 5,
+          "weekendDays": 4,
+          "closings": 6
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV IN TRAINING",
+          "ratio": 0.75,
+          "nominal": 120,
+          "planned": 120,
+          "balance": 0,
+          "weekendDays": 1,
+          "closings": 2
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 80,
+          "planned": 86,
+          "balance": 6,
+          "weekendDays": 4,
+          "closings": 8
+        }
+      ],
+      "conflictsCount": 0
+    }
+  },
+  {
+    "month": 2,
+    "monthName": "Luty",
+    "nominalFullTime": 168,
+    "employeesCount": 6,
+    "historical": {
+      "totalHours": 732,
+      "openingCount": 29,
+      "closingCount": 28,
+      "midCount": 1,
+      "ncCount": 16,
+      "offCount": 72,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 5,
+      "consecutiveOffBlocks": 18,
+      "isolatedSingleOff": 15,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 2
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 5
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 7
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 0
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 2,
+          "closings": 12
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 2
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 764,
+      "openingCount": 28,
+      "closingCount": 28,
+      "midCount": 10,
+      "ncCount": 16,
+      "offCount": 67,
+      "violationsCount": 0,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 70,
+      "fullWeekendsOff": 4,
+      "consecutiveOffBlocks": 21,
+      "isolatedSingleOff": 13,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 160,
+          "balance": 0,
+          "weekendDays": 1,
+          "closings": 2
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 159,
+          "balance": -1,
+          "weekendDays": 4,
+          "closings": 6
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 120,
+          "planned": 124,
+          "balance": 4,
+          "weekendDays": 1,
+          "closings": 4
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 80,
+          "planned": 81,
+          "balance": 1,
+          "weekendDays": 4,
+          "closings": 4
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 162,
+          "balance": 2,
+          "weekendDays": 7,
+          "closings": 6
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 80,
+          "planned": 78,
+          "balance": -2,
+          "weekendDays": 6,
+          "closings": 6
+        }
+      ],
+      "conflictsCount": 0
+    }
+  },
+  {
+    "month": 3,
+    "monthName": "Marzec",
+    "nominalFullTime": 168,
+    "employeesCount": 6,
+    "historical": {
+      "totalHours": 872,
+      "openingCount": 25,
+      "closingCount": 25,
+      "midCount": 0,
+      "ncCount": 29,
+      "offCount": 72,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 6,
+      "consecutiveOffBlocks": 20,
+      "isolatedSingleOff": 19,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 0
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 6
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 5
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 7,
+          "closings": 4
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 8
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 2
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 884,
+      "openingCount": 29,
+      "closingCount": 25,
+      "midCount": 0,
+      "ncCount": 29,
+      "offCount": 69,
+      "violationsCount": 7,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 77,
+      "fullWeekendsOff": 5,
+      "consecutiveOffBlocks": 16,
+      "isolatedSingleOff": 22,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 176,
+          "planned": 192,
+          "balance": 16,
+          "weekendDays": 4,
+          "closings": 1
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 176,
+          "planned": 181,
+          "balance": 5,
+          "weekendDays": 6,
+          "closings": 9
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 132,
+          "planned": 137,
+          "balance": 5,
+          "weekendDays": 5,
+          "closings": 4
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 88,
+          "planned": 99,
+          "balance": 11,
+          "weekendDays": 3,
+          "closings": 2
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 176,
+          "planned": 178,
+          "balance": 2,
+          "weekendDays": 8,
+          "closings": 5
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 88,
+          "planned": 97,
+          "balance": 9,
+          "weekendDays": 4,
+          "closings": 4
+        }
+      ],
+      "conflictsCount": 0
+    }
+  },
+  {
+    "month": 4,
+    "monthName": "Kwiecień",
+    "nominalFullTime": 168,
+    "employeesCount": 8,
+    "historical": {
+      "totalHours": 918,
+      "openingCount": 39,
+      "closingCount": 33,
+      "midCount": 10,
+      "ncCount": 17,
+      "offCount": 123,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 8,
+      "consecutiveOffBlocks": 32,
+      "isolatedSingleOff": 8,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 2
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 7
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 4
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.25,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 2
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 10
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 2
+        },
+        {
+          "name": "Maciej Chlabicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 4
+        },
+        {
+          "name": "Weronika Stasiewicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 2
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 1096,
+      "openingCount": 30,
+      "closingCount": 30,
+      "midCount": 23,
+      "ncCount": 17,
+      "offCount": 100,
+      "violationsCount": 0,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 70,
+      "fullWeekendsOff": 3,
+      "consecutiveOffBlocks": 27,
+      "isolatedSingleOff": 22,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 168,
+          "balance": 0,
+          "weekendDays": 3,
+          "closings": 3
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 166,
+          "balance": -2,
+          "weekendDays": 6,
+          "closings": 5
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 126,
+          "planned": 126,
+          "balance": 0,
+          "weekendDays": 5,
+          "closings": 4
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.25,
+          "nominal": 42,
+          "planned": 44,
+          "balance": 2,
+          "weekendDays": 3,
+          "closings": 3
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 168,
+          "balance": 0,
+          "weekendDays": 4,
+          "closings": 4
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 84,
+          "planned": 86,
+          "balance": 2,
+          "weekendDays": 3,
+          "closings": 3
+        },
+        {
+          "name": "Maciej Chlabicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 167,
+          "balance": -1,
+          "weekendDays": 7,
+          "closings": 4
+        },
+        {
+          "name": "Weronika Stasiewicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 171,
+          "balance": 3,
+          "weekendDays": 7,
+          "closings": 4
+        }
+      ],
+      "conflictsCount": 0
+    }
+  },
+  {
+    "month": 5,
+    "monthName": "Maj",
+    "nominalFullTime": 168,
+    "employeesCount": 8,
+    "historical": {
+      "totalHours": 1090,
+      "openingCount": 48,
+      "closingCount": 40,
+      "midCount": 7,
+      "ncCount": 16,
+      "offCount": 109,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 7,
+      "consecutiveOffBlocks": 37,
+      "isolatedSingleOff": 14,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 0
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 8
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 2
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.25,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 6,
+          "closings": 1
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 15
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 4
+        },
+        {
+          "name": "Maciej Chlabicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 5
+        },
+        {
+          "name": "Weronika Stasiewicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 5
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 1043,
+      "openingCount": 31,
+      "closingCount": 31,
+      "midCount": 17,
+      "ncCount": 16,
+      "offCount": 113,
+      "violationsCount": 1,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 70,
+      "fullWeekendsOff": 5,
+      "consecutiveOffBlocks": 31,
+      "isolatedSingleOff": 27,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 160,
+          "balance": 0,
+          "weekendDays": 3,
+          "closings": 3
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 163,
+          "balance": 3,
+          "weekendDays": 8,
+          "closings": 4
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 120,
+          "planned": 122,
+          "balance": 2,
+          "weekendDays": 2,
+          "closings": 3
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.25,
+          "nominal": 40,
+          "planned": 39,
+          "balance": -1,
+          "weekendDays": 2,
+          "closings": 3
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 162,
+          "balance": 2,
+          "weekendDays": 8,
+          "closings": 5
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 80,
+          "planned": 78,
+          "balance": -2,
+          "weekendDays": 5,
+          "closings": 4
+        },
+        {
+          "name": "Maciej Chlabicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 160,
+          "balance": 0,
+          "weekendDays": 4,
+          "closings": 5
+        },
+        {
+          "name": "Weronika Stasiewicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 159,
+          "balance": -1,
+          "weekendDays": 7,
+          "closings": 4
+        }
+      ],
+      "conflictsCount": 0
+    }
+  },
+  {
+    "month": 6,
+    "monthName": "Czerwiec",
+    "nominalFullTime": 168,
+    "employeesCount": 10,
+    "historical": {
+      "totalHours": 1147,
+      "openingCount": 28,
+      "closingCount": 30,
+      "midCount": 3,
+      "ncCount": 27,
+      "offCount": 152,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 10,
+      "consecutiveOffBlocks": 34,
+      "isolatedSingleOff": 23,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 2
+        },
+        {
+          "name": "Dawid Apel",
+          "role": "ASSISTANT STORE MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 5
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 5
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 5
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.25,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 1
+        },
+        {
+          "name": "Gabi Znojek",
+          "role": "SSV IN TRAINING",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 1
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 3
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 1
+        },
+        {
+          "name": "Maciej Chlabicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 3
+        },
+        {
+          "name": "Weronika Stasiewicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 4
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 1304,
+      "openingCount": 30,
+      "closingCount": 30,
+      "midCount": 14,
+      "ncCount": 27,
+      "offCount": 131,
+      "violationsCount": 1,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 70,
+      "fullWeekendsOff": 6,
+      "consecutiveOffBlocks": 34,
+      "isolatedSingleOff": 32,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 168,
+          "balance": 0,
+          "weekendDays": 1,
+          "closings": 2
+        },
+        {
+          "name": "Dawid Apel",
+          "role": "ASSISTANT STORE MANAGER",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 167,
+          "balance": -1,
+          "weekendDays": 5,
+          "closings": 4
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 167,
+          "balance": -1,
+          "weekendDays": 7,
+          "closings": 5
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 126,
+          "planned": 128,
+          "balance": 2,
+          "weekendDays": 3,
+          "closings": 3
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.25,
+          "nominal": 42,
+          "planned": 39,
+          "balance": -3,
+          "weekendDays": 1,
+          "closings": 2
+        },
+        {
+          "name": "Gabi Znojek",
+          "role": "SSV IN TRAINING",
+          "ratio": 0.75,
+          "nominal": 126,
+          "planned": 128,
+          "balance": 2,
+          "weekendDays": 0,
+          "closings": 2
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 84,
+          "planned": 87,
+          "balance": 3,
+          "weekendDays": 3,
+          "closings": 2
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 84,
+          "planned": 84,
+          "balance": 0,
+          "weekendDays": 1,
+          "closings": 4
+        },
+        {
+          "name": "Maciej Chlabicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 166,
+          "balance": -2,
+          "weekendDays": 7,
+          "closings": 3
+        },
+        {
+          "name": "Weronika Stasiewicz",
+          "role": "SSV IN TRAINING",
+          "ratio": 1,
+          "nominal": 168,
+          "planned": 170,
+          "balance": 2,
+          "weekendDays": 7,
+          "closings": 3
+        }
+      ],
+      "conflictsCount": 0
+    }
+  },
+  {
+    "month": 7,
+    "monthName": "Lipiec",
+    "nominalFullTime": 168,
+    "employeesCount": 8,
+    "historical": {
+      "totalHours": 1221,
+      "openingCount": 30,
+      "closingCount": 31,
+      "midCount": 0,
+      "ncCount": 29,
+      "offCount": 90,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 8,
+      "consecutiveOffBlocks": 25,
+      "isolatedSingleOff": 19,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 0
+        },
+        {
+          "name": "Dawid Apel",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 2
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 2
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 2,
+          "closings": 5
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 7
+        },
+        {
+          "name": "Gabi Znojek",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 13
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 4,
+          "closings": 2
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 1,
+          "closings": 0
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 1244,
+      "openingCount": 31,
+      "closingCount": 29,
+      "midCount": 11,
+      "ncCount": 29,
+      "offCount": 86,
+      "violationsCount": 0,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 70,
+      "fullWeekendsOff": 6,
+      "consecutiveOffBlocks": 23,
+      "isolatedSingleOff": 26,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 184,
+          "planned": 184,
+          "balance": 0,
+          "weekendDays": 1,
+          "closings": 0
+        },
+        {
+          "name": "Dawid Apel",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 184,
+          "planned": 184,
+          "balance": 0,
+          "weekendDays": 2,
+          "closings": 3
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 184,
+          "planned": 184,
+          "balance": 0,
+          "weekendDays": 6,
+          "closings": 4
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 138,
+          "planned": 140,
+          "balance": 2,
+          "weekendDays": 4,
+          "closings": 3
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 92,
+          "planned": 92,
+          "balance": 0,
+          "weekendDays": 4,
+          "closings": 5
+        },
+        {
+          "name": "Gabi Znojek",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 184,
+          "planned": 184,
+          "balance": 0,
+          "weekendDays": 5,
+          "closings": 4
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 184,
+          "planned": 181,
+          "balance": -3,
+          "weekendDays": 5,
+          "closings": 5
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 92,
+          "planned": 95,
+          "balance": 3,
+          "weekendDays": 3,
+          "closings": 5
+        }
+      ],
+      "conflictsCount": 0
+    }
+  },
+  {
+    "month": 8,
+    "monthName": "Sierpień",
+    "nominalFullTime": 168,
+    "employeesCount": 8,
+    "historical": {
+      "totalHours": 1091,
+      "openingCount": 30,
+      "closingCount": 31,
+      "midCount": 2,
+      "ncCount": 25,
+      "offCount": 105,
+      "violations11h": 0,
+      "violations35h": 0,
+      "violationsSunday": 0,
+      "fullWeekendsOff": 8,
+      "consecutiveOffBlocks": 34,
+      "isolatedSingleOff": 13,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 2
+        },
+        {
+          "name": "Dawid Apel",
+          "role": "ASSISTANT STORE MANAGER",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 2,
+          "closings": 0
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 3,
+          "closings": 2
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 5,
+          "closings": 2
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 2,
+          "closings": 4
+        },
+        {
+          "name": "Gabi Znojek",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 7,
+          "closings": 18
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 0,
+          "closings": 0
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": null,
+          "balance": null,
+          "weekendDays": 2,
+          "closings": 3
+        }
+      ]
+    },
+    "ai": {
+      "totalHours": 1083,
+      "openingCount": 31,
+      "closingCount": 31,
+      "midCount": 13,
+      "ncCount": 25,
+      "offCount": 106,
+      "violationsCount": 1,
+      "dispositionMatchRate": 100,
+      "weekendFairnessScore": 70,
+      "fullWeekendsOff": 7,
+      "consecutiveOffBlocks": 30,
+      "isolatedSingleOff": 17,
+      "empStats": [
+        {
+          "name": "Dawid Szeluga",
+          "role": "CUSTOMER AND SALES MANAGER",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 160,
+          "balance": 0,
+          "weekendDays": 1,
+          "closings": 5
+        },
+        {
+          "name": "Dawid Apel",
+          "role": "ASSISTANT STORE MANAGER",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 160,
+          "balance": 0,
+          "weekendDays": 2,
+          "closings": 2
+        },
+        {
+          "name": "Kamil Kamiński",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 160,
+          "balance": 0,
+          "weekendDays": 3,
+          "closings": 4
+        },
+        {
+          "name": "Zuzanna Makowska",
+          "role": "SSV",
+          "ratio": 0.75,
+          "nominal": 120,
+          "planned": 121,
+          "balance": 1,
+          "weekendDays": 7,
+          "closings": 4
+        },
+        {
+          "name": "Weronika Bieńkowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 80,
+          "planned": 81,
+          "balance": 1,
+          "weekendDays": 3,
+          "closings": 3
+        },
+        {
+          "name": "Gabi Znojek",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 162,
+          "balance": 2,
+          "weekendDays": 9,
+          "closings": 3
+        },
+        {
+          "name": "Aleksandra Płużyńska",
+          "role": "SSV",
+          "ratio": 1,
+          "nominal": 160,
+          "planned": 159,
+          "balance": -1,
+          "weekendDays": 4,
+          "closings": 6
+        },
+        {
+          "name": "Hanna Domachowska",
+          "role": "SSV",
+          "ratio": 0.5,
+          "nominal": 80,
+          "planned": 80,
+          "balance": 0,
+          "weekendDays": 5,
+          "closings": 4
+        }
+      ],
+      "conflictsCount": 0
+    }
+  }
+]

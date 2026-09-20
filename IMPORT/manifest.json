@@ -1,0 +1,29 @@
+{
+  "packageName": "Starbucks Operations Suite — Historical Master Package",
+  "version": "2.6.0",
+  "exportDate": "2026-09-20T12:18:57.044Z",
+  "storeCode": "18120",
+  "storeName": "108120 SBX Warszawa Janki",
+  "tablesCount": 17,
+  "recordsSummary": {
+    "stores": 1,
+    "aop_plans": 192,
+    "calendar_weeks": 1152,
+    "labor_actuals_log": 4399,
+    "weekly_actual_trx": 4,
+    "floor_rules": 7,
+    "nc_rules": 5,
+    "manager_employees": 10,
+    "shift_definitions": 27,
+    "manager_schedule_shifts": 2461,
+    "manager_schedule_events": 171,
+    "manager_schedule_versions": 10,
+    "manager_monthly_norms": 252,
+    "manager_monthly_roster": 96,
+    "training_partners": 2,
+    "training_shifts": 10,
+    "training_skill_checks": 2
+  },
+  "masterDatabaseFile": "tplh_forecast_master_backup.db",
+  "description": "Kompletny zestaw danych operacyjnych: Plany AOP 2021-2036, logowania MAPAL Fichajes, 9 miesięcy grafików menedżerskich 2026, miesięczne składy i role, normy KP 2016-2036 oraz moduł szkoleń Starbucks."
+}

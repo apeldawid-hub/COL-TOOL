@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Kacper Wiśniewski",
+    "hire_date": "2026-09-01",
+    "current_program": "first_30",
+    "assigned_trainer_id": null,
+    "assigned_trainer_name": "Weronika Łukasiak",
+    "store_manager_name": "Dawid Apel",
+    "sanepid_valid_until": "2027-08-31",
+    "bhp_completed_date": "2026-09-01",
+    "status": "in_progress",
+    "notes": "Nowy barista na etapie wdrożenia First 30 (AM/PM).",
+    "created_at": "2026-09-14 13:29:39",
+    "updated_at": "2026-09-14 13:29:39"
+  },
+  {
+    "id": 2,
+    "name": "Maja Zielińska",
+    "hire_date": "2026-06-15",
+    "current_program": "barista_90",
+    "assigned_trainer_id": null,
+    "assigned_trainer_name": "Gabriela Szymańska",
+    "store_manager_name": "Dawid Apel",
+    "sanepid_valid_until": "2027-06-10",
+    "bhp_completed_date": "2026-06-15",
+    "status": "in_progress",
+    "notes": "Ukończony First 30 (certyfikowana). Przygotowanie do 90-Dniowego Check-In.",
+    "created_at": "2026-09-14 13:29:39",
+    "updated_at": "2026-09-14 13:29:39"
+  }
+]
