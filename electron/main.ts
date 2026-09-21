@@ -164,6 +164,27 @@ function setupIpcHandlers() {
     };
   });
 
+  // Konfiguracja aplikacji, profil i trwały stan Onboardingu
+  ipcMain.handle('app:get-settings', () => {
+    const settings = dbManager.getAppSettings();
+    const hasData = dbManager.hasExistingData();
+    const hasCompletedOnboarding =
+      settings['sbx_onboarding_completed'] === 'true' ||
+      settings['onboarding_completed'] === 'true' ||
+      hasData;
+
+    return {
+      settings,
+      hasCompletedOnboarding,
+      hasExistingData: hasData,
+    };
+  });
+
+  ipcMain.handle('app:save-settings', (_event, settings: Record<string, string>) => {
+    dbManager.setAppSettings(settings);
+    return true;
+  });
+
   // Pobranie lat z bazy
   ipcMain.handle('db:get-available-years', () => {
     const db = dbManager.getDb();

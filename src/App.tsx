@@ -43,13 +43,67 @@ const DEFAULT_MONTHS = [
 
 export const App: React.FC = () => {
   // Stan pierwszego uruchomienia / Menu Startowego (Onboarding)
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
+  // null = trwa weryfikacja z bazą SQLite / ustawieniami, true = ukończono, false = nowe uruchomienie
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(() => {
     try {
-      return localStorage.getItem('sbx_onboarding_completed') === 'true';
-    } catch {
-      return false;
-    }
+      if (localStorage.getItem('sbx_onboarding_completed') === 'true') {
+        return true;
+      }
+    } catch {}
+    return null;
   });
+
+  // Weryfikacja i synchronizacja konfiguracji początkowej z bazą SQLite
+  useEffect(() => {
+    let isMounted = true;
+    const checkOnboardingState = async () => {
+      try {
+        const apiObj = (window as any).api || (window as any).electronAPI;
+        if (apiObj?.getAppSettings) {
+          const res = await apiObj.getAppSettings();
+          if (res && isMounted) {
+            const { settings, hasCompletedOnboarding: isCompleted, hasExistingData } = res;
+            if (isCompleted || hasExistingData) {
+              setHasCompletedOnboarding(true);
+              try {
+                localStorage.setItem('sbx_onboarding_completed', 'true');
+                if (settings?.store_name) localStorage.setItem('sbx_store_name', settings.store_name);
+                if (settings?.unit_code) localStorage.setItem('sbx_unit_code', settings.unit_code);
+                if (settings?.user_name) localStorage.setItem('sbx_user_name', settings.user_name);
+                if (settings?.user_role) localStorage.setItem('sbx_user_role', settings.user_role);
+                if (settings?.user_email) localStorage.setItem('sbx_user_email', settings.user_email);
+              } catch {}
+
+              if (settings?.user_name && settings?.user_role) {
+                setLoggedInUser(`${settings.user_name} (${settings.user_role.replace(/[^A-Z]/g, '')})`);
+              } else if (settings?.user_role) {
+                setLoggedInUser(settings.user_role);
+              }
+              return;
+            } else {
+              setHasCompletedOnboarding(false);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Błąd weryfikacji app_settings z bazy:', err);
+      }
+
+      if (isMounted) {
+        try {
+          setHasCompletedOnboarding(localStorage.getItem('sbx_onboarding_completed') === 'true');
+        } catch {
+          setHasCompletedOnboarding(false);
+        }
+      }
+    };
+
+    checkOnboardingState();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Stan sesji logowania (aplikacja startuje z ekranem logowania lub kreatorem)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -362,6 +416,22 @@ export const App: React.FC = () => {
     }
   }
 
+  // 0. Ekran Ładowania Startowego (Weryfikacja bazy danych i profilu)
+  if (hasCompletedOnboarding === null) {
+    return (
+      <div className="h-screen w-screen bg-[#1E3932] flex flex-col items-center justify-center select-none text-white">
+        <div className="w-16 h-16 rounded-2xl bg-[#006241] flex items-center justify-center text-3xl shadow-xl animate-pulse mb-4 ring-4 ring-white/10">
+          ☕
+        </div>
+        <h1 className="text-xl font-black tracking-tight text-white">Starbucks Operations Suite</h1>
+        <p className="text-xs text-emerald-200/70 mt-1 font-medium flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          Inicjalizacja pulpitu operacyjnego...
+        </p>
+      </div>
+    );
+  }
+
   // 1. Ekran Powitalny / Menu Startowe (Pierwsze uruchomienie po instalacji)
   if (!hasCompletedOnboarding) {
     return (
@@ -369,10 +439,26 @@ export const App: React.FC = () => {
         onComplete={(config) => {
           try {
             localStorage.setItem('sbx_onboarding_completed', 'true');
+            localStorage.setItem('sbx_store_name', config.storeName);
+            localStorage.setItem('sbx_unit_code', config.unitCode);
             localStorage.setItem('sbx_user_name', config.userName);
             localStorage.setItem('sbx_user_role', config.role);
             localStorage.setItem('sbx_user_email', config.userEmail);
           } catch {}
+
+          const apiObj = (window as any).api || (window as any).electronAPI;
+          if (apiObj?.saveAppSettings) {
+            apiObj.saveAppSettings({
+              sbx_onboarding_completed: 'true',
+              onboarding_completed: 'true',
+              store_name: config.storeName,
+              unit_code: config.unitCode,
+              user_name: config.userName,
+              user_role: config.role,
+              user_email: config.userEmail,
+            }).catch(console.error);
+          }
+
           setLoggedInUser(config.userName ? `${config.userName} (${config.role.replace(/[^A-Z]/g, '')})` : config.role);
           setHasCompletedOnboarding(true);
           setIsLoggedIn(true);

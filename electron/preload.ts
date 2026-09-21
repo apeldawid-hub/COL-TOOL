@@ -32,6 +32,8 @@ export interface IElectronAPI {
   commitScheduleImport: (payload: { scheduleData: any }) => Promise<{ success: boolean; message: string; reportType: string; importedCount: number }>;
   commitMultipleSchedulesImport: (payload: { schedules: any[] }) => Promise<{ success: boolean; message: string; reportType: string; totalMonths: number; totalShifts: number; totalEvents: number }>;
   getSystemTime: () => Promise<{ iso: string; timestamp: string; hours: number; minutes: number; seconds: number; day: number; month: number; year: number }>;
+  getAppSettings: () => Promise<{ settings: Record<string, string>; hasCompletedOnboarding: boolean; hasExistingData: boolean }>;
+  saveAppSettings: (settings: Record<string, string>) => Promise<boolean>;
   onRefreshData: (callback: () => void) => void;
   // Moduł 2: Managers Schedule
   getManagerScheduleData: (year: number, month: number) => Promise<{
@@ -142,6 +144,8 @@ const api: IElectronAPI = {
   commitScheduleImport: (payload) => ipcRenderer.invoke('import:commit-schedule', payload),
   commitMultipleSchedulesImport: (payload) => ipcRenderer.invoke('import:commit-multiple-schedules', payload),
   getSystemTime: () => ipcRenderer.invoke('system:get-time'),
+  getAppSettings: () => ipcRenderer.invoke('app:get-settings'),
+  saveAppSettings: (settings) => ipcRenderer.invoke('app:save-settings', settings),
   onRefreshData: (callback) => {
     ipcRenderer.on('data:refreshed', () => callback());
   },
@@ -205,4 +209,5 @@ const api: IElectronAPI = {
 };
 
 contextBridge.exposeInMainWorld('api', api);
+contextBridge.exposeInMainWorld('electronAPI', api);
 

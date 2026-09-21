@@ -110,6 +110,20 @@ export class DatabaseManager {
       this.db = new this.SQL.Database(fileBuffer);
       console.log('📦 Załadowano istniejącą bazę SQLite z pliku:', this.dbFilePath);
       this.createSchema();
+
+      // Jeśli baza zawiera już dane, upewnij się że flaga onboarding_completed jest zapisana w SQLite
+      if (this.hasExistingData()) {
+        const currentSettings = this.getAppSettings();
+        if (currentSettings['sbx_onboarding_completed'] !== 'true') {
+          this.setAppSettings({
+            sbx_onboarding_completed: 'true',
+            onboarding_completed: 'true',
+            store_name: currentSettings['store_name'] || '108120 SBX Warszawa Janki',
+            unit_code: currentSettings['unit_code'] || '18120',
+          });
+          console.log('✅ Zabezpieczono flagę onboarding_completed w SQLite na bazie istniejących danych.');
+        }
+      }
     } else {
       this.db = new this.SQL.Database();
       console.log('🆕 Utworzono nową bazę SQLite w pamięci.');
@@ -153,6 +167,106 @@ export class DatabaseManager {
     const data = this.db.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(this.dbFilePath, buffer);
+  }
+
+  /**
+   * Pobiera wszystkie klucze i wartości konfiguracji aplikacji z tabeli app_settings
+   */
+  public getAppSettings(): Record<string, string> {
+    if (!this.db) return {};
+    try {
+      const stmt = this.db.prepare('SELECT key, value FROM app_settings');
+      const settings: Record<string, string> = {};
+      while (stmt.step()) {
+        const row = stmt.getAsObject();
+        if (row.key && row.value !== undefined) {
+          settings[String(row.key)] = String(row.value);
+        }
+      }
+      stmt.free();
+      return settings;
+    } catch (err) {
+      console.error('Błąd odczytu app_settings:', err);
+      return {};
+    }
+  }
+
+  /**
+   * Zapisuje pojedynczą wartość w app_settings
+   */
+  public setAppSetting(key: string, value: string): void {
+    if (!this.db) return;
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO app_settings (key, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+      `);
+      stmt.run([key, String(value)]);
+      stmt.free();
+      this.persist();
+    } catch (err) {
+      console.error('Błąd zapisu app_settings (' + key + '):', err);
+    }
+  }
+
+  /**
+   * Zapisuje pakiet ustawień aplikacji w app_settings
+   */
+  public setAppSettings(settings: Record<string, string>): void {
+    if (!this.db || !settings) return;
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO app_settings (key, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+      `);
+      for (const [k, v] of Object.entries(settings)) {
+        if (v !== undefined && v !== null) {
+          stmt.run([k, String(v)]);
+        }
+      }
+      stmt.free();
+      this.persist();
+    } catch (err) {
+      console.error('Błąd zapisu batch app_settings:', err);
+    }
+  }
+
+  /**
+   * Sprawdza, czy w bazie znajdują się już dane operacyjne (plany AOP, grafik, skład menedżerski lub konfiguracja).
+   */
+  public hasExistingData(): boolean {
+    if (!this.db) return false;
+    try {
+      const settings = this.getAppSettings();
+      if (settings['sbx_onboarding_completed'] === 'true' || settings['onboarding_completed'] === 'true') {
+        return true;
+      }
+
+      // Sprawdzenie planów AOP
+      const aopRes = this.db.exec('SELECT COUNT(*) FROM aop_plans');
+      if (aopRes.length > 0 && aopRes[0].values.length > 0) {
+        if (Number(aopRes[0].values[0][0]) > 0) return true;
+      }
+
+      // Sprawdzenie zmian w grafiku
+      const mgrRes = this.db.exec('SELECT COUNT(*) FROM manager_schedule_shifts');
+      if (mgrRes.length > 0 && mgrRes[0].values.length > 0) {
+        if (Number(mgrRes[0].values[0][0]) > 0) return true;
+      }
+
+      // Sprawdzenie składu menedżerskiego
+      const rosterRes = this.db.exec('SELECT COUNT(*) FROM manager_monthly_roster');
+      if (rosterRes.length > 0 && rosterRes[0].values.length > 0) {
+        if (Number(rosterRes[0].values[0][0]) > 0) return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Błąd weryfikacji hasExistingData:', err);
+      return false;
+    }
   }
 
   /**
@@ -360,6 +474,12 @@ export class DatabaseManager {
     if (!this.db) return;
 
     this.db.run(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS stores (
         store_code TEXT PRIMARY KEY,
         store_name TEXT NOT NULL,
