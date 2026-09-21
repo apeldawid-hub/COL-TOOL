@@ -1,7 +1,7 @@
 {
   "name": "starbucks-operations-suite",
   "productName": "Starbucks Operations Suite",
-  "version": "2.8.22",
+  "version": "2.8.23",
   "description": "Starbucks Operations Suite — TPLH Forecast, Managers Schedule, Trainings & COL Suite",
   "main": "dist-electron/main.js",
   "author": "Dawid Apel",
