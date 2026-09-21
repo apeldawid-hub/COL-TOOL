@@ -349,23 +349,23 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
         </div>
 
         {/* TABELA MATRYCY DYSPOZYCJI */}
-        <div className="flex-1 overflow-auto p-4 bg-stone-50">
-          <div className="bg-white rounded-2xl border border-stone-300 shadow-xs overflow-hidden">
-            <table className="w-full border-collapse text-xs">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 bg-stone-50">
+          <div className="bg-white rounded-2xl border border-stone-300 shadow-xs overflow-x-auto">
+            <table className="w-full min-w-max border-collapse text-xs">
               <thead>
                 {/* Wiersz 1: Dni miesiąca */}
                 <tr className="bg-[#EEF3F0] text-stone-700 font-bold border-b border-[#D0DCD6]">
-                  <th className="sticky left-0 z-30 bg-[#EEF3F0] px-3 py-2.5 text-left w-[180px] min-w-[180px] border-r border-[#D0DCD6]">
+                  <th className="sticky left-0 z-30 bg-[#EEF3F0] px-2 py-2 text-left w-[140px] min-w-[140px] max-w-[140px] border-r border-[#D0DCD6]">
                     Menedżer
                   </th>
-                  <th className="sticky left-[180px] z-30 bg-[#EEF3F0] px-2 py-2.5 text-center w-[130px] min-w-[130px] border-r-2 border-stone-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] uppercase tracking-wider text-stone-600">
+                  <th className="sticky left-[140px] z-30 bg-[#EEF3F0] px-1.5 py-2 text-center w-[85px] min-w-[85px] max-w-[85px] border-r-2 border-stone-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[9.5px] uppercase tracking-wider text-stone-600">
                     Preferencje
                   </th>
 
                   {data.daySummaries.map(d => (
                     <th
                       key={`hdr-day-${d.day}`}
-                      className={`px-1 py-1.5 text-center border-r border-[#E2E8E5] min-w-[38px] max-w-[42px] ${
+                      className={`px-0.5 py-1 text-center border-r border-[#E2E8E5] min-w-[28px] max-w-[34px] xl:min-w-[32px] xl:max-w-[36px] ${
                         d.isHoliday
                           ? 'bg-rose-100 text-rose-950 font-black'
                           : d.isTradingSunday
@@ -377,27 +377,27 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
                           : ''
                       }`}
                     >
-                      <div className="text-[11px] font-black">{d.day}</div>
-                      <div className="text-[9px] font-semibold text-stone-500">{d.dayName}</div>
+                      <div className="text-[10.5px] font-black">{d.day}</div>
+                      <div className="text-[8.5px] font-semibold text-stone-500">{d.dayName}</div>
                     </th>
                   ))}
 
-                  <th className="px-3 py-2 text-center bg-[#EEF3F0] text-stone-600 text-[10px] uppercase min-w-[100px]">
+                  <th className="px-2 py-1.5 text-center bg-[#EEF3F0] text-stone-600 text-[9.5px] uppercase w-[75px] min-w-[75px]">
                     Narzędzia
                   </th>
                 </tr>
 
                 {/* Wiersz 2: Status dni kalendarza */}
                 <tr className="bg-[#F7F9F8] text-[8px] font-bold text-stone-500 border-b-2 border-stone-300 select-none">
-                  <th className="sticky left-0 z-30 bg-[#F7F9F8] px-3 py-1 text-left border-r border-[#D0DCD6] uppercase text-stone-400">
+                  <th className="sticky left-0 z-30 bg-[#F7F9F8] px-2 py-1 text-left border-r border-[#D0DCD6] uppercase text-stone-400 text-[8px]">
                     Kalendarz
                   </th>
-                  <th className="sticky left-[180px] z-30 bg-[#F7F9F8] border-r-2 border-stone-300" />
+                  <th className="sticky left-[140px] z-30 bg-[#F7F9F8] border-r-2 border-stone-300" />
 
                   {data.daySummaries.map(d => (
                     <th
                       key={`sub-hdr-${d.day}`}
-                      className="px-0.5 py-1 text-center border-r border-[#E2E8E5]"
+                      className="px-0.5 py-0.5 text-center border-r border-[#E2E8E5]"
                     >
                       {d.isHoliday ? (
                         <span className="text-rose-700 font-black" title={d.holidayName}>🇵🇱</span>
@@ -427,11 +427,11 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
                   return (
                     <tr key={emp.id} className={`${rowBg} hover:bg-emerald-50/30 transition-colors`}>
                       {/* Kolumna 1: Menedżer */}
-                      <td className={`sticky left-0 z-20 px-3 py-2 border-r border-[#E2E8E5] ${rowBg}`}>
-                        <div className="font-bold text-stone-900 truncate" title={emp.name}>
+                      <td className={`sticky left-0 z-20 px-2 py-1.5 border-r border-[#E2E8E5] w-[140px] min-w-[140px] max-w-[140px] ${rowBg}`}>
+                        <div className="font-bold text-stone-900 truncate text-[11px]" title={emp.name}>
                           {emp.name}
                         </div>
-                        <div className="flex items-center gap-1 text-[10px] text-stone-500">
+                        <div className="flex items-center gap-1 text-[9.5px] text-stone-500">
                           <span className="font-bold text-[#006241]">{formatManagerRole(emp.role)}</span>
                           <span>•</span>
                           <span className="font-semibold text-emerald-800">{emp.contract_type}</span>
@@ -439,25 +439,25 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
                       </td>
 
                       {/* Kolumna 2: Mini-podsumowanie dyspozycji pracownika */}
-                      <td className={`sticky left-[180px] z-20 px-2 py-1.5 border-r-2 border-stone-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-center ${rowBg}`}>
-                        <div className="flex items-center justify-center gap-1 text-[10px]">
+                      <td className={`sticky left-[140px] z-20 px-1.5 py-1 border-r-2 border-stone-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-center w-[85px] min-w-[85px] max-w-[85px] ${rowBg}`}>
+                        <div className="flex items-center justify-center gap-0.5 text-[9px] flex-wrap">
                           {stats.countAM > 0 && (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-950 font-black border border-amber-300" title="Zgłoszone poranki (AM)">
+                            <span className="px-1 py-0.2 rounded bg-amber-100 text-amber-950 font-black border border-amber-300" title="Zgłoszone poranki (AM)">
                               {stats.countAM}AM
                             </span>
                           )}
                           {stats.countPM > 0 && (
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-950 font-black border border-indigo-300" title="Zgłoszone wieczory (PM)">
+                            <span className="px-1 py-0.2 rounded bg-indigo-100 text-indigo-950 font-black border border-indigo-300" title="Zgłoszone wieczory (PM)">
                               {stats.countPM}PM
                             </span>
                           )}
                           {stats.countOff > 0 && (
-                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-950 font-black border border-rose-300" title="Prośba o wolne (OFF)">
+                            <span className="px-1 py-0.2 rounded bg-rose-100 text-rose-950 font-black border border-rose-300" title="Prośba o wolne (OFF)">
                               {stats.countOff}OFF
                             </span>
                           )}
                           {stats.countAM === 0 && stats.countPM === 0 && stats.countOff === 0 && (
-                            <span className="text-[10px] text-stone-400 italic">Pełna (FULL)</span>
+                            <span className="text-[9px] text-stone-400 italic">Pełna</span>
                           )}
                         </div>
                       </td>
@@ -491,7 +491,7 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
                             }}
                             onFocus={isReadOnly ? undefined : () => setActiveCell({ empId: emp.id, day: d.day })}
                             onKeyDown={isReadOnly ? undefined : (e) => handleKeyDown(e, emp.id, d.day)}
-                            className={`p-1 text-center border-r border-[#E2E8E5] transition-all min-w-[38px] max-w-[42px] focus:outline-hidden ${
+                            className={`p-0.5 text-center border-r border-[#E2E8E5] transition-all min-w-[28px] max-w-[34px] xl:min-w-[32px] xl:max-w-[36px] focus:outline-hidden ${
                               isReadOnly ? 'cursor-default select-none' : 'cursor-pointer'
                             } ${
                               isSelected && !isReadOnly ? 'ring-2 ring-emerald-600 ring-inset bg-emerald-50' : ''
@@ -500,7 +500,7 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
                             }`}
                             title={isReadOnly ? `${emp.name} • Dzień ${d.day}: ${val === 'OFF' ? 'Prośba o wolne (OFF)' : val || 'Pełna (FULL)'} (Tylko odczyt)` : `${emp.name} • Dzień ${d.day}: ${val === 'OFF' ? 'Prośba o wolne (OFF)' : val || 'Pełna (FULL)'} (Kliknij, aby zmienić)`}
                           >
-                            <span className={`inline-flex items-center justify-center min-w-[28px] px-1 h-6 rounded-md border text-[11px] ${isReadOnly ? '' : 'transition-transform hover:scale-110 active:scale-95'} ${badgeStyle}`}>
+                            <span className={`inline-flex items-center justify-center w-full min-w-[22px] px-0.5 h-5 rounded border text-[9.5px] font-black ${isReadOnly ? '' : 'transition-transform hover:scale-110 active:scale-95'} ${badgeStyle}`}>
                               {displayText}
                             </span>
                           </td>
@@ -508,15 +508,15 @@ export const ManagerDispositionsModal: React.FC<ManagerDispositionsModalProps> =
                       })}
 
                       {/* Szybkie narzędzia per wiersz */}
-                      <td className="px-2 py-1 text-center bg-stone-50">
+                      <td className="px-1.5 py-1 text-center bg-stone-50 w-[75px] min-w-[75px]">
                         {isReadOnly ? (
-                          <span className="text-[10px] text-stone-400 italic">Zablokowane</span>
+                          <span className="text-[9px] text-stone-400 italic">Zablokowane</span>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
                               onClick={() => fillEmployeeRow(emp.id, '')}
-                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 hover:bg-stone-300 text-stone-700 shadow-2xs transition-all cursor-pointer hover:scale-105 active:scale-95"
+                              className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-200 hover:bg-stone-300 text-stone-700 shadow-2xs transition-all cursor-pointer hover:scale-105 active:scale-95"
                               title="Wyczyść wszystkie preferencje (Domyślna pełna dostępność FULL) dla tego menedżera"
                             >
                               Wyczyść

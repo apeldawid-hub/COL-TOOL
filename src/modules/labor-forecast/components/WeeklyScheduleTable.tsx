@@ -930,22 +930,26 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                             </div>
                           </div>
 
-                          {/* Tabela dobowego rozkładu H +/- */}
+                          {/* Tabela dobowego rozkładu TRX, RCP, Grafiku & Sugestii AI */}
                           <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs border-collapse">
                               <thead>
                                 <tr className="bg-[#F7F9F8] text-stone-600 font-bold border-b border-stone-200 text-[11px] select-none">
                                   <th className="py-2.5 px-3">Dzień & Data</th>
-                                  <th className="py-2.5 px-3 text-center font-bold text-stone-600">MGR z Grafiku</th>
-                                  <th className="py-2.5 px-3 text-right font-black text-[#006241]">DLA BARISTÓW (Wpisz h)</th>
-                                  <th className="py-2.5 px-3 text-right font-black text-stone-900">ŁĄCZNIE DZIEŃ</th>
-                                  <th className="py-2.5 px-3 text-center font-bold text-stone-700">Trend AI / Sugestia</th>
+                                  <th className="py-2.5 px-3 text-center font-bold text-stone-700" title="Transakcje dnia (Plan AOP / Act lub Estymacja)">TRX (Plan / Act)</th>
+                                  <th className="py-2.5 px-3 text-center font-bold text-[#0284C7]" title="Rzeczywiste godziny wypracowane w ten dzień">RCP (Act h)</th>
+                                  <th className="py-2.5 px-3 text-center font-bold text-stone-700" title="Kierownicy zaplanowani w grafiku na ten dzień">MGR</th>
+                                  <th className="py-2.5 px-3 text-right font-black text-[#006241]" title="Godziny rozpisane dla baristów na ten dzień">DLA BARISTÓW (Wpisz h)</th>
+                                  <th className="py-2.5 px-3 text-right font-black text-stone-900" title="Łączny czas pracy zaplanowany na dany dzień (MGR + Barisci)">Grafik Dzień (Łącznie)</th>
+                                  <th className="py-2.5 px-3 text-center font-black text-[#1E3932]" title="Stały rekomendowany cel dnia wyliczony przez AI">Rekomendowany Cel</th>
+                                  <th className="py-2.5 px-3 text-center font-black text-[#006241]" title="Stała sugestia godzin dla baristów z bezpiecznym limitem maksymalnym">DLA BARISTÓW ROZPISZ</th>
+                                  <th className="py-2.5 px-3 text-center font-bold text-amber-800" title="Sugerowane zmiany flex i manipulacja obsadą">Sugerowane Zmiany (H +/-)</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-stone-100">
                                 {displayDays.length === 0 ? (
                                   <tr>
-                                    <td colSpan={5} className="py-6 text-center text-stone-400">
+                                    <td colSpan={9} className="py-6 text-center text-stone-400">
                                       Brak zarejestrowanych zmian w grafiku dla wybranego tygodnia.
                                     </td>
                                   </tr>
@@ -957,6 +961,11 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                       : (d.suggestedBaristaHours || 0);
                                     const dayTotalHours = Number(((d.coverageHours || 0) + customBarista).toFixed(1));
                                     const isBelowFloor = dayTotalHours < 32.0;
+
+                                    const dayWeight = d.dayWeightPercent ? d.dayWeightPercent / 100 : (1 / (displayDays.length || 7));
+                                    const dayPlanTrx = Math.round(r.planTrx * dayWeight);
+                                    const dayActTrx = r.actualTrx ? Math.round(r.actualTrx * dayWeight) : null;
+                                    const dayActHours = r.actualHours ? Number((r.actualHours * dayWeight).toFixed(1)) : null;
 
                                     return (
                                       <tr key={`day-flex-${d.date || d.day}`} className="hover:bg-emerald-50/30 transition-colors">
@@ -977,16 +986,47 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                           </div>
                                         </td>
 
+                                        {/* TRX (Plan / Act) */}
+                                        <td className="py-2.5 px-3 text-center">
+                                          <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-stone-700 font-bold">{dayPlanTrx}</span>
+                                              {dayActTrx !== null && (
+                                                <>
+                                                  <span className="text-stone-400">/</span>
+                                                  <span className="text-[#006241] font-black">{dayActTrx}</span>
+                                                </>
+                                              )}
+                                            </div>
+                                            {dayActTrx !== null && (
+                                              <span className={`text-[9px] font-bold ${dayActTrx >= dayPlanTrx ? 'text-[#006241]' : 'text-rose-700'}`}>
+                                                {dayActTrx >= dayPlanTrx ? `+${dayActTrx - dayPlanTrx}` : `${dayActTrx - dayPlanTrx}`} vs plan
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        {/* RCP (Act h) */}
+                                        <td className="py-2.5 px-3 text-center font-black">
+                                          {dayActHours !== null ? (
+                                            <span className="text-[#0284C7] px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200">
+                                              {dayActHours.toFixed(1)} h
+                                            </span>
+                                          ) : (
+                                            <span className="text-stone-300 font-normal">—</span>
+                                          )}
+                                        </td>
+
                                         {/* MGR z Grafiku */}
                                         <td className="py-2.5 px-3 text-center font-bold text-stone-700">
-                                          <span className="px-2 py-0.5 bg-stone-100 rounded-md border border-stone-200 text-[11px]">
+                                          <span className="px-1.5 py-0.5 bg-stone-100 rounded border border-stone-200 text-[11px]">
                                             +{d.coverageHours?.toFixed(1) || 0} h
                                           </span>
                                         </td>
 
                                         {/* DLA BARISTÓW (Wpisz h) */}
                                         <td className="py-2 px-3 text-right">
-                                          <div className="flex items-center justify-end gap-1.5">
+                                          <div className="flex items-center justify-end gap-1">
                                             <input
                                               type="number"
                                               step="0.5"
@@ -997,13 +1037,13 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                                 handleDayBaristaChange(r.week.week_key, d.day, val, displayDays);
                                               }}
                                               placeholder="0"
-                                              className="w-20 px-2 py-1 bg-white border border-[#006241]/40 focus:border-[#006241] focus:ring-1 focus:ring-[#006241] rounded-lg text-xs font-black text-[#006241] text-right outline-none shadow-2xs"
+                                              className="w-16 px-1.5 py-1 bg-white border border-[#006241]/40 focus:border-[#006241] focus:ring-1 focus:ring-[#006241] rounded-lg text-xs font-black text-[#006241] text-right outline-none shadow-2xs"
                                             />
                                             <span className="text-[11px] font-bold text-stone-500">h</span>
                                           </div>
                                         </td>
 
-                                        {/* ŁĄCZNIE DZIEŃ */}
+                                        {/* Grafik Dzień (Łącznie) */}
                                         <td className="py-2.5 px-3 text-right">
                                           <div className="flex flex-col items-end">
                                             <span className={`font-black text-sm ${isBelowFloor ? 'text-rose-700' : 'text-stone-900'}`}>
@@ -1017,11 +1057,28 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                           </div>
                                         </td>
 
-                                        {/* Sugerowane Zmiany / Trend AI */}
+                                        {/* Rekomendowany Cel (Stały benchmark AI) */}
+                                        <td className="py-2.5 px-3 text-center font-black text-sm text-[#1E3932]">
+                                          <span>{(d.suggestedTotalDayHours || 32.0).toFixed(1)} h</span>
+                                        </td>
+
+                                        {/* DLA BARISTÓW ROZPISZ (Stała sugestia + max) */}
+                                        <td className="py-2.5 px-3 text-center">
+                                          <div className="flex flex-col items-center">
+                                            <span className="font-black text-sm text-[#006241]">
+                                              {(d.suggestedBaristaHours || 0).toFixed(1)} h
+                                            </span>
+                                            <span className="text-[9.5px] font-semibold text-stone-500">
+                                              max: {(d.maxBaristaHours || d.suggestedBaristaHours || 0).toFixed(1)} h
+                                            </span>
+                                          </div>
+                                        </td>
+
+                                        {/* Sugerowane Zmiany (H +/-) */}
                                         <td className="py-2.5 px-3 text-center">
                                           <div className="flex items-center justify-center gap-1.5" title={d.manipulationTip || undefined}>
                                             <span className="font-bold text-amber-800 text-[11px]">
-                                              +{(d.suggestedFlexHours || 0).toFixed(1)}h flex
+                                              +{(d.suggestedFlexHours || 0).toFixed(1)} h
                                             </span>
                                             <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
                                               (d.suggestedFlexHours || 0) >= 20
