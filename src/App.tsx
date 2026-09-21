@@ -19,6 +19,7 @@ import { TrainingsView } from './modules/trainings';
 import { ColCalculatorView } from './modules/col-calculator';
 import { ModuleDateBar } from './components/ModuleDateBar';
 import { UnifiedSettingsModal } from './components/UnifiedSettingsModal';
+import { ComingSoonOverlayWrapper } from './components/ComingSoonOverlayWrapper';
 import {
   AppModule,
   AopPlanRecord,
@@ -479,30 +480,79 @@ export const App: React.FC = () => {
           {/* MODUŁ 3: SZKOLENIA (STARBUCKS TRAINING SUITE) */}
           {activeModule === 'trainings' && (
             <ErrorBoundary moduleName="Trainings Suite" fallbackTitle="Błąd w module Szkoleń">
-              <TrainingsView
-                selectedYear={selectedYear}
-                selectedMonth={DEFAULT_MONTHS.indexOf(selectedMonth) + 1}
-              />
+              <ComingSoonOverlayWrapper
+                module="trainings"
+                title="Szkolenia & Barista Certifications"
+                subtitle="Moduł 3: Starbucks Training Suite"
+                description="Zarządzanie ścieżką wdrożeniową First 30 (Zmiany T1–T10), The Barista Journey, cyfrowe arkusze egzaminacyjne Skill Check oraz monitoring godzin szkoleniowych z budżetu Non-Coverage."
+                features={[
+                  'Matryca kompetencji i certyfikacji partnerów',
+                  'Harmonogram zmian First 30 (T1–T10) i B90/B180',
+                  'Cyfrowe arkusze Skill Check z weryfikacją standardów',
+                  'Ewidencja godzin z budżetu Non-Coverage (NC)'
+                ]}
+                onNavigate={setActiveModule}
+              >
+                <TrainingsView
+                  selectedYear={selectedYear}
+                  selectedMonth={DEFAULT_MONTHS.indexOf(selectedMonth) + 1}
+                />
+              </ComingSoonOverlayWrapper>
             </ErrorBoundary>
           )}
 
           {/* MODUŁ 4: COL CALCULATOR (REPLIKA 1:1 EXCEL) */}
           {activeModule === 'col_calculator' && (
             <ErrorBoundary moduleName="COL Calculator" fallbackTitle="Błąd w kalkulatorze COL">
-              <ColCalculatorView
-                selectedYear={selectedYear}
-                selectedMonth={selectedMonth}
-              />
+              <ComingSoonOverlayWrapper
+                module="col_calculator"
+                title="COL Calculator (Cost of Labor)"
+                subtitle="Moduł 4: Kalkulator Kosztu Robocizny i Rentowności P&L"
+                description="Kalkulator kosztów pracy integrujący stawki godzinowe menedżerów i baristów, narzuty pracodawcy ZUS 19.48%, linie Equity P&L, premie oraz symulacje rentowności grafiku w czasie rzeczywistym."
+                features={[
+                  'Kalkulacja procentowego kosztu robocizny (COL % vs Sales)',
+                  'Wycena ułożonego grafiku menedżerów i baristów',
+                  'Automatyczne narzuty ZUS 19.48%, PPK i rezerwa urlopowa',
+                  'Symulator What-If i wskaźnik SPLH (Sales Per Labor Hour)'
+                ]}
+                onNavigate={setActiveModule}
+              >
+                <ColCalculatorView
+                  selectedYear={selectedYear}
+                  selectedMonth={selectedMonth}
+                />
+              </ComingSoonOverlayWrapper>
             </ErrorBoundary>
           )}
 
           {/* SCRATCH MODUŁY W PRZYGOTOWANIU: ANALIZA, IBS & IMS */}
           {(activeModule === 'analytics' || activeModule === 'ibs_ims') && (
             <ErrorBoundary moduleName="Analytics / Scratch" fallbackTitle="Błąd w module pomocniczym">
-              <ModulePlaceholderView
+              <ComingSoonOverlayWrapper
                 module={activeModule}
+                title={activeModule === 'analytics' ? 'Analiza Biznesowa & Efektywność (BI)' : 'IBS & IMS (Inventory & Supply Chain)'}
+                subtitle={activeModule === 'analytics' ? 'Moduł 5: Zaawansowane Raportowanie' : 'Moduł 6: Gospodarka Magazynowa i Zamówienia'}
+                description={activeModule === 'analytics'
+                  ? 'Kompleksowy moduł analityczny łączący transakcje, wielkości koszyka, mix produktowy oraz koszty robocizny w dynamicznych wizualizacjach wielomiesięcznych.'
+                  : 'Integracja z systemem zamówień Starbucks (IBS/IMS), prognozowanie zużycia surowców i opakowań w powiązaniu z ruchem transakcyjnym.'}
+                features={activeModule === 'analytics' ? [
+                  'Analiza TPLH w ujęciu dobowym i szczytów Peak Hours',
+                  'Porównania realizacji budżetów AOP rok do roku (YoY)',
+                  'Korelacja obsady grafiku z Customer Connection Score',
+                  'Wielowymiarowy eksport raportów do arkuszy Excel (.xlsx)'
+                ] : [
+                  'Kalkulator zamówień cyklicznych dostaw i surowców',
+                  'Kontrola stanów magazynowych i inwentaryzacji (Inv)',
+                  'Predykcja zużycia surowców wg prognoz AOP',
+                  'Rejestr strat (Waste) i powiadomienia o przydatności'
+                ]}
                 onNavigate={setActiveModule}
-              />
+              >
+                <ModulePlaceholderView
+                  module={activeModule}
+                  onNavigate={setActiveModule}
+                />
+              </ComingSoonOverlayWrapper>
             </ErrorBoundary>
           )}
         </main>

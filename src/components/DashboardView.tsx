@@ -80,7 +80,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Layers className="w-4 h-4 text-[#006241]" />
             Moduły Platformy Operacyjnej
           </h2>
-          <span className="text-xs text-stone-400 font-medium">6 Modułów (3 aktywne, 3 w budowie)</span>
+          <span className="text-xs text-stone-400 font-medium">6 Modułów (2 aktywne, 4 wkrótce)</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -144,23 +144,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* KAFELEK 3: Szkolenia (Aktywny v1.0) */}
+          {/* KAFELEK 3: Szkolenia (Wkrótce) */}
           <div
             onClick={() => onNavigate('trainings')}
-            className="bg-white rounded-3xl border border-[#E2E8E5] hover:border-[#006241] p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white/90 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-amber-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#006241]/10 text-[#006241] flex items-center justify-center font-bold shadow-2xs group-hover:bg-[#006241] group-hover:text-white transition-colors">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-amber-600 group-hover:text-white transition-colors">
                   <GraduationCap className="w-6 h-6" />
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Aktywny v1.0
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-600" />
+                  Wkrótce
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-[#006241] transition-colors">
+              <h3 className="text-base font-black text-[#1E3932] group-hover:text-amber-800 transition-colors">
                 Szkolenia & Certyfikacje
               </h3>
               <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
@@ -168,29 +168,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-[#006241]">
-              <span>Otwórz szkolenia</span>
+            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-amber-700">
+              <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
           </div>
 
-          {/* KAFELEK 4: COL Calculator (Aktywny) */}
+          {/* KAFELEK 4: COL Calculator (Wkrótce) */}
           <div
             onClick={() => onNavigate('col_calculator')}
-            className="bg-white rounded-3xl border border-[#E2E8E5] hover:border-[#006241] p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white/90 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-amber-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#006241]/10 text-[#006241] flex items-center justify-center font-bold shadow-2xs group-hover:bg-[#006241] group-hover:text-white transition-colors">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-amber-600 group-hover:text-white transition-colors">
                   <Calculator className="w-6 h-6" />
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Aktywny v1.0 (Excel 1:1)
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-600" />
+                  Wkrótce
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-[#006241] transition-colors">
+              <h3 className="text-base font-black text-[#1E3932] group-hover:text-amber-800 transition-colors">
                 COL Calculator (Cost of Labor)
               </h3>
               <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
@@ -198,13 +198,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-[#006241]">
-              <span>Otwórz kalkulator COL</span>
+            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-amber-700">
+              <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
           </div>
 
-          {/* KAFELEK 5: Analiza (Scratch) */}
+          {/* KAFELEK 5: Analiza (Wkrótce) */}
           <div
             onClick={() => onNavigate('analytics')}
             className="bg-white/80 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-blue-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
@@ -215,7 +215,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <LineChart className="w-6 h-6" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                  W budowie
+                  Wkrótce
                 </span>
               </div>
 
@@ -228,12 +228,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-blue-700">
-              <span>Zobacz zarys modułu</span>
+              <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
           </div>
 
-          {/* KAFELEK 5: IBS & IMS (Scratch) */}
+          {/* KAFELEK 6: IBS & IMS (Wkrótce) */}
           <div
             onClick={() => onNavigate('ibs_ims')}
             className="bg-white/80 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-purple-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
@@ -244,7 +244,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <Boxes className="w-6 h-6" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                  W budowie
+                  Wkrótce
                 </span>
               </div>
 
@@ -257,7 +257,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-purple-700">
-              <span>Zobacz zarys modułu</span>
+              <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
           </div>
