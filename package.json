@@ -1,7 +1,7 @@
 {
   "name": "starbucks-operations-suite",
   "productName": "Starbucks Operations Suite",
-  "version": "2.8.2",
+  "version": "2.8.3",
   "description": "Starbucks Operations Suite — TPLH Forecast, Managers Schedule, Trainings & COL Suite",
   "main": "dist-electron/main.js",
   "author": "Dawid Apel",
@@ -17,7 +17,9 @@
     "dist:mac:universal": "npm run build && electron-builder --mac --universal",
     "dist:dmg": "npm run build && electron-builder --mac dmg",
     "publish:mac": "set -a; [ -f .env ] && . ./.env; set +a; npm run build && electron-builder --mac --arm64 --publish always",
-    "publish:mac:all": "set -a; [ -f .env ] && . ./.env; set +a; npm run build && electron-builder --mac --publish always"
+    "publish:mac:all": "set -a; [ -f .env ] && . ./.env; set +a; npm run build && electron-builder --mac --publish always",
+    "patch": "node scripts/publish-patch.js",
+    "publish:patch": "node scripts/publish-patch.js"
   },
   "keywords": [
     "starbucks",
