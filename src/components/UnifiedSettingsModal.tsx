@@ -43,6 +43,7 @@ import {
 import { POLISH_MONTHS, AVAILABLE_YEARS } from './ModuleDateBar';
 import { SystemClock } from '../services/systemClock';
 import { ManagerScheduleEngine } from '../modules/managers-schedule/services/managerScheduleEngine';
+import { DEFAULT_SHIFT_DEFINITIONS } from '../modules/managers-schedule/constants/defaultShifts';
 import { APP_VERSION, APP_SHORT_NAME } from '../version';
 
 export type SettingsTabId = 'labor_forecast' | 'managers_schedule' | 'trainings' | 'col_calculator' | 'system';
@@ -122,7 +123,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
   const [ncRules, setNcRules] = useState<NcRuleRecord[]>(DEFAULT_NC_RULES);
 
   // Stan: Moduł 2 (Katalog Zmian, Zespół, Normy)
-  const [shiftDefs, setShiftDefs] = useState<ShiftDefinition[]>([]);
+  const [shiftDefs, setShiftDefs] = useState<ShiftDefinition[]>(DEFAULT_SHIFT_DEFINITIONS);
   const [shiftsCategoryFilter, setShiftsCategoryFilter] = useState<string>('ALL');
 
   const [mgrYear, setMgrYear] = useState<number>(selectedYear);
@@ -207,14 +208,18 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
 
   const loadShifts = async () => {
     try {
-      if ((window as any).api?.getShiftDefinitions) {
-        const defs = await (window as any).api.getShiftDefinitions();
+      const apiObj = (window as any).api || (window as any).electronAPI;
+      if (apiObj?.getShiftDefinitions) {
+        const defs = await apiObj.getShiftDefinitions();
         if (defs && defs.length > 0) {
           setShiftDefs(defs);
+          return;
         }
       }
+      setShiftDefs(DEFAULT_SHIFT_DEFINITIONS);
     } catch (err) {
       console.error('Błąd ładowania katalogu zmian:', err);
+      setShiftDefs(DEFAULT_SHIFT_DEFINITIONS);
     }
   };
 

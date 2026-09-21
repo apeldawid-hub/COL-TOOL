@@ -783,57 +783,65 @@ export class DatabaseManager {
     this.seedManagerModuleData();
   }
 
-  private seedManagerModuleData(): void {
+  public ensureShiftDefinitions(): void {
     if (!this.db) return;
 
-    // 1. Domyślny katalog zmian Starbucks
-    const shiftsCountRes = this.db.exec('SELECT COUNT(*) as count FROM shift_definitions');
-    const shiftsCount = shiftsCountRes[0]?.values[0]?.[0] as number || 0;
-    if (shiftsCount === 0) {
-      const defaultShifts = [
-        ['AM', 'Opening', '07:00', '15:00', 8.0, 0, 0, 'bg-emerald-100 text-emerald-800 border-emerald-300', 'coverage'],
-        ['PM', 'Closing', '14:30', '22:30', 8.0, 0, 0, 'bg-amber-100 text-amber-900 border-amber-300', 'coverage'],
-        ['AMN', 'AM Niedziela', '08:00', '14:00', 6.0, 0, 0, 'bg-teal-100 text-teal-800 border-teal-300', 'coverage'],
-        ['PMN', 'PM Niedziela', '14:00', '21:00', 7.0, 0, 0, 'bg-orange-100 text-orange-900 border-orange-300', 'coverage'],
-        ['SAM', 'Support AM', '07:00', '15:00', 8.0, 0, 0, 'bg-green-100 text-green-800 border-green-300', 'coverage'],
-        ['SPM', 'Support PM', '14:30', '22:30', 8.0, 0, 0, 'bg-yellow-100 text-yellow-800 border-yellow-300', 'coverage'],
-        ['SUP', 'Support do oddania', '10:00', '18:00', 8.0, 0, 0, 'bg-lime-100 text-lime-800 border-lime-300', 'coverage'],
-        ['MIB', 'MID Bar', '12:00', '20:00', 8.0, 0, 0, 'bg-cyan-100 text-cyan-800 border-cyan-300', 'coverage'],
-        ['AMB', 'AM Bar', '07:00', '15:00', 8.0, 0, 0, 'bg-emerald-50 text-emerald-700 border-emerald-200', 'coverage'],
-        ['PMB', 'PM Bar', '14:30', '22:30', 8.0, 0, 0, 'bg-amber-50 text-amber-800 border-amber-200', 'coverage'],
-        ['MI4', 'MiD 4h', '10:00', '14:00', 4.0, 0, 0, 'bg-teal-50 text-teal-700 border-teal-200', 'coverage'],
-        ['BT', 'Business Trip', '10:00', '18:00', 8.0, 1, 0, 'bg-indigo-100 text-indigo-800 border-indigo-300', 'nc'],
-        ['NC', 'NC (Administracja)', '07:00', '15:00', 8.0, 1, 0, 'bg-purple-100 text-purple-800 border-purple-300', 'nc'],
-        ['TAM', 'Szkolenie AM', '07:00', '15:00', 8.0, 1, 0, 'bg-violet-100 text-violet-800 border-violet-300', 'nc'],
-        ['TPM', 'Szkolenie PM', '14:30', '22:30', 8.0, 1, 0, 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300', 'nc'],
-        ['RET', 'Odbiór nadgodziny', '08:00', '16:00', 8.0, 1, 0, 'bg-blue-100 text-blue-800 border-blue-300', 'nc'],
-        ['T', 'Training', '08:00', '16:00', 8.0, 1, 0, 'bg-sky-100 text-sky-800 border-sky-300', 'nc'],
-        ['PRE', 'Preventive', '10:00', '18:00', 8.0, 1, 0, 'bg-rose-100 text-rose-800 border-rose-300', 'nc'],
-        ['MEE', 'Partners Meeting', '19:00', '22:00', 3.0, 1, 0, 'bg-pink-100 text-pink-800 border-pink-300', 'nc'],
-        ['OFF', 'Dzień Wolny (Off)', '00:00', '00:00', 0.0, 0, 1, 'bg-stone-100 text-stone-600 border-stone-300', 'absence'],
-        ['H', 'Urlop (Holiday)', '08:00', '16:00', 8.0, 0, 1, 'bg-sky-200 text-sky-900 border-sky-400 font-semibold', 'absence'],
-        ['L4', 'Chorobowe (L4)', '00:00', '00:00', 8.0, 0, 1, 'bg-red-100 text-red-800 border-red-300 font-semibold', 'absence'],
-        ['M', 'Dyspo Rano', '07:00', '15:00', 0.0, 0, 0, 'bg-slate-100 text-slate-700 border-slate-300', 'dispo'],
-        ['Z', 'Dyspo Wieczór', '14:30', '22:30', 0.0, 0, 0, 'bg-slate-100 text-slate-700 border-slate-300', 'dispo'],
-        ['FULL', 'Dyspo Pełne', '07:00', '22:30', 0.0, 0, 0, 'bg-slate-100 text-slate-700 border-slate-300', 'dispo']
-      ];
+    const defaultShifts = [
+      ['AM', 'Opening (Otwarcie Pn–So)', '07:00', '15:00', 8.0, 0, 0, 'bg-emerald-100 text-emerald-800 border-emerald-300', 'coverage', 0],
+      ['PM', 'Closing (Zamknięcie Pn–So)', '14:30', '22:30', 8.0, 0, 0, 'bg-amber-100 text-amber-900 border-amber-300', 'coverage', 0],
+      ['AMN', 'AM Niedziela (Otwarcie)', '08:00', '16:00', 8.0, 0, 0, 'bg-teal-100 text-teal-800 border-teal-300', 'coverage', 1],
+      ['PMN', 'PM Niedziela (Zamknięcie)', '13:00', '21:00', 8.0, 0, 0, 'bg-orange-100 text-orange-900 border-orange-300', 'coverage', 1],
+      ['T', 'Training (Szkolenie)', '08:00', '16:00', 8.0, 1, 0, 'bg-sky-100 text-sky-800 border-sky-300', 'nc', 0],
+      ['NC', 'NC (Administracja)', '08:00', '16:00', 8.0, 1, 0, 'bg-purple-100 text-purple-800 border-purple-300', 'nc', 0],
+      ['H', 'Urlop (Holiday)', '08:00', '16:00', 8.0, 0, 1, 'bg-sky-200 text-sky-900 border-sky-400 font-semibold', 'absence', 0],
+      ['BT', 'Business Trip', '08:00', '16:00', 8.0, 1, 0, 'bg-indigo-100 text-indigo-800 border-indigo-300', 'nc', 0],
+      ['SUP', 'Support do oddania (inna kawiarnia)', '08:00', '16:00', 8.0, 0, 0, 'bg-lime-100 text-lime-800 border-lime-300', 'coverage', 0],
+      ['SAM', 'Support AM (inna kawiarnia)', '07:00', '15:00', 8.0, 0, 0, 'bg-green-100 text-green-800 border-green-300', 'coverage', 0],
+      ['SPM', 'Support PM (inna kawiarnia)', '14:30', '22:30', 8.0, 0, 0, 'bg-yellow-100 text-yellow-800 border-yellow-300', 'coverage', 0],
+      ['MIB', 'MID Bar (Wsparcie baru)', '12:00', '20:00', 8.0, 0, 0, 'bg-cyan-100 text-cyan-800 border-cyan-300', 'coverage', 0],
+      ['AMB', 'AM Bar', '07:00', '15:00', 8.0, 0, 0, 'bg-emerald-50 text-emerald-700 border-emerald-200', 'coverage', 0],
+      ['PMB', 'PM Bar', '14:30', '22:30', 8.0, 0, 0, 'bg-amber-50 text-amber-800 border-amber-200', 'coverage', 0],
+      ['MI4', 'MiD 4h', '10:00', '14:00', 4.0, 0, 0, 'bg-teal-50 text-teal-700 border-teal-200', 'coverage', 0],
+      ['TAM', 'Szkolenie AM', '07:00', '15:00', 8.0, 1, 0, 'bg-violet-100 text-violet-800 border-violet-300', 'nc', 0],
+      ['TPM', 'Szkolenie PM', '14:30', '22:30', 8.0, 1, 0, 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300', 'nc', 0],
+      ['RET', 'Odbiór nadgodziny', '08:00', '16:00', 8.0, 1, 0, 'bg-blue-100 text-blue-800 border-blue-300', 'nc', 0],
+      ['PRE', 'Preventive', '10:00', '18:00', 8.0, 1, 0, 'bg-rose-100 text-rose-800 border-rose-300', 'nc', 0],
+      ['MEE', 'Partners Meeting', '19:00', '22:00', 3.0, 1, 0, 'bg-pink-100 text-pink-800 border-pink-300', 'nc', 0],
+      ['OFF', 'Dzień Wolny (Off)', '00:00', '00:00', 0.0, 0, 1, 'bg-stone-100 text-stone-600 border-stone-300', 'absence', 0],
+      ['L4', 'Chorobowe (L4)', '00:00', '00:00', 8.0, 0, 1, 'bg-red-100 text-red-800 border-red-300 font-semibold', 'absence', 0],
+      ['M', 'Dyspo Rano', '07:00', '15:00', 0.0, 0, 0, 'bg-slate-100 text-slate-700 border-slate-300', 'dispo', 0],
+      ['Z', 'Dyspo Wieczór', '14:30', '22:30', 0.0, 0, 0, 'bg-slate-100 text-slate-700 border-slate-300', 'dispo', 0],
+      ['FULL', 'Dyspo Pełne', '07:00', '22:30', 0.0, 0, 0, 'bg-slate-100 text-slate-700 border-slate-300', 'dispo', 0]
+    ];
 
+    try {
       const stmt = this.db.prepare(`
-        INSERT INTO shift_definitions (code, name, start_time, end_time, hours, is_nc, is_absence, color_bg, category)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO shift_definitions (code, name, start_time, end_time, hours, is_nc, is_absence, color_bg, category, is_sunday_only)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const s of defaultShifts) {
         stmt.run(s);
       }
       stmt.free();
-      console.log('✅ Zaseedowano katalog 25 kodów zmian Starbucks.');
-    } else {
-      // Migracja: Upewnienie się, że zmiana L4 wlicza się do etatu (8.0h zamiast 0.0h)
+
+      // Migracja / korekta godzin absencji i niedziel
       this.db.run("UPDATE shift_definitions SET hours = 8.0 WHERE code = 'L4' AND hours = 0.0");
       this.db.run("UPDATE manager_schedule_shifts SET hours = 8.0 WHERE shift_code = 'L4' AND hours = 0.0");
+      this.db.run("UPDATE shift_definitions SET is_sunday_only = 1 WHERE code IN ('AMN', 'PMN')");
+      this.persist();
+      console.log('✅ Zabezpieczono kompletny katalog zmian Starbucks w SQLite.');
+    } catch (err) {
+      console.error('Błąd podczas ensureShiftDefinitions:', err);
     }
+  }
 
-    // Inicjalizacja oficjalnych norm Kodeksu Pracy dla lat 2016–2036 (-10 i +10 lat)
+  private seedManagerModuleData(): void {
+    if (!this.db) return;
+
+    // 1. Domyślny katalog zmian Starbucks
+    this.ensureShiftDefinitions();
+
+    // 2. Inicjalizacja oficjalnych norm Kodeksu Pracy dla lat 2016–2036 (-10 i +10 lat)
     this.seedMonthlyNorms();
 
     this.persist();
@@ -1441,6 +1449,7 @@ export class DatabaseManager {
 
     // 2. Eksport poszczególnych tabel do JSON
     const tables = [
+      'app_settings',
       'stores',
       'aop_plans',
       'calendar_weeks',

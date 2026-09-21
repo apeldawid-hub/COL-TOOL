@@ -31,6 +31,7 @@ import {
   ManagerEmployee,
   WeeklyCalculatedRow,
 } from './types';
+import { DEFAULT_SHIFT_DEFINITIONS } from './modules/managers-schedule/constants/defaultShifts';
 
 import { SystemClock } from './services/systemClock';
 import { useSystemClock } from './hooks/useSystemClock';
@@ -144,7 +145,7 @@ export const App: React.FC = () => {
 
   // Stan grafiku menedżerskiego dla integracji z Modułem 1 (Labor Forecast)
   const [managerShifts, setManagerShifts] = useState<ManagerScheduleShift[]>([]);
-  const [shiftDefinitions, setShiftDefinitions] = useState<ShiftDefinition[]>([]);
+  const [shiftDefinitions, setShiftDefinitions] = useState<ShiftDefinition[]>(DEFAULT_SHIFT_DEFINITIONS);
   const [managerEmployees, setManagerEmployees] = useState<ManagerEmployee[]>([]);
   const [activeBridgeWeekRow, setActiveBridgeWeekRow] = useState<WeeklyCalculatedRow | null>(null);
 
@@ -249,7 +250,11 @@ export const App: React.FC = () => {
             ...(mgrData.boundaryShifts?.nextMonthShifts || []),
           ];
           setManagerShifts(allShifts);
-          if (mgrData.shiftDefinitions) setShiftDefinitions(mgrData.shiftDefinitions);
+          if (mgrData.shiftDefinitions && mgrData.shiftDefinitions.length > 0) {
+            setShiftDefinitions(mgrData.shiftDefinitions);
+          } else {
+            setShiftDefinitions(DEFAULT_SHIFT_DEFINITIONS);
+          }
           if (mgrData.employees) setManagerEmployees(mgrData.employees);
         }
       } else {

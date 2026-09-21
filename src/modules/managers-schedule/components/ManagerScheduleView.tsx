@@ -21,6 +21,7 @@ import { AutoScheduleModal } from './AutoScheduleModal';
 import { AutoScheduleWidget } from './AutoScheduleWidget';
 import { InterStoreSupportModal } from './InterStoreSupportModal';
 import { AutoScheduleResult } from '../services/autoSchedulerEngine';
+import { DEFAULT_SHIFT_DEFINITIONS } from '../constants/defaultShifts';
 import { SystemClock } from '../../../services/systemClock';
 import {
   Calendar,
@@ -86,7 +87,10 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
         const res = await (window as any).api.getManagerScheduleData(selectedYear, selectedMonth);
 
         const employees: ManagerEmployee[] = res.employees || [];
-        const shiftDefinitions: ShiftDefinition[] = res.shiftDefinitions || [];
+        const shiftDefinitions: ShiftDefinition[] =
+          res.shiftDefinitions && res.shiftDefinitions.length > 0
+            ? res.shiftDefinitions
+            : DEFAULT_SHIFT_DEFINITIONS;
         const shifts: ManagerScheduleShift[] = res.shifts || [];
         const events: { day: number; event_text: string }[] = res.events || [];
         const normRecord: MonthlyNormRecord | null = res.monthlyNorm || null;

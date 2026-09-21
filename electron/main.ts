@@ -1479,6 +1479,23 @@ function setupIpcHandlers() {
     return roster;
   });
 
+  // Pobranie katalogu zmian Starbucks
+  ipcMain.handle('db:get-shift-definitions', () => {
+    dbManager.ensureShiftDefinitions();
+    const db = dbManager.getDb();
+    const stmt = db.prepare(`
+      SELECT code, name, start_time, end_time, hours, is_nc, is_absence, color_bg, color_text, category, is_sunday_only
+      FROM shift_definitions
+      ORDER BY is_absence ASC, is_nc ASC, code ASC
+    `);
+    const list: any[] = [];
+    while (stmt.step()) {
+      list.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return list;
+  });
+
   // Zapis / aktualizacja słownika zmian
   ipcMain.handle('db:save-shift-definitions', (_event, shifts: any[]) => {
     const db = dbManager.getDb();

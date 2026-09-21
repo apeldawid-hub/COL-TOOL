@@ -53,6 +53,7 @@ export interface IElectronAPI {
   saveManagerEvent: (event: any) => Promise<boolean>;
   manageEmployees: (payload: any) => Promise<boolean>;
   copyRosterFromPreviousMonth: (year: number, month: number) => Promise<any[]>;
+  getShiftDefinitions: () => Promise<any[]>;
   saveShiftDefinitions: (shifts: any[]) => Promise<boolean>;
   deleteShiftDefinition: (code: string) => Promise<boolean>;
   getScheduleVersions: (year: number, month: number) => Promise<any[]>;
@@ -158,6 +159,7 @@ const api: IElectronAPI = {
   saveManagerEvent: (event) => ipcRenderer.invoke('db:save-manager-event', event),
   manageEmployees: (payload) => ipcRenderer.invoke('db:manage-employees', payload),
   copyRosterFromPreviousMonth: (year: number, month: number) => ipcRenderer.invoke('db:copy-roster-from-previous-month', year, month),
+  getShiftDefinitions: () => ipcRenderer.invoke('db:get-shift-definitions'),
   saveShiftDefinitions: (shifts) => ipcRenderer.invoke('db:save-shift-definitions', shifts),
   deleteShiftDefinition: (code) => ipcRenderer.invoke('db:delete-shift-definition', code),
   getScheduleVersions: (year, month) => ipcRenderer.invoke('db:get-schedule-versions', year, month),
