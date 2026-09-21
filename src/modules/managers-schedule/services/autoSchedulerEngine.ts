@@ -661,7 +661,7 @@ export class AutoSchedulerEngine {
           else if (shiftCode === 'AM' || shiftCode === 'AMN' || shiftCode === 'AMB') score -= 3500;
           else score += 200;
         } else if (dispo === 'OFF') {
-          score -= 250000; // Bezwzględny zakaz łamania prośby o wolne
+          score -= 2000000; // Bezwzględny priorytet: absolutny zakaz łamania prośby o wolne
         } else {
           score += 150;
         }
@@ -1139,12 +1139,154 @@ export class AutoSchedulerEngine {
       }
     }
 
+    // 3. DETERMINISTYCZNY PASSER RATUNKOWY: BEZWZGLĘDNA ELIMINACJA KONFLIKTÓW OFF
+    if (options.respectDispositions) {
+      for (let day = 1; day <= totalDays; day++) {
+        for (const empOff of employees) {
+          const keyOff = `${empOff.id}_${day}`;
+          if (lockedCells.has(keyOff)) continue;
+          const shiftOff = workingSchedule.get(keyOff);
+          if (!shiftOff || shiftOff.hours === 0 || shiftOff.shift_code === 'OFF') continue;
+
+          const dispo = shiftOff.disposition || dispositionsByEmployee[empOff.id]?.[day] || '';
+          if (dispo !== 'OFF') continue;
+
+          // Pracownik empOff ma prośbę o OFF, ale został mu przydzielony dyżur (np. AM, PM, MIB, SUP)!
+          // SCENARIUSZ 1: Sprawdź, czy inny pracownik empOther ma w tym samym dniu zmianę nieobligatoryjną (MIB, MID, SUP, SAM, SPM)
+          let rescued = false;
+          for (const empOther of employees) {
+            if (empOther.id === empOff.id) continue;
+            const keyOther = `${empOther.id}_${day}`;
+            if (lockedCells.has(keyOther)) continue;
+            const shiftOther = workingSchedule.get(keyOther);
+            if (!shiftOther) continue;
+
+            const dispoOther = shiftOther.disposition || dispositionsByEmployee[empOther.id]?.[day] || '';
+            if (dispoOther === 'OFF') continue; // Nie przekazuj osobie z prośbą o OFF
+
+            if (
+              shiftOther.shift_code === 'MIB' ||
+              shiftOther.shift_code === 'MID' ||
+              shiftOther.shift_code === 'SUP' ||
+              shiftOther.shift_code === 'SAM' ||
+              shiftOther.shift_code === 'SPM'
+            ) {
+              // empOther może przejąć dyżur empOff (np. AM/PM), a empOff dostaje OFF!
+              if (isShiftLaborLawCompliant(empOther, day, shiftOff.shift_code, shiftOff.hours)) {
+                // Przepisz obligatoryjny dyżur empOff do empOther
+                workingSchedule.set(keyOther, {
+                  ...shiftOther,
+                  shift_code: shiftOff.shift_code,
+                  hours: shiftOff.hours,
+                  custom_start_time: shiftOff.custom_start_time,
+                  custom_end_time: shiftOff.custom_end_time
+                });
+                // Zwolnij empOff na OFF!
+                workingSchedule.set(keyOff, {
+                  ...shiftOff,
+                  shift_code: 'OFF',
+                  hours: 0.0,
+                  custom_start_time: undefined,
+                  custom_end_time: undefined
+                });
+                rescued = true;
+                break;
+              }
+            }
+          }
+
+          if (rescued) continue;
+
+          // SCENARIUSZ 2: Sprawdź, czy inny pracownik empOther ma w tym dniu OFF (pełna dostępność FULL lub preferencja AM/PM)
+          for (const empOther of employees) {
+            if (empOther.id === empOff.id) continue;
+            const keyOther = `${empOther.id}_${day}`;
+            if (lockedCells.has(keyOther)) continue;
+            const shiftOther = workingSchedule.get(keyOther);
+            if (!shiftOther || shiftOther.hours > 0 || shiftOther.shift_code !== 'OFF') continue;
+
+            const dispoOther = shiftOther.disposition || dispositionsByEmployee[empOther.id]?.[day] || '';
+            if (dispoOther === 'OFF') continue;
+
+            if (isShiftLaborLawCompliant(empOther, day, shiftOff.shift_code, shiftOff.hours)) {
+              // Znajdź inny dzień day2, gdzie empOther ma zaplanowany dyżur i empOff może go przejąć (wymiana bilansowa)
+              let swapDay2 = -1;
+              for (let d2 = 1; d2 <= totalDays; d2++) {
+                if (d2 === day) continue;
+                const kOther2 = `${empOther.id}_${d2}`;
+                const kOff2 = `${empOff.id}_${d2}`;
+                if (lockedCells.has(kOther2) || lockedCells.has(kOff2)) continue;
+
+                const sOther2 = workingSchedule.get(kOther2);
+                const sOff2 = workingSchedule.get(kOff2);
+                if (sOther2 && sOther2.hours > 0 && sOther2.shift_code !== 'OFF' && (!sOff2 || sOff2.hours === 0 || sOff2.shift_code === 'OFF')) {
+                  const dispoOff2 = sOff2?.disposition || dispositionsByEmployee[empOff.id]?.[d2] || '';
+                  if (dispoOff2 !== 'OFF') {
+                    if (
+                      isShiftLaborLawCompliant(empOff, d2, sOther2.shift_code, sOther2.hours) &&
+                      isShiftLaborLawCompliant(empOther, d2, 'OFF', 0)
+                    ) {
+                      swapDay2 = d2;
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (swapDay2 !== -1) {
+                const kOther2 = `${empOther.id}_${swapDay2}`;
+                const kOff2 = `${empOff.id}_${swapDay2}`;
+                const sOther2 = workingSchedule.get(kOther2)!;
+                const sOff2 = workingSchedule.get(kOff2)!;
+
+                // 1. Dzień 1: empOther bierze shiftOff, empOff dostaje OFF
+                workingSchedule.set(keyOther, {
+                  ...shiftOther,
+                  shift_code: shiftOff.shift_code,
+                  hours: shiftOff.hours,
+                  custom_start_time: shiftOff.custom_start_time,
+                  custom_end_time: shiftOff.custom_end_time
+                });
+                workingSchedule.set(keyOff, {
+                  ...shiftOff,
+                  shift_code: 'OFF',
+                  hours: 0.0,
+                  custom_start_time: undefined,
+                  custom_end_time: undefined
+                });
+
+                // 2. Dzień 2: empOff przejmuje sOther2, empOther dostaje OFF
+                workingSchedule.set(kOff2, {
+                  ...sOff2,
+                  shift_code: sOther2.shift_code,
+                  hours: sOther2.hours,
+                  custom_start_time: sOther2.custom_start_time,
+                  custom_end_time: sOther2.custom_end_time
+                });
+                workingSchedule.set(kOther2, {
+                  ...sOther2,
+                  shift_code: 'OFF',
+                  hours: 0.0,
+                  custom_start_time: undefined,
+                  custom_end_time: undefined
+                });
+
+                rescued = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Szybka ewaluacja metryk i fitness
     let totalPlannedHours = 0;
     let dispoTotal = 0;
     let dispoMatched = 0;
     let missingCoverageCount = 0;
     let totalIndividualHourError = 0;
+    let offViolationsCount = 0;
 
     employees.forEach(emp => {
       const h = getEmployeeAssignedHours(emp.id);
@@ -1171,7 +1313,7 @@ export class AutoSchedulerEngine {
             if (s.shift_code === 'PM' || s.shift_code === 'PMN' || s.shift_code === 'MIB' || s.shift_code === 'OFF' || s.hours === 0) dispoMatched++;
           } else if (dispo === 'OFF') {
             dispoTotal++;
-            // Violated: assigned working shift
+            offViolationsCount++; // Violated: assigned working shift on OFF day
           }
         } else {
           const dispo = s?.disposition || dispositionsByEmployee[emp.id]?.[day] || '';
@@ -1190,9 +1332,10 @@ export class AutoSchedulerEngine {
     const dispoMatchRate = dispoTotal > 0 ? (dispoMatched / dispoTotal) * 100 : 100;
     const hourDiffPenalty = (totalIndividualHourError * 120) + (Math.abs(totalPlannedHours - ctx.teamTargetNominalHours) * 35);
     const coveragePenalty = missingCoverageCount * 35000;
+    const offViolationPenalty = offViolationsCount * 500000; // Twarda kara za każde złamanie prośby o OFF
     const dispoScore = dispoMatchRate * 350;
 
-    const fitness = dispoScore - coveragePenalty - hourDiffPenalty;
+    const fitness = dispoScore - coveragePenalty - hourDiffPenalty - offViolationPenalty;
 
     return {
       workingSchedule,
