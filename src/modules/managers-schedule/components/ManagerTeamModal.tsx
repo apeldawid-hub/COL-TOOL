@@ -39,7 +39,8 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
       role: 'SSV',
       contract_type: 'FULL',
       contract_hours_ratio: 1.0,
-      hourly_rate: 32.5,
+      monthly_salary: 0,
+      hourly_rate: 0,
       sort_order: employees.length + 1,
       is_active: 1
     };
@@ -67,6 +68,11 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
       else if (type === '0.75') updated[index].contract_hours_ratio = 0.75;
       else if (type === '0.5') updated[index].contract_hours_ratio = 0.5;
       else if (type === '0.25') updated[index].contract_hours_ratio = 0.25;
+    }
+
+    if (field === 'monthly_salary') {
+      const sal = Number(value) || 0;
+      updated[index].hourly_rate = sal > 0 ? Number((sal / 168).toFixed(2)) : 0;
     }
 
     setEmployees(updated);
@@ -279,25 +285,38 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
                     </select>
                   </div>
 
-                  {/* Stawka godzinowa (PLN/h) */}
-                  <div className="w-28">
-                    <label className="text-[10px] uppercase font-semibold text-stone-500">
-                      Stawka (zł/h)
-                    </label>
-                    <div className="relative">
+                  {/* Wynagrodzenie zasadnicze brutto (zł/mc) dla 1.0 etatu */}
+                  <div className="w-36">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] uppercase font-semibold text-stone-500">
+                        Wynagr. (1.0)
+                      </label>
+                      <span className="text-[9px] text-stone-400 font-medium">zł/mc</span>
+                    </div>
+                    <div className="relative mt-0.5">
                       <input
                         type="number"
-                        step="0.5"
+                        step="50"
                         min="0"
-                        value={emp.hourly_rate ?? ''}
-                        onChange={e => handleUpdate(index, 'hourly_rate', e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
-                        placeholder="np. 32.50"
-                        className="w-full pl-2.5 pr-7 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                        value={emp.monthly_salary !== undefined && emp.monthly_salary !== null ? (emp.monthly_salary === 0 ? '' : emp.monthly_salary) : ''}
+                        onChange={e => handleUpdate(index, 'monthly_salary', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className="w-full pl-2.5 pr-8 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
                       />
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-stone-400 font-semibold pointer-events-none">
-                        zł/h
+                        zł
                       </span>
                     </div>
+                    {emp.monthly_salary && emp.monthly_salary > 0 ? (
+                      <div className="text-[9px] text-stone-500 font-medium mt-0.5 truncate" title={`Wynagrodzenie dla etatu ${emp.contract_hours_ratio}: ${Math.round(emp.monthly_salary * emp.contract_hours_ratio).toLocaleString('pl-PL')} zł`}>
+                        {emp.contract_hours_ratio < 1.0 
+                          ? `${Math.round(emp.monthly_salary * emp.contract_hours_ratio).toLocaleString('pl-PL')} zł (${emp.contract_hours_ratio} etatu)`
+                          : `~${(emp.monthly_salary / 168).toFixed(1)} zł/h (168h)`
+                        }
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-stone-400 mt-0.5">0 zł/mc</div>
+                    )}
                   </div>
 
                   {/* Usunięcie ze składu na ten miesiąc */}

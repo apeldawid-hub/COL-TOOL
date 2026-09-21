@@ -1098,9 +1098,9 @@ export class UniversalReportParser {
 
       for (const emp of employees) {
         db.run(`
-          INSERT OR IGNORE INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, 1)
-        `, [emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, emp.sortOrder]);
+          INSERT OR IGNORE INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        `, [emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, 0.0, emp.sortOrder]);
 
         const res = db.exec(`SELECT id FROM manager_employees WHERE name = ?`, [emp.name]);
         if (res.length > 0 && res[0].values.length > 0) {
@@ -1109,9 +1109,9 @@ export class UniversalReportParser {
 
           db.run(`
             INSERT OR REPLACE INTO manager_monthly_roster
-            (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-          `, [year, month, empId, emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, emp.sortOrder]);
+            (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+          `, [year, month, empId, emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, 0.0, emp.sortOrder]);
         }
       }
 

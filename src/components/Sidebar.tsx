@@ -9,6 +9,7 @@ import {
   Calculator,
   LineChart,
   Boxes,
+  Users,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -89,7 +90,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'ibs_ims',
     label: 'IBS & IMS',
-    icon: Boxes,
+    icon: Users,
     badge: 'Wkrótce',
     badgeType: 'scratch',
   },

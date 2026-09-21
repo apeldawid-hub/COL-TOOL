@@ -143,14 +143,12 @@ export const ColCalculatorView: React.FC<ColCalculatorViewProps> = ({
           loadedManagers = calcSchedule.rows.map((row) => {
             const emp = row.employee;
             const fullNominal = calcSchedule.fullTimeNominalHours || nominalHours;
-            const hourlyRate = emp.hourly_rate ?? 0;
-            const baseSalary = hourlyRate > 0
-              ? Math.round(hourlyRate * fullNominal)
-              : (emp.role === 'STORE MANAGER' || emp.role === 'SM')
-              ? 7200
-              : (emp.role.includes('ASSISTANT') || emp.role === 'ASM')
-              ? 6300
-              : 5600;
+            const contractRatio = emp.contract_hours_ratio || (emp.contract_type === 'FULL' ? 1.0 : emp.contract_type === '0.75' ? 0.75 : emp.contract_type === '0.5' ? 0.5 : 0.25);
+            const baseSalary = (emp.monthly_salary && emp.monthly_salary > 0)
+              ? Math.round(emp.monthly_salary * contractRatio)
+              : (emp.hourly_rate && emp.hourly_rate > 0)
+              ? Math.round(emp.hourly_rate * (fullNominal * contractRatio))
+              : 0;
 
             const shortRole = emp.role === 'STORE MANAGER' ? 'SM' : emp.role.includes('ASSISTANT') ? 'ASM' : 'SSV';
 

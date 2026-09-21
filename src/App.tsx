@@ -621,21 +621,21 @@ export const App: React.FC = () => {
             <ErrorBoundary moduleName="Analytics / Scratch" fallbackTitle="Błąd w module pomocniczym">
               <ComingSoonOverlayWrapper
                 module={activeModule}
-                title={activeModule === 'analytics' ? 'Analiza Biznesowa & Efektywność (BI)' : 'IBS & IMS (Inventory & Supply Chain)'}
-                subtitle={activeModule === 'analytics' ? 'Moduł 5: Zaawansowane Raportowanie' : 'Moduł 6: Gospodarka Magazynowa i Zamówienia'}
+                title={activeModule === 'analytics' ? 'Analiza Biznesowa & Efektywność (BI)' : 'IBS & IMS (Ideal Barista & Manager Structure)'}
+                subtitle={activeModule === 'analytics' ? 'Moduł 5: Zaawansowane Raportowanie' : 'Moduł 6: Struktura Kadrowa (Ideal Structure)'}
                 description={activeModule === 'analytics'
                   ? 'Kompleksowy moduł analityczny łączący transakcje, wielkości koszyka, mix produktowy oraz koszty robocizny w dynamicznych wizualizacjach wielomiesięcznych.'
-                  : 'Integracja z systemem zamówień Starbucks (IBS/IMS), prognozowanie zużycia surowców i opakowań w powiązaniu z ruchem transakcyjnym.'}
+                  : 'Optymalizacja i modelowanie idealnej struktury kadrowej kawiarni Starbucks (IBS — Ideal Barista Structure oraz IMS — Ideal Manager Structure) w oparciu o wolumen transakcji i zapotrzebowanie operacyjne.'}
                 features={activeModule === 'analytics' ? [
                   'Analiza TPLH w ujęciu dobowym i szczytów Peak Hours',
                   'Porównania realizacji budżetów AOP rok do roku (YoY)',
                   'Korelacja obsady grafiku z Customer Connection Score',
                   'Wielowymiarowy eksport raportów do arkuszy Excel (.xlsx)'
                 ] : [
-                  'Kalkulator zamówień cyklicznych dostaw i surowców',
-                  'Kontrola stanów magazynowych i inwentaryzacji (Inv)',
-                  'Predykcja zużycia surowców wg prognoz AOP',
-                  'Rejestr strat (Waste) i powiadomienia o przydatności'
+                  'Kalkulacja Ideal Barista Structure (IBS) w oparciu o wolumen transakcji TRX',
+                  'Modelowanie Ideal Manager Structure (IMS: Store Manager, ASM, Shift Supervisor)',
+                  'Identyfikacja luk kadrowych, bilans etatów (1.0 / 0.75 / 0.5) i planowanie rekrutacji',
+                  'Prognoza zapotrzebowania na awanse wewnętrzne i ścieżki rozwoju w dystrykcie'
                 ]}
                 onNavigate={setActiveModule}
               >

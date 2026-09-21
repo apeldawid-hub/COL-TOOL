@@ -278,7 +278,7 @@ export class DatabaseManager {
 
     // 1. Sprawdź czy istnieją rekordy w manager_monthly_roster dla (year, month)
     const stmt = this.db.prepare(`
-      SELECT employee_id as id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active
+      SELECT employee_id as id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active
       FROM manager_monthly_roster
       WHERE year = ? AND month = ? AND is_active = 1
       ORDER BY sort_order ASC
@@ -291,7 +291,17 @@ export class DatabaseManager {
     stmt.free();
 
     if (roster.length > 0) {
-      return roster;
+      return roster.map(r => ({
+        id: r.id,
+        name: r.name,
+        role: r.role,
+        contract_type: r.contract_type,
+        contract_hours_ratio: r.contract_hours_ratio,
+        hourly_rate: r.hourly_rate ?? 0.0,
+        monthly_salary: r.monthly_salary ?? 0.0,
+        sort_order: r.sort_order,
+        is_active: r.is_active
+      }));
     }
 
     // 2. Jeśli brak składu dla (year, month), automatycznie importuj/odziedzicz z poprzedniego miesiąca!
@@ -309,7 +319,7 @@ export class DatabaseManager {
       const foundYear = Number(prevRes[0].values[0][0]);
       const foundMonth = Number(prevRes[0].values[0][1]);
       const srcStmt = this.db.prepare(`
-        SELECT employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active
+        SELECT employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active
         FROM manager_monthly_roster
         WHERE year = ? AND month = ? AND is_active = 1
         ORDER BY sort_order ASC
@@ -324,7 +334,7 @@ export class DatabaseManager {
     // Jeśli brak wcześniejszego miesiąca, weź z bazowego rejestru manager_employees
     if (sourceRecords.length === 0) {
       const baseStmt = this.db.prepare(`
-        SELECT id as employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active
+        SELECT id as employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active
         FROM manager_employees
         WHERE is_active = 1
         ORDER BY sort_order ASC
@@ -339,8 +349,8 @@ export class DatabaseManager {
     if (sourceRecords.length > 0) {
       const insertStmt = this.db.prepare(`
         INSERT OR REPLACE INTO manager_monthly_roster 
-        (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
       `);
 
       for (const r of sourceRecords) {
@@ -353,6 +363,7 @@ export class DatabaseManager {
           r.contract_type,
           r.contract_hours_ratio,
           r.hourly_rate || 0.0,
+          r.monthly_salary || 0.0,
           r.sort_order || 1
         ]);
       }
@@ -368,7 +379,8 @@ export class DatabaseManager {
       role: r.role,
       contract_type: r.contract_type,
       contract_hours_ratio: r.contract_hours_ratio,
-      hourly_rate: r.hourly_rate,
+      hourly_rate: r.hourly_rate ?? 0.0,
+      monthly_salary: r.monthly_salary ?? 0.0,
       sort_order: r.sort_order,
       is_active: r.is_active
     }));
@@ -384,14 +396,15 @@ export class DatabaseManager {
     for (const emp of employees) {
       if (!emp.id || emp.id === 0) {
         this.db.run(`
-          INSERT INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, 1)
+          INSERT INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         `, [
           emp.name,
           emp.role,
           emp.contract_type,
           Number(emp.contract_hours_ratio) || 1.0,
           Number(emp.hourly_rate) || 0.0,
+          Number(emp.monthly_salary) || 0.0,
           Number(emp.sort_order) || 1
         ]);
         const lastIdRes = this.db.exec("SELECT last_insert_rowid()");
@@ -400,7 +413,7 @@ export class DatabaseManager {
         // Zaktualizuj dane bazowe pracownika w master registry
         this.db.run(`
           UPDATE manager_employees 
-          SET name = ?, role = ?, contract_type = ?, contract_hours_ratio = ?, hourly_rate = ?
+          SET name = ?, role = ?, contract_type = ?, contract_hours_ratio = ?, hourly_rate = ?, monthly_salary = ?
           WHERE id = ?
         `, [
           emp.name,
@@ -408,6 +421,7 @@ export class DatabaseManager {
           emp.contract_type,
           Number(emp.contract_hours_ratio) || 1.0,
           Number(emp.hourly_rate) || 0.0,
+          Number(emp.monthly_salary) || 0.0,
           emp.id
         ]);
       }
@@ -419,8 +433,8 @@ export class DatabaseManager {
     // 3. Wstawienie nowego składu
     const insertStmt = this.db.prepare(`
       INSERT INTO manager_monthly_roster 
-      (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (let idx = 0; idx < employees.length; idx++) {
@@ -434,6 +448,7 @@ export class DatabaseManager {
         emp.contract_type,
         Number(emp.contract_hours_ratio) || 1.0,
         Number(emp.hourly_rate) || 0.0,
+        Number(emp.monthly_salary) || 0.0,
         emp.sort_order || (idx + 1),
         emp.is_active !== undefined ? (emp.is_active ? 1 : 0) : 1
       ]);
@@ -565,6 +580,7 @@ export class DatabaseManager {
         contract_type TEXT NOT NULL,
         contract_hours_ratio REAL NOT NULL,
         hourly_rate REAL DEFAULT 0.0,
+        monthly_salary REAL DEFAULT 0.0,
         sort_order INTEGER NOT NULL DEFAULT 1,
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -648,6 +664,7 @@ export class DatabaseManager {
         contract_type TEXT NOT NULL,
         contract_hours_ratio REAL NOT NULL,
         hourly_rate REAL DEFAULT 0.0,
+        monthly_salary REAL DEFAULT 0.0,
         sort_order INTEGER NOT NULL DEFAULT 1,
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -727,6 +744,8 @@ export class DatabaseManager {
     try { this.db.run('ALTER TABLE aop_plans ADD COLUMN actual_tplh REAL'); } catch (_) {}
     try { this.db.run('ALTER TABLE weekly_actual_trx ADD COLUMN scheduled_hours REAL'); } catch (_) {}
     try { this.db.run('ALTER TABLE manager_employees ADD COLUMN hourly_rate REAL DEFAULT 0.0'); } catch (_) {}
+    try { this.db.run('ALTER TABLE manager_employees ADD COLUMN monthly_salary REAL DEFAULT 0.0'); } catch (_) {}
+    try { this.db.run('ALTER TABLE manager_monthly_roster ADD COLUMN monthly_salary REAL DEFAULT 0.0'); } catch (_) {}
     try {
       this.db.run(`
         UPDATE manager_employees SET hourly_rate = 42.0 WHERE (hourly_rate IS NULL OR hourly_rate = 0) AND role LIKE '%STORE MANAGER%' AND role NOT LIKE '%ASSISTANT%';

@@ -439,9 +439,14 @@ export class CalculationEngine {
           projectedMgrHours = Number(resMon.managerHours.toFixed(1));
         }
 
-        // Godziny baristów wyliczone z dopełnienia celu tygodnia:
-        const remainingForMonday = Math.max(0, Number((targetWeekHours - loggedHoursDays1to6).toFixed(1)));
-        const projectedBaristaHours = Math.max(0, Number((remainingForMonday - projectedMgrHours).toFixed(1)));
+        // Godziny baristów na poniedziałek:
+        // Jeśli mamy zalogowane godziny z 6 dni (wt–nd > 0), dopełniamy do celu tygodnia.
+        // Jeśli brak logowań z 6 dni (0h), przyjmujemy standardową dobową bazę baristów (24.0h przy Floor 32h).
+        let projectedBaristaHours = 24.0;
+        if (loggedHoursDays1to6 > 0) {
+          const remainingForMonday = Math.max(0, Number((targetWeekHours - loggedHoursDays1to6).toFixed(1)));
+          projectedBaristaHours = Math.max(0, Number((remainingForMonday - projectedMgrHours).toFixed(1)));
+        }
         const projectedTotalMondayHours = Number((projectedMgrHours + projectedBaristaHours).toFixed(1));
         const fullWeekProjectedHours = Number((loggedHoursDays1to6 + projectedTotalMondayHours).toFixed(1));
 

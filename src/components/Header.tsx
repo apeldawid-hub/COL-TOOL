@@ -8,6 +8,7 @@ import {
   GraduationCap,
   LineChart,
   Boxes,
+  Users,
   Calculator,
   User,
 } from 'lucide-react';
@@ -27,7 +28,7 @@ const MODULE_TITLES: Record<AppModule, { title: string; icon: React.ComponentTyp
   trainings: { title: 'Szkolenia & Certyfikacje', icon: GraduationCap },
   col_calculator: { title: 'COL Calculator (Cost of Labor)', icon: Calculator },
   analytics: { title: 'Analiza Biznesowa (BI)', icon: LineChart },
-  ibs_ims: { title: 'IBS & IMS (Magazyn & Dostawy)', icon: Boxes },
+  ibs_ims: { title: 'IBS & IMS (Ideal Structure)', icon: Users },
 };
 
 export const Header: React.FC<HeaderProps> = ({

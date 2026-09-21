@@ -1066,7 +1066,8 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                               role: 'SSV',
                               contract_type: 'FULL',
                               contract_hours_ratio: 1.0,
-                              hourly_rate: 32.5,
+                              monthly_salary: 0,
+                              hourly_rate: 0,
                               sort_order: employees.length + 1,
                               is_active: 1
                             };
@@ -1134,19 +1135,26 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                             </div>
 
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-stone-500 font-medium">Stawka:</span>
+                              <span className="text-xs text-stone-500 font-medium">Wynagr. (1.0):</span>
                               <input
                                 type="number"
-                                step="0.5"
-                                value={emp.hourly_rate || 32.5}
+                                step="50"
+                                min="0"
+                                value={emp.monthly_salary !== undefined && emp.monthly_salary !== null ? (emp.monthly_salary === 0 ? '' : emp.monthly_salary) : ''}
                                 onChange={(e) => {
+                                  const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
                                   const updated = [...employees];
-                                  updated[eIdx] = { ...emp, hourly_rate: Number(e.target.value) };
+                                  updated[eIdx] = { 
+                                    ...emp, 
+                                    monthly_salary: val,
+                                    hourly_rate: val > 0 ? Number((val / 168).toFixed(2)) : 0
+                                  };
                                   setEmployees(updated);
                                 }}
-                                className="w-18 bg-white border border-stone-300 rounded-lg px-2 py-1 text-xs font-bold text-stone-900 text-center"
+                                placeholder="0"
+                                className="w-24 bg-white border border-stone-300 rounded-lg px-2 py-1 text-xs font-bold text-stone-900 text-center"
                               />
-                              <span className="text-xs font-bold text-stone-600">zł/h</span>
+                              <span className="text-xs font-bold text-stone-600">zł/mc</span>
                             </div>
 
                             <button

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppModule } from '../types';
-import { GraduationCap, LineChart, Boxes, Calculator, ArrowLeft, Sparkles, CheckCircle2, Construction } from 'lucide-react';
+import { GraduationCap, LineChart, Boxes, Calculator, ArrowLeft, Sparkles, CheckCircle2, Construction, Users } from 'lucide-react';
 
 interface ModulePlaceholderViewProps {
   module: AppModule;
@@ -60,16 +60,16 @@ const MODULE_DATA: Record<string, ModuleInfo> = {
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
   },
   ibs_ims: {
-    title: 'IBS & IMS (Inventory & Supply Chain)',
-    subtitle: 'Moduł 5: Zamówienia Kawiarni i Gospodarka Magazynowa',
-    icon: Boxes,
+    title: 'IBS & IMS (Ideal Structure)',
+    subtitle: 'Moduł 6: Struktura Kadrowa (Ideal Barista & Manager Structure)',
+    icon: Users,
     description:
-      'Integracja z systemem zamówień Starbucks (IBS/IMS), prognozowanie zużycia ziaren kawy, syropów, mleka i opakowań w kawiarni Janki w powiązaniu z ułożonym grafikiem i ruchem transakcyjnym.',
+      'Optymalizacja i modelowanie idealnej struktury kadrowej kawiarni Starbucks (IBS — Ideal Barista Structure oraz IMS — Ideal Manager Structure) w oparciu o wolumen transakcji i zapotrzebowanie operacyjne.',
     plannedFeatures: [
-      'Kalkulator zamówień cyklicznych (Dostawy chłodnicze, nabiał, suche)',
-      'Kontrola stanów magazynowych i comiesięcznej inwentaryzacji (Inv Janki)',
-      'Predykcja zapotrzebowania surowcowego wg prognoz AOP i szczytów sezonowych',
-      'Rejestr strat (Waste) i powiadomienia o terminach przydatności (FIFO)',
+      'Kalkulacja Ideal Barista Structure (IBS) w oparciu o wolumen transakcji TRX',
+      'Modelowanie Ideal Manager Structure (IMS: Store Manager, ASM, Shift Supervisor)',
+      'Identyfikacja luk kadrowych, bilans etatów (1.0 / 0.75 / 0.5) i planowanie rekrutacji',
+      'Prognoza zapotrzebowania na awanse wewnętrzne i ścieżki rozwoju w dystrykcie',
     ],
     badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
   },

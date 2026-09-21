@@ -198,8 +198,8 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
 
 ---
 
-- `manager_employees`: centralny rejestr menedżerów generujący unikalne ID pracowników (id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active).
-- `manager_monthly_roster`: autonomiczny skład zespołu per rok i miesiąc (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active).
+- `manager_employees`: centralny rejestr menedżerów generujący unikalne ID pracowników (id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active).
+- `manager_monthly_roster`: autonomiczny skład zespołu per rok i miesiąc (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active).
 - `shift_definitions`: słownik zmian i parametrów (code, name, start_time, end_time, hours, is_nc, is_absence, color_bg, category, is_sunday_only).
 - `manager_schedule_shifts`: przypisane zmiany (year, month, day, date, employee_id, shift_code, hours, notes).
 - `manager_schedule_events`: ważne wydarzenia per dzień (year, month, day, date, event_text).

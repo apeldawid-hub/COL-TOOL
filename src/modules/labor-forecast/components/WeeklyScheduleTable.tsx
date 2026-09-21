@@ -52,6 +52,26 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
   const projectedRow = rows.find((r) => r.isMondayProjected && r.mondayProjection);
   const clockState = useSystemClock();
 
+  // Stan wprowadzonych godzin dobowych baristów per tydzień i per dzień
+  // klucz: `${weekKey}_${day}` -> number
+  const [dailyBaristaHours, setDailyBaristaHours] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('sbux_daily_barista_hours');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const saveDailyBaristaHours = (newMap: Record<string, number>) => {
+    setDailyBaristaHours(newMap);
+    try {
+      localStorage.setItem('sbux_daily_barista_hours', JSON.stringify(newMap));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleStartEditTrx = (weekKey: string, currentVal: number | null) => {
     setEditingTrxKey(weekKey);
     setEditTrxValue(currentVal !== null ? String(currentVal) : '');
@@ -72,7 +92,83 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
     if (!onSaveScheduledHours) return;
     const val = editSchedValue.trim() === '' ? null : Number(editSchedValue);
     await onSaveScheduledHours(weekKey, isNaN(val as number) ? null : val);
+
+    // Jeśli wprowadzono sumę, automatycznie rozdziel ją na dni wg trendu AI
+    if (val && val > 0) {
+      const row = rows.find(r => r.week.week_key === weekKey);
+      if (row) {
+        const rawDays = row.managerDailyCoverage || [];
+        if (rawDays.length > 0) {
+          const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(rawDays, val);
+          const newDailyMap = { ...dailyBaristaHours };
+          flexInfo.enrichedDays.forEach(d => {
+            const dayKey = `${weekKey}_${d.day}`;
+            newDailyMap[dayKey] = d.suggestedBaristaHours || 0;
+          });
+          saveDailyBaristaHours(newDailyMap);
+        }
+      }
+    }
     setEditingSchedKey(null);
+  };
+
+  // Zmiana godzin baristów dla konkretnego dnia
+  const handleDayBaristaChange = async (
+    weekKey: string,
+    dayNum: number,
+    newBaristaHours: number,
+    daysList: any[]
+  ) => {
+    const dayKey = `${weekKey}_${dayNum}`;
+    const newMap = { ...dailyBaristaHours, [dayKey]: Math.max(0, newBaristaHours) };
+    saveDailyBaristaHours(newMap);
+
+    // Przelicz nową sumę tygodnia
+    let totalWeekHours = 0;
+    daysList.forEach((d) => {
+      const dKey = `${weekKey}_${d.day}`;
+      const bHours = d.day === dayNum ? Math.max(0, newBaristaHours) : (newMap[dKey] !== undefined ? newMap[dKey] : (d.suggestedBaristaHours || 0));
+      const mHours = d.coverageHours || 0;
+      totalWeekHours += (mHours + bHours);
+    });
+
+    if (onSaveScheduledHours) {
+      await onSaveScheduledHours(weekKey, Number(totalWeekHours.toFixed(1)));
+    }
+  };
+
+  // Rozdzielenie sumy wg trendu AI
+  const handleDistributeByTrend = async (weekKey: string, targetTotal: number, daysList: any[]) => {
+    const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(daysList, targetTotal);
+    const newDailyMap = { ...dailyBaristaHours };
+    flexInfo.enrichedDays.forEach(d => {
+      const dayKey = `${weekKey}_${d.day}`;
+      newDailyMap[dayKey] = d.suggestedBaristaHours || 0;
+    });
+    saveDailyBaristaHours(newDailyMap);
+
+    if (onSaveScheduledHours) {
+      await onSaveScheduledHours(weekKey, Number(targetTotal.toFixed(1)));
+    }
+  };
+
+  // Rozdzielenie sumy po równo
+  const handleDistributeEvenly = async (weekKey: string, targetTotal: number, daysList: any[]) => {
+    const totalMgr = daysList.reduce((sum, d) => sum + (d.coverageHours || 0), 0);
+    const baristaPool = Math.max(0, targetTotal - totalMgr);
+    const count = daysList.length || 7;
+    const perDay = Number((baristaPool / count).toFixed(1));
+
+    const newDailyMap = { ...dailyBaristaHours };
+    daysList.forEach((d) => {
+      const dayKey = `${weekKey}_${d.day}`;
+      newDailyMap[dayKey] = perDay;
+    });
+    saveDailyBaristaHours(newDailyMap);
+
+    if (onSaveScheduledHours) {
+      await onSaveScheduledHours(weekKey, Number(targetTotal.toFixed(1)));
+    }
   };
 
   return (
@@ -748,7 +844,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                   const isFullSplit = isBridgeRow && Boolean(crossMonthBridge?.all7DaysCoverage);
                   const targetBudget = isFullSplit && crossMonthBridge
                     ? (crossMonthBridge.recommendedCombinedHours || crossMonthBridge.totalCombinedPlanHours)
-                    : (r.hanwRecommendation || (r.scheduledHours && r.scheduledHours > 0 ? r.scheduledHours : r.planHours));
+                    : (r.scheduledHours && r.scheduledHours > 0 ? r.scheduledHours : (r.hanwRecommendation || r.planHours));
 
                   const rawDays = isFullSplit && crossMonthBridge?.all7DaysCoverage
                     ? crossMonthBridge.all7DaysCoverage
@@ -765,12 +861,19 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                     ? crossMonthBridge.totalCombinedBaristaPool
                     : (r.baristaHoursPool ?? Math.max(0, targetBudget - managerHours));
 
+                  // Wylicz aktualną sumę z wprowadzonych godzin dobowych
+                  const currentCustomSum = displayDays.reduce((sum, d) => {
+                    const dayKey = `${r.week.week_key}_${d.day}`;
+                    const bHours = dailyBaristaHours[dayKey] !== undefined ? dailyBaristaHours[dayKey] : (d.suggestedBaristaHours || 0);
+                    return sum + (d.coverageHours || 0) + bHours;
+                  }, 0);
+
                   return (
                     <tr className="bg-gradient-to-r from-stone-50 via-emerald-50/20 to-stone-50 border-b-2 border-[#006241]/40 animate-in fade-in duration-200">
                       <td colSpan={12} className="p-3 sm:p-4">
                         <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
-                          {/* Nagłówek sekcji Flex AI */}
-                          <div className="px-5 py-3 bg-gradient-to-r from-[#006241]/10 via-stone-50 to-emerald-50 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          {/* Nagłówek sekcji Flex AI z przyciskami szybkiego rozkładu */}
+                          <div className="px-5 py-3 bg-gradient-to-r from-[#006241]/10 via-stone-50 to-emerald-50 border-b border-stone-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                             <div className="flex items-center gap-2.5">
                               <div className="p-1.5 bg-[#006241] text-white rounded-xl shadow-2xs">
                                 <Sparkles className="w-4 h-4 text-amber-300" />
@@ -778,22 +881,53 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <h4 className="text-xs font-black text-[#1E3932] tracking-tight uppercase">
-                                    Dystrybucja Godzin & Dobowy Rozkład Dni (Trend AI) — {weekLabel}
+                                    Dystrybucja Godzin & Dobowy Rozkład Dni — {weekLabel}
                                   </h4>
                                 </div>
                                 <p className="text-[11px] text-stone-500 mt-0.5">
-                                  Pula H +/-: <strong className="text-amber-700 font-black">+{flexHoursPool.toFixed(1)}h</strong> • Rekomendowany Cel: <strong className="text-stone-900">{targetBudget.toFixed(1)}h</strong> • MGR: <strong>{managerHours.toFixed(1)}h</strong> • Pula Baristów: <strong className="text-[#006241] font-black">{baristaPool.toFixed(1)}h</strong>
+                                  Suma grafiku: <strong className="text-stone-900 font-black">{currentCustomSum.toFixed(1)}h</strong> • MGR: <strong>{managerHours.toFixed(1)}h</strong> • Pula Baristów: <strong className="text-[#006241] font-black">{baristaPool.toFixed(1)}h</strong> • Flex H +/-: <strong className="text-amber-700">+{flexHoursPool.toFixed(1)}h</strong>
                                 </p>
                               </div>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() => setExpandedWeekKey(null)}
-                              className="self-end sm:self-auto px-2.5 py-1 text-[11px] font-bold text-stone-600 hover:text-stone-900 bg-white hover:bg-stone-100 border border-stone-200 rounded-lg shadow-2xs transition cursor-pointer"
-                            >
-                              ✕ Zwiń
-                            </button>
+                            {/* Narzędzia szybkiej dystrybucji */}
+                            <div className="flex items-center gap-1.5 flex-wrap self-end lg:self-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleDistributeByTrend(r.week.week_key, targetBudget, rawDays)}
+                                className="px-2.5 py-1 text-[11px] font-bold text-white bg-[#006241] hover:bg-[#00754A] rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                                title="Rozdziela godziny na 7 dni proporcjonalnie do historycznego popytu (Sobota > Pt > Wt...)"
+                              >
+                                <Sparkles className="w-3 h-3 text-amber-300" />
+                                <span>Rozdziel wg Trendu AI</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDistributeEvenly(r.week.week_key, targetBudget, rawDays)}
+                                className="px-2.5 py-1 text-[11px] font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg shadow-2xs transition cursor-pointer"
+                                title="Dzieli pulę baristów po równo na każdy dzień tygodnia"
+                              >
+                                <span>⚖️ Po równo</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDistributeByTrend(r.week.week_key, rawDays.length * 32.0, rawDays)}
+                                className="px-2 py-1 text-[11px] font-bold text-stone-600 bg-white hover:bg-stone-100 border border-stone-200 rounded-lg shadow-2xs transition cursor-pointer"
+                                title="Ustawia każdy dzień na bezpieczne minimum Floor (32h/dzień)"
+                              >
+                                <span>🛡️ Floor (32h)</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setExpandedWeekKey(null)}
+                                className="px-2.5 py-1 text-[11px] font-bold text-stone-500 hover:text-stone-800 bg-white hover:bg-stone-100 border border-stone-200 rounded-lg shadow-2xs transition cursor-pointer"
+                              >
+                                ✕ Zwiń
+                              </button>
+                            </div>
                           </div>
 
                           {/* Tabela dobowego rozkładu H +/- */}
@@ -802,74 +936,107 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                               <thead>
                                 <tr className="bg-[#F7F9F8] text-stone-600 font-bold border-b border-stone-200 text-[11px] select-none">
                                   <th className="py-2.5 px-3">Dzień & Data</th>
-                                  <th className="py-2.5 px-3 text-right font-black text-stone-900">Rekomendowany Cel</th>
-                                  <th className="py-2.5 px-3 text-right font-black text-[#006241]">DLA BARISTÓW ROZPISZ</th>
-                                  <th className="py-2.5 px-3 text-center font-bold text-stone-700">Sugerowane Zmiany (H +/-)</th>
+                                  <th className="py-2.5 px-3 text-center font-bold text-stone-600">MGR z Grafiku</th>
+                                  <th className="py-2.5 px-3 text-right font-black text-[#006241]">DLA BARISTÓW (Wpisz h)</th>
+                                  <th className="py-2.5 px-3 text-right font-black text-stone-900">ŁĄCZNIE DZIEŃ</th>
+                                  <th className="py-2.5 px-3 text-center font-bold text-stone-700">Trend AI / Sugestia</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-stone-100">
                                 {displayDays.length === 0 ? (
                                   <tr>
-                                    <td colSpan={4} className="py-6 text-center text-stone-400">
+                                    <td colSpan={5} className="py-6 text-center text-stone-400">
                                       Brak zarejestrowanych zmian w grafiku dla wybranego tygodnia.
                                     </td>
                                   </tr>
                                 ) : (
-                                  displayDays.map((d) => (
-                                    <tr key={`day-flex-${d.date || d.day}`} className="hover:bg-emerald-50/30 transition-colors">
-                                      {/* Dzień & Data */}
-                                      <td className="py-2.5 px-3 font-semibold text-stone-800">
-                                        <div className="flex items-center gap-1.5">
-                                          <span className={`w-7 h-5 rounded font-black text-[10px] flex items-center justify-center ${
-                                            d.dayOfWeek === 'Sob' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
-                                            d.dayOfWeek === 'Pt' ? 'bg-blue-100 text-blue-900 border border-blue-300' :
-                                            d.dayOfWeek === 'Nd' ? 'bg-stone-200 text-stone-800' :
-                                            'bg-stone-100 text-stone-700'
-                                          }`}>
-                                            {d.dayOfWeek}
-                                          </span>
-                                          <span className="font-bold">
-                                            {String(d.day).padStart(2, '0')}.{String(d.monthName ? d.monthName.slice(0, 3) : (r.week.month_name ? r.week.month_name.slice(0, 3) : ''))}
-                                          </span>
-                                        </div>
-                                      </td>
+                                  displayDays.map((d) => {
+                                    const dayKey = `${r.week.week_key}_${d.day}`;
+                                    const customBarista = dailyBaristaHours[dayKey] !== undefined
+                                      ? dailyBaristaHours[dayKey]
+                                      : (d.suggestedBaristaHours || 0);
+                                    const dayTotalHours = Number(((d.coverageHours || 0) + customBarista).toFixed(1));
+                                    const isBelowFloor = dayTotalHours < 32.0;
 
-                                      {/* Rekomendowany Cel Dnia */}
-                                      <td className="py-2.5 px-3 text-right font-black text-stone-900 text-sm">
-                                        {d.suggestedTotalDayHours?.toFixed(1) || 32.0} h
-                                      </td>
+                                    return (
+                                      <tr key={`day-flex-${d.date || d.day}`} className="hover:bg-emerald-50/30 transition-colors">
+                                        {/* Dzień & Data */}
+                                        <td className="py-2.5 px-3 font-semibold text-stone-800">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className={`w-7 h-5 rounded font-black text-[10px] flex items-center justify-center ${
+                                              d.dayOfWeek === 'Sob' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                                              d.dayOfWeek === 'Pt' ? 'bg-blue-100 text-blue-900 border border-blue-300' :
+                                              d.dayOfWeek === 'Nd' ? 'bg-stone-200 text-stone-800' :
+                                              'bg-stone-100 text-stone-700'
+                                            }`}>
+                                              {d.dayOfWeek}
+                                            </span>
+                                            <span className="font-bold">
+                                              {String(d.day).padStart(2, '0')}.{String(d.monthName ? d.monthName.slice(0, 3) : (r.week.month_name ? r.week.month_name.slice(0, 3) : ''))}
+                                            </span>
+                                          </div>
+                                        </td>
 
-                                      {/* DLA BARISTÓW ROZPISZ */}
-                                      <td className="py-2.5 px-3 text-right">
-                                        <div className="flex flex-col items-end gap-0.5">
-                                          <span className="font-black text-[#006241] text-sm leading-tight">
-                                            {d.suggestedBaristaHours?.toFixed(1) || 0} h
+                                        {/* MGR z Grafiku */}
+                                        <td className="py-2.5 px-3 text-center font-bold text-stone-700">
+                                          <span className="px-2 py-0.5 bg-stone-100 rounded-md border border-stone-200 text-[11px]">
+                                            +{d.coverageHours?.toFixed(1) || 0} h
                                           </span>
-                                          <span className="text-[10px] text-stone-500 font-semibold leading-none">
-                                            max: {d.maxBaristaHours !== undefined ? d.maxBaristaHours.toFixed(1) : (d.manipulationMaxHours !== undefined ? Math.max(0, d.manipulationMaxHours - d.coverageHours).toFixed(1) : (d.suggestedBaristaHours || 0).toFixed(1))} h
-                                          </span>
-                                        </div>
-                                      </td>
+                                        </td>
 
-                                      {/* Sugerowane Zmiany (H +/-) */}
-                                      <td className="py-2.5 px-3 text-center">
-                                        <div className="flex items-center justify-center gap-1.5" title={d.manipulationTip || undefined}>
-                                          <span className="font-black text-amber-700 text-xs">
-                                            +{(d.suggestedFlexHours || 0).toFixed(1)} h
-                                          </span>
-                                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
-                                            (d.suggestedFlexHours || 0) >= 20
-                                              ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                              : (d.suggestedFlexHours || 0) >= 10
-                                              ? 'bg-blue-100 text-blue-900 border-blue-300'
-                                              : 'bg-stone-100 text-stone-700 border-stone-200'
-                                          }`}>
-                                            {d.suggestedExtraShifts || 'Baza standardowa'}
-                                          </span>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))
+                                        {/* DLA BARISTÓW (Wpisz h) */}
+                                        <td className="py-2 px-3 text-right">
+                                          <div className="flex items-center justify-end gap-1.5">
+                                            <input
+                                              type="number"
+                                              step="0.5"
+                                              min="0"
+                                              value={customBarista === 0 ? '' : customBarista}
+                                              onChange={(e) => {
+                                                const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                                                handleDayBaristaChange(r.week.week_key, d.day, val, displayDays);
+                                              }}
+                                              placeholder="0"
+                                              className="w-20 px-2 py-1 bg-white border border-[#006241]/40 focus:border-[#006241] focus:ring-1 focus:ring-[#006241] rounded-lg text-xs font-black text-[#006241] text-right outline-none shadow-2xs"
+                                            />
+                                            <span className="text-[11px] font-bold text-stone-500">h</span>
+                                          </div>
+                                        </td>
+
+                                        {/* ŁĄCZNIE DZIEŃ */}
+                                        <td className="py-2.5 px-3 text-right">
+                                          <div className="flex flex-col items-end">
+                                            <span className={`font-black text-sm ${isBelowFloor ? 'text-rose-700' : 'text-stone-900'}`}>
+                                              {dayTotalHours.toFixed(1)} h
+                                            </span>
+                                            {isBelowFloor && (
+                                              <span className="text-[9px] font-bold text-rose-600">
+                                                ⚠️ &lt; 32h Floor
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        {/* Sugerowane Zmiany / Trend AI */}
+                                        <td className="py-2.5 px-3 text-center">
+                                          <div className="flex items-center justify-center gap-1.5" title={d.manipulationTip || undefined}>
+                                            <span className="font-bold text-amber-800 text-[11px]">
+                                              +{(d.suggestedFlexHours || 0).toFixed(1)}h flex
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+                                              (d.suggestedFlexHours || 0) >= 20
+                                                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                                : (d.suggestedFlexHours || 0) >= 10
+                                                ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                                : 'bg-stone-100 text-stone-700 border-stone-200'
+                                            }`}>
+                                              {d.suggestedExtraShifts || 'Baza'}
+                                            </span>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
                                 )}
                               </tbody>
                             </table>
@@ -880,7 +1047,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                             <div className="flex items-center gap-2">
                               <Info className="w-4 h-4 text-[#006241] shrink-0" />
                               <span>
-                                <strong>Dystrybucja robocizny:</strong> Godziny kierowników (MGR) odliczają się od celu tygodnia. Całą pozostałą pulę oraz H +/- rozpisz baristom.
+                                <strong>Dystrybucja robocizny:</strong> Wpisuj godziny baristów per dzień lub kliknij <em>Rozdziel wg Trendu AI</em> / <em>Po równo</em>. Suma dni automatycznie zapisuje się jako cel tygodnia ("Grafik h").
                               </span>
                             </div>
                           </div>

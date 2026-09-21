@@ -791,10 +791,17 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                               </span>
                               <span>•</span>
                               <span>{row.employee.contract_type === 'FULL' ? '1.00' : (row.employee.contract_type === 'PART_3_4' ? '0.75' : '0.50')}</span>
-                              {row.employee.hourly_rate ? (
+                              {row.employee.monthly_salary && row.employee.monthly_salary > 0 ? (
                                 <>
                                   <span>•</span>
-                                  <span className="font-medium">{row.employee.hourly_rate.toFixed(0)} zł</span>
+                                  <span className="font-medium" title={`Wynagrodzenie miesięczne: ${Math.round(row.employee.monthly_salary * (row.employee.contract_hours_ratio || 1.0)).toLocaleString('pl-PL')} zł/mc`}>
+                                    {Math.round(row.employee.monthly_salary * (row.employee.contract_hours_ratio || 1.0)).toLocaleString('pl-PL')} zł
+                                  </span>
+                                </>
+                              ) : row.employee.hourly_rate && row.employee.hourly_rate > 0 ? (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-medium">{row.employee.hourly_rate.toFixed(0)} zł/h</span>
                                 </>
                               ) : null}
                             </div>
@@ -819,7 +826,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                     <td
                       onClick={() => setIsLeftExpanded(true)}
                       className={`px-0.5 py-1 text-center border-r-2 border-stone-300 w-[44px] min-w-[44px] max-w-[44px] cursor-pointer hover:bg-emerald-50/70 transition-colors select-none ${rowBg}`}
-                      title={`Kliknij, aby rozwinąć dane menedżera\n${row.employee.name} — ${formatManagerRole(row.employee.role)} (${row.employee.contract_type === 'FULL' ? '1.00' : (row.employee.contract_type === 'PART_3_4' ? '0.75' : '0.50')})${row.employee.hourly_rate ? ` • ${row.employee.hourly_rate.toFixed(2)} zł/h` : ''}`}
+                      title={`Kliknij, aby rozwinąć dane menedżera\n${row.employee.name} — ${formatManagerRole(row.employee.role)} (${row.employee.contract_type === 'FULL' ? '1.00' : (row.employee.contract_type === 'PART_3_4' ? '0.75' : '0.50')})${row.employee.monthly_salary ? ` • ${Math.round(row.employee.monthly_salary * (row.employee.contract_hours_ratio || 1.0)).toLocaleString('pl-PL')} zł/mc` : (row.employee.hourly_rate ? ` • ${row.employee.hourly_rate.toFixed(2)} zł/h` : '')}`}
                     >
                       <div className="flex flex-col items-center justify-center gap-0.5">
                         <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[8.5px] font-black shadow-2xs ${

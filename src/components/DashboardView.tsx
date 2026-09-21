@@ -7,6 +7,7 @@ import {
   Calculator,
   LineChart,
   Boxes,
+  Users,
   ArrowRight,
   Store,
   Calendar,
@@ -87,12 +88,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* KAFELEK 1: TPLH Forecast */}
           <div
             onClick={() => onNavigate('labor_forecast')}
-            className="bg-white rounded-3xl border border-[#E2E8E5] hover:border-[#006241] p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white rounded-3xl border border-[#E2E8E5] hover:border-[#006241] p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#006241]/10 text-[#006241] flex items-center justify-center font-bold shadow-2xs group-hover:bg-[#006241] group-hover:text-white transition-colors">
-                  <BarChart3 className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#006241]/10 text-[#006241] flex items-center justify-center font-bold shadow-2xs group-hover:bg-[#006241] group-hover:text-white transition-colors">
+                  <BarChart3 className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
@@ -100,15 +101,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-[#006241] transition-colors">
+              <h3 className="text-sm font-black text-[#1E3932] group-hover:text-[#006241] transition-colors">
                 TPLH Forecast & Labor Balancing
               </h3>
-              <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
-                Predykcja MTD Trend Velocity, bufor robocizny, dobowe Floor Hours (32h) oraz ciągłe uczenie maszynowe trendów sezonowych AOP.
-              </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-[#006241]">
+            <div className="mt-4 pt-3 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-[#006241]">
               <span>Otwórz moduł TPLH</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
@@ -117,12 +115,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* KAFELEK 2: Managers Schedule */}
           <div
             onClick={() => onNavigate('managers_schedule')}
-            className="bg-white rounded-3xl border border-[#E2E8E5] hover:border-[#006241] p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white rounded-3xl border border-[#E2E8E5] hover:border-[#006241] p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#006241]/10 text-[#006241] flex items-center justify-center font-bold shadow-2xs group-hover:bg-[#006241] group-hover:text-white transition-colors">
-                  <CalendarDays className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#006241]/10 text-[#006241] flex items-center justify-center font-bold shadow-2xs group-hover:bg-[#006241] group-hover:text-white transition-colors">
+                  <CalendarDays className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
@@ -130,15 +128,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-[#006241] transition-colors">
+              <h3 className="text-sm font-black text-[#1E3932] group-hover:text-[#006241] transition-colors">
                 Managers Schedule (Grafik)
               </h3>
-              <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
-                Miesięczna siatka 7 menedżerów, Tarcza Kodeksu Pracy, godziny zmian Od-Do, rozliczenie TOR Q1–Q4 oraz wsparcia MAPAL.
-              </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-[#006241]">
+            <div className="mt-4 pt-3 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-[#006241]">
               <span>Otwórz grafik</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
@@ -147,12 +142,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* KAFELEK 3: Szkolenia (Wkrótce) */}
           <div
             onClick={() => onNavigate('trainings')}
-            className="bg-white/90 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-amber-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white/90 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-amber-400 p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                  <GraduationCap className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                  <GraduationCap className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                   <Clock className="w-3 h-3 text-amber-600" />
@@ -160,15 +155,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-amber-800 transition-colors">
+              <h3 className="text-sm font-black text-[#1E3932] group-hover:text-amber-800 transition-colors">
                 Szkolenia & Certyfikacje
               </h3>
-              <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
-                Wdrożenie First 30 (Zmiany T1–T10), The Barista Journey (B90/B180/BT), cyfrowe arkusze Skill Check i monitoring godzin Non-Coverage.
-              </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-amber-700">
+            <div className="mt-4 pt-3 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-amber-700">
               <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
@@ -177,12 +169,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* KAFELEK 4: COL Calculator (Wkrótce) */}
           <div
             onClick={() => onNavigate('col_calculator')}
-            className="bg-white/90 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-amber-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white/90 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-amber-400 p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                  <Calculator className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                  <Calculator className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                   <Clock className="w-3 h-3 text-amber-600" />
@@ -190,15 +182,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-amber-800 transition-colors">
+              <h3 className="text-sm font-black text-[#1E3932] group-hover:text-amber-800 transition-colors">
                 COL Calculator (Cost of Labor)
               </h3>
-              <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
-                Wierna cyfrowa replika 1:1 arkusza Excel dla 108120 Janki: kalkulacja COL %, TPLH, narzuty ZUS 19.48%, linie P&L, premie oraz rezerwa urlopowa.
-              </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-amber-700">
+            <div className="mt-4 pt-3 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-amber-700">
               <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
@@ -207,27 +196,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* KAFELEK 5: Analiza (Wkrótce) */}
           <div
             onClick={() => onNavigate('analytics')}
-            className="bg-white/80 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-blue-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white/80 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-blue-400 p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  <LineChart className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <LineChart className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
                   Wkrótce
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-blue-800 transition-colors">
+              <h3 className="text-sm font-black text-[#1E3932] group-hover:text-blue-800 transition-colors">
                 Analiza Biznesowa (BI)
               </h3>
-              <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
-                Raporty wielomiesięczne sprzedaży, basket size, mix produktowy (Beverage/Food) oraz zaawansowane korelacje TPLH z CCS.
-              </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-blue-700">
+            <div className="mt-4 pt-3 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-blue-700">
               <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
@@ -236,27 +222,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* KAFELEK 6: IBS & IMS (Wkrótce) */}
           <div
             onClick={() => onNavigate('ibs_ims')}
-            className="bg-white/80 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-purple-400 p-6 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white/80 hover:bg-white rounded-3xl border border-[#E2E8E5] hover:border-purple-400 p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                  <Boxes className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold shadow-2xs group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                  <Users className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
                   Wkrótce
                 </span>
               </div>
 
-              <h3 className="text-base font-black text-[#1E3932] group-hover:text-purple-800 transition-colors">
-                IBS & IMS (Magazyn & Zamówienia)
+              <h3 className="text-sm font-black text-[#1E3932] group-hover:text-purple-800 transition-colors">
+                IBS & IMS (Ideal Structure)
               </h3>
-              <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
-                Kalkulatory zamówień dostaw, stany magazynowe, kontrola strat (Waste) oraz comiesięczna inwentaryzacja kawiarni.
-              </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-purple-700">
+            <div className="mt-4 pt-3 border-t border-[#F0F4F2] flex items-center justify-between text-xs font-bold text-purple-700">
               <span>Zobacz zapowiedź modułu</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </div>
