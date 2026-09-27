@@ -13,9 +13,11 @@ import {
   ShiftDefinition,
   ManagerEmployee,
   MondayProjectionDetails,
+  EnsembleForecastResult,
 } from '../../../types';
 import { SystemClock } from '../../../services/systemClock';
 import { TrendLearningEngine } from './trendLearningEngine';
+import { getPolishTradingSundays } from '../../managers-schedule/services/managerScheduleEngine';
 
 export class CalculationEngine {
   /**
@@ -113,6 +115,7 @@ export class CalculationEngine {
     managerNcHours: number;
   } {
     const dayLabels = ['Nd', 'Pn', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob'];
+    const tradingSundays = getPolishTradingSundays(year);
     const dailyCoverage: ManagerDailyCoverageItem[] = [];
     let totalCovH = 0;
     let totalNcH = 0;
@@ -121,6 +124,8 @@ export class CalculationEngine {
       const dateObj = new Date(year, monthNum - 1, d);
       const dayLabel = dayLabels[dateObj.getDay()];
       const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isSunday = dayLabel === 'Nd';
+      const isTradingSunday = isSunday && tradingSundays.has(dateStr);
 
       const dayShifts = managerShifts.filter((s) => {
         if (s.date) return s.date === dateStr;
@@ -182,6 +187,8 @@ export class CalculationEngine {
         floorDeficit: Math.max(0, Number((32.0 - dayCovH).toFixed(1))),
         monthName,
         year,
+        isSunday,
+        isTradingSunday,
       });
     }
 
@@ -195,28 +202,57 @@ export class CalculationEngine {
 
   /**
    * Wylicza dystrybucję puli manipulacji zmianami (godzin ponad floor 32h) na poszczególne dni tygodnia
-   * na podstawie empirycznych wzorców i wag transakcyjno-godzinowych z MAPAL Fichajes
+   * na podstawie empirycznych wzorców, wag transakcyjno-godzinowych z MAPAL Fichajes oraz
+   * statusu Niedzieli Handlowej w CH Janki (zamknięte CH w niedziele wolne vs ~250% popytu w handlowe).
    */
   public static enrichDailyCoverageWithFlex(
     days: ManagerDailyCoverageItem[],
     totalWeekBudget: number,
-    dayOfWeekStats: { day_of_week: string; total_hours: number; days_count: number }[] = []
+    dayOfWeekStats: { day_of_week: string; total_hours: number; days_count: number }[] = [],
+    year?: number
   ): {
     enrichedDays: ManagerDailyCoverageItem[];
     totalBaseFloorHours: number;
     flexHoursPool: number;
     flexHoursPerDayAvg: number;
+    hasTradingSunday: boolean;
   } {
+    const targetYear =
+      year ||
+      days[0]?.year ||
+      (days[0]?.date ? parseInt(days[0].date.split('-')[0], 10) : new Date().getFullYear());
+    const tradingSundays = getPolishTradingSundays(targetYear);
+
+    // Weryfikacja czy w analizowanym tygodniu występuje Niedziela Handlowa
+    const hasTradingSunday = days.some((d) => {
+      if (d.dayOfWeek !== 'Nd') return false;
+      if (d.isTradingSunday !== undefined) return d.isTradingSunday;
+      return Boolean(d.date && tradingSundays.has(d.date));
+    });
+
     // Domyślne wagi rozkładu godzin flex ponad bazowy floor 32.0h/dzień dla kawiarni 108120 Janki:
-    let weightsToUse: Record<string, number> = {
-      'Sob': 0.216, // Sobota: 21.6% puli flex (największy szczyt handlowy)
-      'Wt': 0.181,  // Wtorek: 18.1% puli flex (początek tygodnia operacyjnego)
-      'Pt': 0.172,  // Piątek: 17.2% puli flex (szczyt popołudniowy)
-      'Pn': 0.134,  // Poniedziałek: 13.4% puli flex
-      'Śr': 0.134,  // Środa: 13.4% puli flex
-      'Czw': 0.131, // Czwartek: 13.1% puli flex
-      'Nd': 0.032,  // Niedziela: 3.2% puli flex (przeważnie niehandlowe, sam floor)
-    };
+    // W przypadku Niedzieli Handlowej niedziela otrzymuje 20.0% puli flex (ruch ~250% normy niedzielnej).
+    // W przypadku Niedzieli Wolnej od handlu niedziela otrzymuje 0% flex (zamknięte CH, czysty Floor 32h),
+    // a zaoszczędzone godziny zasilają piątkowo-sobotni peak w CH Janki!
+    let weightsToUse: Record<string, number> = hasTradingSunday
+      ? {
+          'Sob': 0.220, // Sobota: 22.0% puli flex (największy szczyt handlowy)
+          'Nd': 0.200,  // Niedziela Handlowa: 20.0% puli flex (CH Janki w pełni otwarte)
+          'Pt': 0.170,  // Piątek: 17.0% puli flex (szczyt popołudniowy)
+          'Wt': 0.140,  // Wtorek: 14.0% puli flex
+          'Pn': 0.090,  // Poniedziałek: 9.0% puli flex
+          'Śr': 0.090,  // Środa: 9.0% puli flex
+          'Czw': 0.090, // Czwartek: 9.0% puli flex
+        }
+      : {
+          'Sob': 0.245, // Sobota: 24.5% puli flex (największy szczyt handlowy)
+          'Pt': 0.200,  // Piątek: 20.0% puli flex (weekend peak)
+          'Wt': 0.190,  // Wtorek: 19.0% puli flex (start tygodnia i dostawy)
+          'Pn': 0.125,  // Poniedziałek: 12.5% puli flex
+          'Śr': 0.120,  // Środa: 12.0% puli flex
+          'Czw': 0.120, // Czwartek: 12.0% puli flex
+          'Nd': 0.000,  // Niedziela Niehandlowa: 0.0% flex (zamknięte CH, czysty Floor 32h)
+        };
 
     // Jeśli baza danych posiada historię logowań MAPAL (np. 2024–2026), wyliczamy wagi w 100% dynamicznie
     if (dayOfWeekStats && dayOfWeekStats.length > 0) {
@@ -225,9 +261,19 @@ export class CalculationEngine {
 
       for (const stat of dayOfWeekStats) {
         if (stat.day_of_week && stat.days_count > 0) {
+          const dayKey = stat.day_of_week.trim();
           const avgHours = stat.total_hours / stat.days_count;
-          const flexOverFloor = Math.max(0.5, avgHours - 32.0);
-          flexDeltas[stat.day_of_week.trim()] = flexOverFloor;
+          let flexOverFloor = Math.max(0.2, avgHours - 32.0);
+
+          // W niedziele niehandlowe blokujemy empiryczny flex, bo CH jest zamknięte:
+          if (dayKey === 'Nd' && !hasTradingSunday) {
+            flexOverFloor = 0;
+          } else if (dayKey === 'Nd' && hasTradingSunday) {
+            // W niedzielę handlową ruch dorównuje sobocie:
+            flexOverFloor = Math.max(flexOverFloor, 12.0);
+          }
+
+          flexDeltas[dayKey] = flexOverFloor;
           totalEmpiricalFlex += flexOverFloor;
         }
       }
@@ -251,6 +297,41 @@ export class CalculationEngine {
     );
 
     const enrichedDays: ManagerDailyCoverageItem[] = days.map((d) => {
+      const isSunday = d.dayOfWeek === 'Nd';
+      const isTrading = isSunday
+        ? d.isTradingSunday !== undefined
+          ? d.isTradingSunday
+          : Boolean(d.date && tradingSundays.has(d.date))
+        : false;
+
+      // Specjalne operacyjne traktowanie niedzieli niehandlowej (CH Janki zamknięte):
+      if (isSunday && !isTrading) {
+        const baseFloorHours = 32.0;
+        const suggestedFlexHours = 0.0;
+        const suggestedTotalDayHours = 32.0;
+        const suggestedBaristaHours = Math.max(0, Number((32.0 - d.coverageHours).toFixed(1)));
+        const maxBaristaHours = suggestedBaristaHours;
+        const manipulationTip =
+          '☕ Niedziela wolna od handlu (zamknięte CH Janki). Obsada ściśle na poziomie Floor (32h = 2 AM + 2 PM). Zero nadmiarowych godzin baristycznych.';
+        const suggestedExtraShifts = 'Baza Floor (CH nieczynne)';
+
+        return {
+          ...d,
+          isSunday: true,
+          isTradingSunday: false,
+          baseFloorHours,
+          suggestedFlexHours,
+          suggestedTotalDayHours,
+          suggestedBaristaHours,
+          suggestedExtraShifts,
+          dayWeightPercent: 0,
+          manipulationMinHours: 32.0,
+          manipulationMaxHours: 32.0,
+          maxBaristaHours,
+          manipulationTip,
+        };
+      }
+
       const rawWeight = weightsToUse[d.dayOfWeek] || (1 / (daysCount || 7));
       const normalizedWeight = activeSumWeight > 0 ? rawWeight / activeSumWeight : 1 / (daysCount || 1);
 
@@ -267,7 +348,11 @@ export class CalculationEngine {
           : 'zmian';
 
       const suggestedExtraShifts =
-        suggestedFlexHours <= 3.0
+        isSunday && isTrading
+          ? suggestedFlexHours >= 10.0
+            ? '+2 zmiany (Szczyt CH)'
+            : '+1 zmiana (Szczyt CH)'
+          : suggestedFlexHours <= 3.0
           ? 'Baza standardowa'
           : `+${extraShiftsCount > 0 ? extraShiftsCount : 1} ${shiftPlural}`;
 
@@ -280,8 +365,9 @@ export class CalculationEngine {
         manipulationTip = 'Sobotni szczyt w CH Janki. Nie schodź poniżej rekomendacji baristów.';
       } else if (d.dayOfWeek === 'Pt') {
         manipulationTip = 'Popołudniowy peak weekendowy. Kluczowa obsada 14:00–20:00.';
-      } else if (d.dayOfWeek === 'Nd') {
-        manipulationTip = 'Dzień o niskim obrocie. Wystarczy obsada bazowa lub minimalny bufor.';
+      } else if (isSunday && isTrading) {
+        manipulationTip =
+          '🛒 Niedziela Handlowa w CH Janki! Pełny ruch galerii handlowej (~250% zwykłej niedzieli). Zaplanuj min. 2 dodatkowe zmiany baristów w szczycie 13:00–19:00.';
       } else if (d.dayOfWeek === 'Wt') {
         manipulationTip = 'Start tygodnia biznesowego / dostawy. Zalecane wsparcie poranne.';
       } else if (d.dayOfWeek === 'Pn') {
@@ -290,6 +376,8 @@ export class CalculationEngine {
 
       return {
         ...d,
+        isSunday,
+        isTradingSunday: isTrading,
         baseFloorHours,
         suggestedFlexHours,
         suggestedTotalDayHours,
@@ -308,6 +396,178 @@ export class CalculationEngine {
       totalBaseFloorHours,
       flexHoursPool,
       flexHoursPerDayAvg,
+      hasTradingSunday,
+    };
+  }
+
+  /**
+   * Silnik Predykcji Zespołowej (Multi-Model Ensemble Forecasting):
+   * Łączy 3 niezależne modele analityczne w zbalansowaną prognozę z przedziałem ufności:
+   * 1. Model AOP MTD Velocity (waga 35–60%) — oficjalna kotwica planu korporacyjnego
+   * 2. Krótkoterminowy Run-Rate z wykładniczymi wagami (waga 30–50%) — najnowsza dynamika z ostatnich tygodni
+   * 3. Model Sezonowości Bliźniaczej YoY (waga 15–35%) — historyczne wykonanie dla tego samego miesiąca w CH Janki
+   */
+  public static calculateEnsembleForecast(
+    aopPlan: AopPlanRecord,
+    historicalPlans: AopPlanRecord[],
+    closedRows: WeeklyCalculatedRow[],
+    monthTemporalStatus: 'past' | 'current' | 'future',
+    planTrxTotal: number,
+    targetTplh: number
+  ): EnsembleForecastResult {
+    const rowsWithTrx = closedRows.filter((r) => r.actualTrx !== null && r.actualTrx > 0);
+    const planTrxForTrend = rowsWithTrx.reduce((s, r) => s + r.planTrx, 0);
+    const actTrxForTrend = rowsWithTrx.reduce((s, r) => s + (r.actualTrx || 0), 0);
+
+    // 1. Model AOP MTD:
+    let aopVelocity = 1.0;
+    if (monthTemporalStatus === 'past' && aopPlan.actual_trx && aopPlan.actual_trx > 0 && planTrxTotal > 0) {
+      aopVelocity = Number((aopPlan.actual_trx / planTrxTotal).toFixed(4));
+    } else if (rowsWithTrx.length > 0 && planTrxForTrend > 0) {
+      aopVelocity = Number((actTrxForTrend / planTrxForTrend).toFixed(4));
+    }
+
+    // 2. Model Krótkiego Run-Rate (Wykładnicza Recencja):
+    let runRateVelocity = aopVelocity;
+    let hasRunRateData = false;
+    if (rowsWithTrx.length > 1) {
+      hasRunRateData = true;
+      let weightedSum = 0;
+      let totalWeight = 0;
+      rowsWithTrx.forEach((r, idx) => {
+        const weekRatio = (r.actualTrx || 0) / (r.planTrx || 1);
+        const weight = Math.pow(1.8, idx);
+        weightedSum += weekRatio * weight;
+        totalWeight += weight;
+      });
+      if (totalWeight > 0) {
+        runRateVelocity = Number((weightedSum / totalWeight).toFixed(4));
+      }
+    } else if (rowsWithTrx.length === 1) {
+      runRateVelocity = aopVelocity;
+      hasRunRateData = true;
+    }
+
+    // 3. Model Sezonowości Bliźniaczej YoY:
+    let yoyVelocity = 1.0;
+    let hasYoYData = false;
+    const sameMonthHistory = (historicalPlans || []).filter(
+      (p) =>
+        p.month === aopPlan.month &&
+        p.year < aopPlan.year &&
+        typeof p.actual_trx === 'number' &&
+        p.actual_trx > 0 &&
+        typeof p.plan_trx === 'number' &&
+        p.plan_trx > 0
+    );
+
+    if (sameMonthHistory.length > 0) {
+      hasYoYData = true;
+      const totalHistPlan = sameMonthHistory.reduce((sum, p) => sum + (p.plan_trx || 0), 0);
+      const totalHistAct = sameMonthHistory.reduce((sum, p) => sum + (p.actual_trx || 0), 0);
+      if (totalHistPlan > 0) {
+        yoyVelocity = Number((totalHistAct / totalHistPlan).toFixed(4));
+      }
+    } else {
+      const anyHistory = (historicalPlans || []).filter(
+        (p) =>
+          typeof p.actual_trx === 'number' &&
+          p.actual_trx > 0 &&
+          typeof p.plan_trx === 'number' &&
+          p.plan_trx > 0
+      );
+      if (anyHistory.length > 0) {
+        const totalHistPlan = anyHistory.reduce((sum, p) => sum + (p.plan_trx || 0), 0);
+        const totalHistAct = anyHistory.reduce((sum, p) => sum + (p.actual_trx || 0), 0);
+        if (totalHistPlan > 0) {
+          yoyVelocity = Number((totalHistAct / totalHistPlan).toFixed(4));
+        }
+      }
+    }
+
+    // 4. Dobór Wag Zespołu (Ensemble Weight Optimization):
+    let aopWeight = 0.50;
+    let runRateWeight = 0.30;
+    let yoyWeight = 0.20;
+
+    if (monthTemporalStatus === 'past') {
+      aopWeight = 1.0;
+      runRateWeight = 0.0;
+      yoyWeight = 0.0;
+    } else if (rowsWithTrx.length === 0) {
+      if (hasYoYData) {
+        aopWeight = 0.65;
+        yoyWeight = 0.35;
+        runRateWeight = 0.0;
+      } else {
+        aopWeight = 1.0;
+        yoyWeight = 0.0;
+        runRateWeight = 0.0;
+      }
+    } else if (rowsWithTrx.length === 1) {
+      aopWeight = 0.50;
+      runRateWeight = 0.30;
+      yoyWeight = hasYoYData ? 0.20 : 0.0;
+      if (!hasYoYData) {
+        aopWeight = 0.60;
+        runRateWeight = 0.40;
+      }
+    } else {
+      aopWeight = 0.35;
+      runRateWeight = 0.50;
+      yoyWeight = hasYoYData ? 0.15 : 0.0;
+      if (!hasYoYData) {
+        aopWeight = 0.40;
+        runRateWeight = 0.60;
+      }
+    }
+
+    const sumW = aopWeight + runRateWeight + yoyWeight;
+    aopWeight = Number((aopWeight / sumW).toFixed(2));
+    runRateWeight = Number((runRateWeight / sumW).toFixed(2));
+    yoyWeight = Number((1 - aopWeight - runRateWeight).toFixed(2));
+
+    const blendedVelocity = Number(
+      (aopWeight * aopVelocity + runRateWeight * runRateVelocity + yoyWeight * yoyVelocity).toFixed(4)
+    );
+
+    const allVelocities = [aopVelocity, runRateVelocity, yoyVelocity].filter((v) => v > 0);
+    const minVel = Math.min(...allVelocities);
+    const maxVel = Math.max(...allVelocities);
+
+    const minFactor = Math.max(0.85, Math.min(blendedVelocity * 0.985, minVel));
+    const maxFactor = Math.min(1.25, Math.max(blendedVelocity * 1.015, maxVel));
+
+    let confidenceScore = 75;
+    if (monthTemporalStatus === 'past') confidenceScore = 100;
+    else {
+      if (rowsWithTrx.length >= 2) confidenceScore += 15;
+      else if (rowsWithTrx.length === 1) confidenceScore += 8;
+      if (hasYoYData) confidenceScore += 7;
+      if (Math.abs(maxFactor - minFactor) < 0.06) confidenceScore += 3;
+    }
+    confidenceScore = Math.min(99, confidenceScore);
+
+    return {
+      aopVelocity,
+      runRateVelocity,
+      yoyVelocity,
+      blendedVelocity,
+      weights: { aopWeight, runRateWeight, yoyWeight },
+      forecastTrxRange: {
+        min: Math.round(planTrxTotal * minFactor),
+        expected: Math.round(planTrxTotal * blendedVelocity),
+        max: Math.round(planTrxTotal * maxFactor),
+      },
+      earnedLaborRange: {
+        floorSafe: Number(((planTrxTotal * minFactor) / targetTplh).toFixed(1)),
+        balanced: Number(((planTrxTotal * blendedVelocity) / targetTplh).toFixed(1)),
+        growth: Number(((planTrxTotal * maxFactor) / targetTplh).toFixed(1)),
+      },
+      confidenceScore,
+      modelExplanation: `Zespół 3 modeli: AOP (${Math.round(aopWeight * 100)}%), Run-Rate (${Math.round(runRateWeight * 100)}%), Sezonowość YoY (${Math.round(yoyWeight * 100)}%).`,
+      hasYoYData,
+      hasRunRateData,
     };
   }
 
@@ -564,16 +824,17 @@ export class CalculationEngine {
       }
     }
 
-    const rowsWithTrx = closedRows.filter((r) => r.actualTrx !== null && r.actualTrx > 0);
-    const planTrxForTrend = rowsWithTrx.reduce((s, r) => s + r.planTrx, 0);
-    const actTrxForTrend = rowsWithTrx.reduce((s, r) => s + (r.actualTrx || 0), 0);
+    // Krok 2: Silnik predykcyjny Zespołu Modeli (Ensemble Forecast: AOP + Run-Rate + YoY)
+    const ensembleResult = CalculationEngine.calculateEnsembleForecast(
+      aopPlan,
+      historicalPlans,
+      closedRows,
+      monthTemporalStatus,
+      planTrxTotal,
+      targetTplh
+    );
 
-    let trendVelocityMtd = 1.0;
-    if (monthTemporalStatus === 'past' && planTrxMtd > 0 && actualTrxMtd > 0) {
-      trendVelocityMtd = actualTrxMtd / planTrxMtd;
-    } else if (rowsWithTrx.length > 0 && planTrxForTrend > 0) {
-      trendVelocityMtd = actTrxForTrend / planTrxForTrend;
-    }
+    const trendVelocityMtd = ensembleResult.blendedVelocity;
 
     // Prognoza TRX dla otwartych tygodni i łączna prognoza miesiąca
     let forecastOpenTrx = 0;
@@ -758,7 +1019,8 @@ export class CalculationEngine {
       const flexResult = CalculationEngine.enrichDailyCoverageWithFlex(
         managerDailyCoverage,
         weekTargetBudget,
-        dayOfWeekStats
+        dayOfWeekStats,
+        aopPlan.year
       );
       managerDailyCoverage = flexResult.enrichedDays;
       const totalBaseFloorHours = flexResult.totalBaseFloorHours;
@@ -847,7 +1109,8 @@ export class CalculationEngine {
       trendVelocityMtd,
       earnedLaborBudget,
       planHoursTotal,
-      dayOfWeekStats
+      dayOfWeekStats,
+      ensembleResult
     );
 
     // Krok 7: Kluczowa metryka SM — ile godzin na dodatkowe zmiany
@@ -928,6 +1191,7 @@ export class CalculationEngine {
       totalBaristaPoolMonth,
       ncPlannedVsBudget,
       coverageGapsMonthCount,
+      ensembleForecast: ensembleResult,
 
       rows: rowsWithHanw,
     };

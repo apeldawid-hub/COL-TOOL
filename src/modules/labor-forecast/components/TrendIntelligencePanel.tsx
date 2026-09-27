@@ -12,6 +12,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Layers,
+  ShoppingBag,
 } from 'lucide-react';
 import { TrendLearningSummary, StrategyOption } from '../../../types';
 
@@ -26,7 +28,7 @@ export const TrendIntelligencePanel: React.FC<TrendIntelligencePanelProps> = ({
   selectedStrategy,
   onSelectStrategy,
 }) => {
-  const { velocityScore, momentumTrend, confidenceLevel, strategyOptions, insights, historicalMonthsAnalyzed } = summary;
+  const { velocityScore, momentumTrend, confidenceLevel, strategyOptions, insights, historicalMonthsAnalyzed, ensembleForecast } = summary;
 
   const velocityPercent = ((velocityScore - 1) * 100).toFixed(1);
   const velocitySign = Number(velocityPercent) > 0 ? `+${velocityPercent}%` : `${velocityPercent}%`;
@@ -72,7 +74,7 @@ export const TrendIntelligencePanel: React.FC<TrendIntelligencePanelProps> = ({
           ) : (
             <>
               <div className="bg-[#F4F7F5] px-3 py-1.5 rounded-xl border border-[#E2E8E5] flex items-center gap-2 text-xs">
-                <span className="text-[#5C6F68] font-bold">Dynamika (Velocity):</span>
+                <span className="text-[#5C6F68] font-bold">Wypadkowa Dynamika (Velocity):</span>
                 <span className="font-black text-[#006241]">{velocitySign}</span>
               </div>
 
@@ -94,6 +96,126 @@ export const TrendIntelligencePanel: React.FC<TrendIntelligencePanelProps> = ({
           )}
         </div>
       </div>
+
+      {/* 🧠 ENSEMBLE MULTI-MODEL FORECAST CARD */}
+      {ensembleForecast && !summary.isBaselineMode && (
+        <div className="my-5 p-4 rounded-2xl bg-gradient-to-br from-[#F4F8F6] via-[#EEF5F1] to-[#E6F0EB] border border-[#C8E0D5] shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#D4E8DE]">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-[#006241] text-white shadow-2xs">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-black text-[#1E3932] uppercase tracking-wider">
+                    Wielomodelowy Zespół Predykcji (Ensemble AI)
+                  </h4>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#006241] text-white">
+                    Ufność: {ensembleForecast.confidenceScore}%
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#5C6F68] mt-0.5">
+                  {ensembleForecast.modelExplanation}
+                </p>
+              </div>
+            </div>
+
+            {/* Status Niedzieli Handlowej w miesiącu */}
+            {summary.hasTradingSundayInMonth ? (
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100/80 border border-emerald-300 text-emerald-950 text-xs font-black shadow-2xs">
+                <ShoppingBag className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Niedziela Handlowa: {summary.tradingSundaysDates?.join(', ')}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-[#D4E8DE] text-stone-600 text-[11px] font-bold">
+                <span>☕ Niedziele wolne od handlu (Baza Floor 32h)</span>
+              </div>
+            )}
+          </div>
+
+          {/* 3 Sygnały Składowe Zespołu */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3">
+            {/* Model 1: AOP Kotwica */}
+            <div className="p-3 rounded-xl bg-white border border-[#D4E8DE] flex flex-col justify-between shadow-2xs">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-extrabold text-[#1E3932] flex items-center gap-1.5">
+                  🏛️ Kotwica AOP
+                </span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
+                  Waga: {Math.round(ensembleForecast.weights.aopWeight * 100)}%
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-base font-black text-[#1E3932]">
+                  {((ensembleForecast.aopVelocity - 1) * 100) >= 0 ? '+' : ''}
+                  {((ensembleForecast.aopVelocity - 1) * 100).toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-[#5C6F68]">tempo planu MTD</span>
+              </div>
+            </div>
+
+            {/* Model 2: Run-Rate */}
+            <div className="p-3 rounded-xl bg-white border border-[#D4E8DE] flex flex-col justify-between shadow-2xs">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-extrabold text-[#006241] flex items-center gap-1.5">
+                  ⚡ Krótki Run-Rate
+                </span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-50 text-[#006241] border border-emerald-200">
+                  Waga: {Math.round(ensembleForecast.weights.runRateWeight * 100)}%
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-base font-black text-[#006241]">
+                  {((ensembleForecast.runRateVelocity - 1) * 100) >= 0 ? '+' : ''}
+                  {((ensembleForecast.runRateVelocity - 1) * 100).toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-[#5C6F68]">ostatnie tygodnie (EMA)</span>
+              </div>
+            </div>
+
+            {/* Model 3: YoY Sezonowość */}
+            <div className="p-3 rounded-xl bg-white border border-[#D4E8DE] flex flex-col justify-between shadow-2xs">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-extrabold text-amber-900 flex items-center gap-1.5">
+                  📅 Sezonowość YoY
+                </span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                  Waga: {Math.round(ensembleForecast.weights.yoyWeight * 100)}%
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-base font-black text-amber-900">
+                  {ensembleForecast.hasYoYData
+                    ? `${((ensembleForecast.yoyVelocity - 1) * 100) >= 0 ? '+' : ''}${((ensembleForecast.yoyVelocity - 1) * 100).toFixed(1)}%`
+                    : '1.0 (Baza)'}
+                </span>
+                <span className="text-[10px] text-[#5C6F68]">historia lat ubiegłych</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Przedział Ufności TRX & Wypracowany Budżet */}
+          <div className="pt-2.5 border-t border-[#D4E8DE] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-[#5C6F68] font-bold">Przedział Prognozy TRX:</span>
+              <span className="font-extrabold text-[#1E3932] bg-white px-2.5 py-1 rounded-lg border border-[#D4E8DE] shadow-2xs">
+                {ensembleForecast.forecastTrxRange.min.toLocaleString('pl-PL')}
+                <span className="text-stone-400 mx-1.5 font-normal">…</span>
+                <strong className="text-[#006241]">{ensembleForecast.forecastTrxRange.expected.toLocaleString('pl-PL')}</strong>
+                <span className="text-stone-400 mx-1.5 font-normal">…</span>
+                {ensembleForecast.forecastTrxRange.max.toLocaleString('pl-PL')} TRX
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[#5C6F68] font-bold">Wypracowana Robocizna (Balanced):</span>
+              <span className="font-black text-[#006241] bg-white px-2.5 py-1 rounded-lg border border-[#D4E8DE] shadow-2xs">
+                {ensembleForecast.earnedLaborRange.balanced} h
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3 Strategie Planowania do wyboru przez Store Managera */}
       <div className="my-5">
@@ -223,7 +345,19 @@ export const TrendIntelligencePanel: React.FC<TrendIntelligencePanelProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-[#1E3932]">{d.shortName}</span>
+                    <span className="text-xs font-black text-[#1E3932] flex items-center gap-1">
+                      {d.shortName}
+                      {d.dayId === 'sunday' && d.isTradingSunday && (
+                        <span className="text-[8px] font-black px-1 py-0.2 rounded bg-emerald-600 text-white leading-none">
+                          HANDL.
+                        </span>
+                      )}
+                      {d.dayId === 'sunday' && !d.isTradingSunday && (
+                        <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-stone-200 text-stone-600 leading-none">
+                          WOLNA
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10px] font-bold text-[#5C6F68]">{d.sharePercent}%</span>
                   </div>
 
@@ -232,7 +366,7 @@ export const TrendIntelligencePanel: React.FC<TrendIntelligencePanelProps> = ({
                       {d.avgHours} <span className="text-[11px] font-normal text-[#5C6F68]">h</span>
                     </div>
                     <div className="text-[10px] text-[#5C6F68] mt-0.5">
-                      Śr. dobowo
+                      {d.dayId === 'sunday' && !d.isTradingSunday ? 'Baza Floor (32h)' : 'Śr. dobowo'}
                     </div>
                   </div>
 

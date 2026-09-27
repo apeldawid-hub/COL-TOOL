@@ -11,13 +11,22 @@ import {
   ArrowUpCircle, 
   ShieldCheck,
   Zap,
-  Clock
+  Clock,
+  History,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Tag,
+  Filter,
+  Check
 } from 'lucide-react';
 import { APP_VERSION } from '../version';
+import { APP_CHANGELOG, ReleaseEntry } from '../constants/changelog';
 
 interface AppUpdateModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'update' | 'changelog';
 }
 
 interface VersionInfo {
@@ -30,7 +39,46 @@ interface VersionInfo {
   isPackaged: boolean;
 }
 
-export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose }) => {
+export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose, initialTab = 'update' }) => {
+  const [activeTab, setActiveTab] = useState<'update' | 'changelog'>(initialTab);
+  const [changelogSearch, setChangelogSearch] = useState<string>('');
+  const [changelogFilter, setChangelogFilter] = useState<'ALL' | 'feature' | 'enhancement' | 'compliance' | 'fix'>('ALL');
+  const [expandedVersions, setExpandedVersions] = useState<Record<string, boolean>>({
+    [APP_CHANGELOG[0]?.version || '2.8.40']: true
+  });
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  const toggleVersionExpanded = (ver: string) => {
+    setExpandedVersions((prev) => ({
+      ...prev,
+      [ver]: !prev[ver]
+    }));
+  };
+
+  const filteredReleases = APP_CHANGELOG.filter((release) => {
+    const q = changelogSearch.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      release.version.toLowerCase().includes(q) ||
+      release.title.toLowerCase().includes(q) ||
+      release.highlights?.some((h) => h.toLowerCase().includes(q)) ||
+      release.items?.some((i) => i.description.toLowerCase().includes(q));
+
+    const matchesFilter =
+      changelogFilter === 'ALL' ||
+      release.items?.some((i) => {
+        if (changelogFilter === 'compliance') return i.type === 'compliance' || i.type === 'database';
+        return i.type === changelogFilter;
+      });
+
+    return matchesSearch && matchesFilter;
+  });
+
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
   const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'>('idle');
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
@@ -211,28 +259,69 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-[#E2E8E5] overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-[#E2E8E5] overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-[#1E3932] to-[#006241] text-white flex items-center justify-between">
+        <div className="px-6 py-4.5 bg-gradient-to-r from-[#1E3932] via-[#006241] to-[#004d33] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/10 rounded-xl border border-white/20 shadow-inner">
-              <Sparkles className="w-6 h-6 text-emerald-300 animate-pulse" />
+            <div className="p-2.5 bg-white/10 rounded-2xl border border-white/20 shadow-inner">
+              <Sparkles className="w-5 h-5 text-emerald-300 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-lg font-bold tracking-wide">Centrum Aktualizacji & Wersji</h2>
-              <p className="text-xs text-emerald-200 font-medium">Starbucks Operations Suite • macOS Universal</p>
+              <h2 className="text-base font-black tracking-wide">Centrum Aktualizacji & Dziennik Zmian</h2>
+              <p className="text-xs text-emerald-200/90 font-medium">Starbucks Operations Suite • 108120 Janki</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Pasek Zakładek: Aktualizacje OTA vs Dziennik Zmian */}
+        <div className="flex items-center justify-between border-b border-stone-200 bg-[#F7F9F8] px-6 pt-2 shrink-0">
+          <div className="flex space-x-1">
+            <button
+              onClick={() => setActiveTab('update')}
+              className={`pb-2.5 px-3.5 text-xs font-black transition-all border-b-2 cursor-pointer flex items-center gap-2 ${
+                activeTab === 'update'
+                  ? 'border-[#006241] text-[#006241]'
+                  : 'border-transparent text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Aktualizacje & Status</span>
+              {status === 'available' && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('changelog')}
+              className={`pb-2.5 px-3.5 text-xs font-black transition-all border-b-2 cursor-pointer flex items-center gap-2 ${
+                activeTab === 'changelog'
+                  ? 'border-[#006241] text-[#006241]'
+                  : 'border-transparent text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Dziennik Zmian & Co Nowego</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-[#006241] text-[10px] font-mono font-bold">
+                {APP_CHANGELOG.length} wydań
+              </span>
+            </button>
+          </div>
+
+          <span className="text-[11px] text-stone-400 font-mono hidden sm:inline">
+            Zainstalowano: <strong>v{versionInfo?.version || APP_VERSION}</strong>
+          </span>
+        </div>
+
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto max-h-[75vh]">
+          {activeTab === 'update' && (
+            <div className="space-y-6">
           {/* Karta bieżącej wersji */}
           <div className="p-4 bg-[#F7F9F8] rounded-xl border border-[#E2E8E5] flex items-center justify-between">
             <div className="flex items-center gap-3.5">
@@ -495,6 +584,188 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
               Baza danych SQLite (grafiki, normy KP, AOP, szkolenia, logowania MAPAL) jest trwale izolowana w katalogu systemowym użytkownika (<code>Application Support</code>). Każda instalacja i aktualizacja podmienia wyłącznie pliki wykonywalne aplikacji, nie dotykając Twoich danych.
             </p>
           </div>
+            </div>
+          )}
+
+          {activeTab === 'changelog' && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              {/* Pasek wyszukiwania i filtrów */}
+              <div className="space-y-3 bg-[#F7F9F8] p-3.5 rounded-2xl border border-stone-200">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={changelogSearch}
+                    onChange={(e) => setChangelogSearch(e.target.value)}
+                    placeholder="Wyszukaj w zmianach (np. zoom, VACUUM, grafik, TOR, TPLH, wsparcie)..."
+                    className="w-full bg-white border border-stone-300 rounded-xl pl-9 pr-8 py-2 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#006241]"
+                  />
+                  {changelogSearch && (
+                    <button
+                      onClick={() => setChangelogSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-bold cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                  <span className="text-stone-500 mr-1 flex items-center gap-1">
+                    <Filter className="w-3 h-3 text-stone-400" />
+                    Filtr:
+                  </span>
+                  {[
+                    { id: 'ALL', label: 'Wszystkie' },
+                    { id: 'feature', label: '✨ Nowości' },
+                    { id: 'enhancement', label: '⚡ Usprawnienia' },
+                    { id: 'compliance', label: '🛡️ Kodeks & Baza' },
+                    { id: 'fix', label: '🐛 Poprawki' }
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setChangelogFilter(filter.id as any)}
+                      className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                        changelogFilter === filter.id
+                          ? 'bg-[#006241] text-white shadow-2xs'
+                          : 'bg-white hover:bg-stone-200/70 text-stone-700 border border-stone-200'
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lista wydań z rejestru */}
+              <div className="space-y-3.5">
+                {filteredReleases.length === 0 ? (
+                  <div className="text-center py-10 space-y-2 text-stone-500">
+                    <Info className="w-8 h-8 text-stone-400 mx-auto" />
+                    <p className="text-xs font-bold">Nie znaleziono wydań pasujących do wyszukiwania "{changelogSearch}".</p>
+                    <button
+                      onClick={() => { setChangelogSearch(''); setChangelogFilter('ALL'); }}
+                      className="text-xs text-[#006241] font-bold hover:underline cursor-pointer"
+                    >
+                      Wyczyść filtry
+                    </button>
+                  </div>
+                ) : (
+                  filteredReleases.map((release) => {
+                    const isExpanded = !!expandedVersions[release.version];
+                    const isCurrent = release.version === (versionInfo?.version || APP_VERSION);
+
+                    return (
+                      <div
+                        key={release.version}
+                        className={`rounded-2xl border transition-all overflow-hidden ${
+                          isCurrent
+                            ? 'bg-gradient-to-br from-emerald-50/50 via-white to-stone-50 border-[#006241]/40 shadow-xs'
+                            : 'bg-white border-stone-200 hover:border-stone-300 shadow-2xs'
+                        }`}
+                      >
+                        {/* Nagłówek karty wydania */}
+                        <div
+                          onClick={() => toggleVersionExpanded(release.version)}
+                          className="p-4 flex items-start justify-between gap-3 cursor-pointer select-none group"
+                        >
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black font-mono tracking-wide ${
+                                isCurrent
+                                  ? 'bg-[#006241] text-white shadow-2xs'
+                                  : 'bg-stone-100 text-stone-800 border border-stone-200'
+                              }`}>
+                                v{release.version}
+                              </span>
+
+                              {isCurrent && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-[#006241] border border-emerald-300">
+                                  Bieżąca Wersja ✓
+                                </span>
+                              )}
+
+                              <span className="text-[11px] text-stone-500 flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-stone-400" />
+                                {release.date}
+                              </span>
+                            </div>
+
+                            <h4 className="text-sm font-black text-stone-900 leading-snug group-hover:text-[#006241] transition-colors">
+                              {release.title}
+                            </h4>
+
+                            {/* Główne atuty (highlights) */}
+                            {release.highlights && release.highlights.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                {release.highlights.map((h, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-[10px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-medium"
+                                  >
+                                    • {h}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            className="p-1 rounded-lg text-stone-400 group-hover:text-stone-700 transition-colors cursor-pointer"
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
+
+                        {/* Rozwinięte szczegóły */}
+                        {isExpanded && (
+                          <div className="px-4 pb-4 pt-2 border-t border-stone-100 bg-[#FAFBFB] space-y-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                              Szczegółowy Wykaz Zmian:
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {release.items
+                                .filter((item) => {
+                                  if (changelogFilter === 'ALL') return true;
+                                  if (changelogFilter === 'compliance') return item.type === 'compliance' || item.type === 'database';
+                                  return item.type === changelogFilter;
+                                })
+                                .map((item, idx) => {
+                                  const icon = item.type === 'feature' ? '✨' : item.type === 'enhancement' ? '⚡' : item.type === 'fix' ? '🐛' : '🛡️';
+                                  const typeName = item.type === 'feature' ? 'Nowość' : item.type === 'enhancement' ? 'Usprawnienie' : item.type === 'fix' ? 'Poprawka' : 'Baza/KP';
+                                  const typeBadge = item.type === 'feature' ? 'bg-amber-100 text-amber-900 border-amber-200' : item.type === 'enhancement' ? 'bg-sky-100 text-sky-900 border-sky-200' : item.type === 'fix' ? 'bg-rose-100 text-rose-900 border-rose-200' : 'bg-emerald-100 text-emerald-900 border-emerald-200';
+
+                                  return (
+                                    <div key={idx} className="flex items-start gap-2 text-xs bg-white p-2.5 rounded-xl border border-stone-200/80 shadow-2xs">
+                                      <span className="text-sm shrink-0 mt-0.5">{icon}</span>
+                                      <div className="flex-1 space-y-0.5">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`text-[9px] px-1.5 py-0.2 rounded border font-bold uppercase ${typeBadge}`}>
+                                            {typeName}
+                                          </span>
+                                          {item.module && item.module !== 'all' && item.module !== 'system' && (
+                                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 font-mono font-bold">
+                                              {item.module}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-stone-800 leading-relaxed">{item.description}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

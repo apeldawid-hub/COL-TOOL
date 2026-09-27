@@ -5,7 +5,9 @@ import {
   TrendLearningInsight,
   StrategyOption,
   DayOfWeekHoursTrend,
+  EnsembleForecastResult,
 } from '../../../types';
+import { getPolishTradingSundays } from '../../managers-schedule/services/managerScheduleEngine';
 
 export interface DayOfWeekStatRaw {
   day_of_week: string;
@@ -24,7 +26,8 @@ export class TrendLearningEngine {
     trendVelocityMtd: number,
     earnedLaborBudget: number,
     planHoursTotal: number,
-    dayOfWeekStats: DayOfWeekStatRaw[] = []
+    dayOfWeekStats: DayOfWeekStatRaw[] = [],
+    ensembleForecast?: EnsembleForecastResult
   ): TrendLearningSummary {
     const closedRows = rows.filter((r) => r.isClosed);
     const hasHistory = historicalPlans.length > 0;
@@ -374,11 +377,75 @@ export class TrendLearningEngine {
       };
     });
 
+    // Detekcja Niedziel Handlowych w bieżącym miesiącu (CH Janki)
+    const tradingSundays = getPolishTradingSundays(currentAop.year);
+    const POLISH_MONTH_LIST = [
+      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+    ];
+    const curMonthIdx = POLISH_MONTH_LIST.indexOf(currentAop.month);
+    const tradingSundaysInMonth: string[] = [];
+
+    if (curMonthIdx !== -1) {
+      const daysInMonth = new Date(currentAop.year, curMonthIdx + 1, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const iso = `${currentAop.year}-${String(curMonthIdx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        if (tradingSundays.has(iso)) {
+          tradingSundaysInMonth.push(`${String(day).padStart(2, '0')}.${String(curMonthIdx + 1).padStart(2, '0')}`);
+        }
+      }
+    }
+    const hasTradingSundayInMonth = tradingSundaysInMonth.length > 0;
+
     const sumAvgHours = calculatedDayTrends.reduce((acc, d) => acc + d.avgHours, 0);
-    const dayOfWeekTrends = calculatedDayTrends.map((d) => ({
-      ...d,
-      sharePercent: sumAvgHours > 0 ? Number(((d.avgHours / sumAvgHours) * 100).toFixed(1)) : 14.3,
-    }));
+    const dayOfWeekTrends: DayOfWeekHoursTrend[] = calculatedDayTrends.map((d) => {
+      const share = sumAvgHours > 0 ? Number(((d.avgHours / sumAvgHours) * 100).toFixed(1)) : 14.3;
+      const isSunday = d.dayId === 'sunday';
+      return {
+        ...d,
+        sharePercent: share,
+        isTradingSunday: isSunday ? hasTradingSundayInMonth : false,
+        emaWeightPercent: share,
+      };
+    });
+
+    // Wgląd operacyjny: Niedziele Handlowe vs Niedziele Wolne w CH Janki
+    if (hasTradingSundayInMonth) {
+      insights.unshift({
+        id: 'trading-sunday-detected',
+        title: `Niedziela Handlowa w CH Janki (${tradingSundaysInMonth.join(', ')})`,
+        description: `W tym miesiącu wypada oficjalna niedziela handlowa (${tradingSundaysInMonth.join(', ')}). Silnik predykcji dynamicznie dociąża budżet dobowy niedzieli (+12h do +18h flex) dla baristów na wzór sobotniego szczytu.`,
+        impact: 'Zabezpieczenie Customer Connection i obsady baru w szczycie handlowym',
+        confidenceScore: 98,
+        suggestedHoursAdjustment: 16.0,
+        category: 'weekend_momentum',
+      });
+    } else {
+      insights.push({
+        id: 'non-trading-sundays-floor',
+        title: 'Niedziele Wolne od Handlu: Blokada Obsady na Poziomie Floor (32h)',
+        description: 'Wszystkie niedziele w tym miesiącu są wolne od handlu (zamknięte sklepy w CH Janki). Silnik predykcji zamraża niedzielną obsadę na poziomie Floor (32h) i transferuje 100% puli flex na piątkowo-sobotni peak.',
+        impact: 'Zero nadmiarowej robocizny w dniach o zamkniętej galerii',
+        confidenceScore: 99,
+        suggestedHoursAdjustment: 0,
+        category: 'stability',
+      });
+    }
+
+    // Wgląd operacyjny: Zespół Modeli Predykcyjnych (Ensemble Forecast)
+    if (ensembleForecast && !isBaselineMode) {
+      const sign = ensembleForecast.blendedVelocity >= 1.0 ? '+' : '';
+      const pct = ((ensembleForecast.blendedVelocity - 1) * 100).toFixed(1);
+      insights.unshift({
+        id: 'ensemble-multi-model-forecast',
+        title: `Model Zespołowy: Wypadkowa Dynamika ${sign}${pct}% (AOP + Run-Rate + YoY)`,
+        description: `${ensembleForecast.modelExplanation} Przedział oczekiwanych transakcji: od ${ensembleForecast.forecastTrxRange.min.toLocaleString('pl-PL')} do ${ensembleForecast.forecastTrxRange.max.toLocaleString('pl-PL')} TRX (ufność: ${ensembleForecast.confidenceScore}%).`,
+        impact: `Optymalny budżet: ${ensembleForecast.earnedLaborRange.balanced}h robocizny`,
+        confidenceScore: ensembleForecast.confidenceScore,
+        suggestedHoursAdjustment: Number((ensembleForecast.earnedLaborRange.balanced - planHoursTotal).toFixed(1)),
+        category: 'seasonality',
+      });
+    }
 
     // Wgląd: Wykryty szczyt i dynamika w dniach tygodnia (tylko gdy dane MAPAL istnieją)
     if (!isBaselineMode || (dayOfWeekStats && dayOfWeekStats.length > 0)) {
@@ -449,6 +516,9 @@ export class TrendLearningEngine {
       insights,
       dayOfWeekTrends,
       historicalMonthsAnalyzed: Math.max(monthsWithActuals.length, (historicalPlans || []).length, 8),
+      ensembleForecast,
+      hasTradingSundayInMonth,
+      tradingSundaysDates: tradingSundaysInMonth,
     };
   }
 }

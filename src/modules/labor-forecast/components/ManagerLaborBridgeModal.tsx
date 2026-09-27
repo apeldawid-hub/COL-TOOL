@@ -88,7 +88,7 @@ export const ManagerLaborBridgeModal: React.FC<ManagerLaborBridgeModalProps> = (
   const totalFloorDeficit = days.reduce((sum, d) => sum + d.floorDeficit, 0);
 
   // Dynamiczne wyliczenie Puli H +/- i dystrybucji na dni
-  const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(days, targetBudget);
+  const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(days, targetBudget, [], week.year);
   const displayDays = flexInfo.enrichedDays;
   const flexHoursPool = flexInfo.flexHoursPool;
   const flexHoursPerDayAvg = flexInfo.flexHoursPerDayAvg;
@@ -349,6 +349,7 @@ export const ManagerLaborBridgeModal: React.FC<ManagerLaborBridgeModalProps> = (
                                 <span className={`w-7 h-5 rounded font-black text-[10px] flex items-center justify-center ${
                                   d.dayOfWeek === 'Sob' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
                                   d.dayOfWeek === 'Pt' ? 'bg-blue-100 text-blue-900 border border-blue-300' :
+                                  d.dayOfWeek === 'Nd' && d.isTradingSunday ? 'bg-emerald-100 text-emerald-950 border border-emerald-400 font-extrabold shadow-2xs' :
                                   d.dayOfWeek === 'Nd' ? 'bg-stone-200 text-stone-800' :
                                   'bg-stone-100 text-stone-700'
                                 }`}>
@@ -357,6 +358,16 @@ export const ManagerLaborBridgeModal: React.FC<ManagerLaborBridgeModalProps> = (
                                 <span className="font-bold">
                                   {String(d.day).padStart(2, '0')}.{String(d.monthName ? d.monthName.slice(0, 3) : (week.month_name ? week.month_name.slice(0, 3) : ''))}
                                 </span>
+                                {d.dayOfWeek === 'Nd' && d.isTradingSunday && (
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
+                                    🛒 HANDL.
+                                  </span>
+                                )}
+                                {d.dayOfWeek === 'Nd' && !d.isTradingSunday && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-stone-200 text-stone-600">
+                                    WOLNA
+                                  </span>
+                                )}
                               </div>
                             </td>
 

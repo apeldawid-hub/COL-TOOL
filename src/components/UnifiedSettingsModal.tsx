@@ -53,6 +53,7 @@ import {
   Monitor,
   ZoomIn,
   ZoomOut,
+  History,
 } from 'lucide-react';
 import { useTutorial } from '../context/TutorialContext';
 import { POLISH_MONTHS, AVAILABLE_YEARS } from './ModuleDateBar';
@@ -2379,16 +2380,29 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                         Aplikacja automatycznie w tle pobiera mikropatche OTA i instaluje nowe funkcje bez utraty danych SQLite.
                       </p>
                       {onOpenUpdateModal && (
-                        <button
-                          onClick={() => {
-                            onClose();
-                            onOpenUpdateModal();
-                          }}
-                          className="w-full py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          <span>{hasUpdateAvailable ? 'Dostępna nowa wersja!' : 'Centrum Aktualizacji & Auto-Update'}</span>
-                        </button>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => {
+                              onClose();
+                              onOpenUpdateModal();
+                            }}
+                            className="w-full py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            <span>{hasUpdateAvailable ? 'Dostępna nowa wersja!' : 'Centrum Aktualizacji & Auto-Update'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              onClose();
+                              onOpenUpdateModal();
+                            }}
+                            className="w-full py-1.5 px-3 bg-white hover:bg-stone-100 border border-stone-300 text-stone-700 text-[11px] font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <History className="w-3.5 h-3.5 text-[#006241]" />
+                            <span>Otwórz Dziennik Zmian & Co Nowego ➔</span>
+                          </button>
+                        </div>
                       )}
                     </div>
 

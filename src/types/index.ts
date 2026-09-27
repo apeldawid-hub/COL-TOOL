@@ -142,6 +142,8 @@ export interface ManagerDailyCoverageItem {
   manipulationMaxHours?: number;        // Maksymalna bezpieczna obsada przed kanibalizacją
   maxBaristaHours?: number;             // Maksymalny limit godzin dla baristów
   manipulationTip?: string;             // Konkretna wskazówka operacyjna dla Store Managera
+  isSunday?: boolean;                   // true dla niedzieli
+  isTradingSunday?: boolean;            // true dla oficjalnej niedzieli handlowej w CH Janki
 }
 
 export interface PlanningCadenceInfo {
@@ -205,6 +207,7 @@ export interface MonthlyCalculationSummary {
     variance: number; // planned - budget
   };
   coverageGapsMonthCount?: number;
+  ensembleForecast?: EnsembleForecastResult;
 
   rows: WeeklyCalculatedRow[];
 }
@@ -272,6 +275,8 @@ export interface DayOfWeekHoursTrend {
   floorHours: number;      // np. 40.0
   sharePercent: number;    // np. 15.2%
   trendDirection: 'increasing' | 'stable' | 'decreasing';
+  isTradingSunday?: boolean;// Czy niedziela jest handlowa w CH Janki
+  emaWeightPercent?: number;// Waga wykładnicza krocząca (EMA) w rozkładzie tygodnia
 }
 
 export interface StrategyOption {
@@ -281,6 +286,32 @@ export interface StrategyOption {
   expectedTplh: number;
   description: string;
   badge: string;
+}
+
+export interface EnsembleForecastResult {
+  aopVelocity: number;          // V_AOP = actTrxForTrend / planTrxForTrend (lub 1.0)
+  runRateVelocity: number;      // V_RunRate = ważona dynamika ostatnich 2-3 tygodni
+  yoyVelocity: number;          // V_YoY = historyczna relacja Act/Plan dla tego samego miesiąca w poprzednich latach
+  blendedVelocity: number;      // V_Ensemble = w1*V_AOP + w2*V_RunRate + w3*V_YoY
+  weights: {
+    aopWeight: number;
+    runRateWeight: number;
+    yoyWeight: number;
+  };
+  forecastTrxRange: {
+    min: number;
+    expected: number;
+    max: number;
+  };
+  earnedLaborRange: {
+    floorSafe: number;
+    balanced: number;
+    growth: number;
+  };
+  confidenceScore: number;      // 0..100
+  modelExplanation: string;     // Opis działania zespołu modeli
+  hasYoYData: boolean;
+  hasRunRateData: boolean;
 }
 
 export interface TrendLearningSummary {
@@ -298,6 +329,9 @@ export interface TrendLearningSummary {
   insights: TrendLearningInsight[];
   dayOfWeekTrends?: DayOfWeekHoursTrend[];
   historicalMonthsAnalyzed: number;
+  ensembleForecast?: EnsembleForecastResult;
+  hasTradingSundayInMonth?: boolean;
+  tradingSundaysDates?: string[];
 }
 
 // ==========================================

@@ -173,10 +173,21 @@ async function publishToGitHub() {
 
   // Utwórz lub zaktualizuj tag w gicie
   try {
-    execSync(`git add -A && git commit -m "feat(patch): v${newVersion} - Hot-Patch OTA: UI Zoom & SQLite Health" && git tag -f v${newVersion}`, { cwd: ROOT_DIR, stdio: 'pipe' });
+    execSync(`git add -A && git commit -m "feat(patch): v${newVersion} - Hot-Patch OTA" && git tag -f v${newVersion}`, { cwd: ROOT_DIR, stdio: 'pipe' });
     execSync(`git push https://x-access-token:${GH_TOKEN}@github.com/apeldawid-hub/COL-TOOL.git main --tags -f`, { cwd: ROOT_DIR, stdio: 'pipe' });
   } catch (gitErr) {
     console.warn('⚠️ Git push warning (kontynuuję publikację release przez API):', gitErr.message);
+  }
+
+  // Pobierz sformatowane notatki wydania przez Agenta Changeloga
+  let releaseBody = `⚡ Błyskawiczny patch OTA v${newVersion}\n- Rozmiar: ${sizeMB} MB\n- Suma SHA256: \`${sha256Hash}\`\n- Automatyczna instalacja w programie bez restartu binarki.\n\n`;
+  try {
+    const changelogNotes = execSync(`node scripts/changelog-agent.js latest-notes`, { cwd: ROOT_DIR, encoding: 'utf8' }).trim();
+    if (changelogNotes) {
+      releaseBody += `${changelogNotes}\n\n`;
+    }
+  } catch (err) {
+    console.warn('⚠️ Changelog notes warning:', err.message);
   }
 
   // Utwórz release
@@ -184,7 +195,7 @@ async function publishToGitHub() {
     tag_name: `v${newVersion}`,
     target_commitish: 'main',
     name: `Starbucks Operations Suite v${newVersion} (Hot-Patch)`,
-    body: `⚡ Błyskawiczny patch OTA v${newVersion}\n- Rozmiar: ${sizeMB} MB\n- Suma SHA256: \`${sha256Hash}\`\n- Automatyczna instalacja w programie bez restartu binarki.`,
+    body: releaseBody,
     draft: false,
     prerelease: false,
     make_latest: 'true'

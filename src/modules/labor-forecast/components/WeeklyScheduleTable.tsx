@@ -99,7 +99,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
       if (row) {
         const rawDays = row.managerDailyCoverage || [];
         if (rawDays.length > 0) {
-          const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(rawDays, val);
+          const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(rawDays, val, [], row.week.year);
           const newDailyMap = { ...dailyBaristaHours };
           flexInfo.enrichedDays.forEach(d => {
             const dayKey = `${weekKey}_${d.day}`;
@@ -139,7 +139,8 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
 
   // Rozdzielenie sumy wg trendu AI
   const handleDistributeByTrend = async (weekKey: string, targetTotal: number, daysList: any[]) => {
-    const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(daysList, targetTotal);
+    const weekYear = rows.find(r => r.week.week_key === weekKey)?.week.year;
+    const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(daysList, targetTotal, [], weekYear);
     const newDailyMap = { ...dailyBaristaHours };
     flexInfo.enrichedDays.forEach(d => {
       const dayKey = `${weekKey}_${d.day}`;
@@ -850,7 +851,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                     ? crossMonthBridge.all7DaysCoverage
                     : (r.managerDailyCoverage || []);
 
-                  const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(rawDays, targetBudget);
+                  const flexInfo = CalculationEngine.enrichDailyCoverageWithFlex(rawDays, targetBudget, [], r.week.year);
                   const displayDays = flexInfo.enrichedDays;
                   const totalBaseFloorHours = flexInfo.totalBaseFloorHours;
                   const flexHoursPool = flexInfo.flexHoursPool;
@@ -975,6 +976,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                             <span className={`w-7 h-5 rounded font-black text-[10px] flex items-center justify-center ${
                                               d.dayOfWeek === 'Sob' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
                                               d.dayOfWeek === 'Pt' ? 'bg-blue-100 text-blue-900 border border-blue-300' :
+                                              d.dayOfWeek === 'Nd' && d.isTradingSunday ? 'bg-emerald-100 text-emerald-950 border border-emerald-400 font-extrabold shadow-2xs' :
                                               d.dayOfWeek === 'Nd' ? 'bg-stone-200 text-stone-800' :
                                               'bg-stone-100 text-stone-700'
                                             }`}>
@@ -983,6 +985,16 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                             <span className="font-bold">
                                               {String(d.day).padStart(2, '0')}.{String(d.monthName ? d.monthName.slice(0, 3) : (r.week.month_name ? r.week.month_name.slice(0, 3) : ''))}
                                             </span>
+                                            {d.dayOfWeek === 'Nd' && d.isTradingSunday && (
+                                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
+                                                🛒 HANDL.
+                                              </span>
+                                            )}
+                                            {d.dayOfWeek === 'Nd' && !d.isTradingSunday && (
+                                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-stone-200 text-stone-600">
+                                                WOLNA
+                                              </span>
+                                            )}
                                           </div>
                                         </td>
 
