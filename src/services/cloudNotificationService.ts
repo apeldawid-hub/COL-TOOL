@@ -97,10 +97,10 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 // Domyślny / konfigurowalny klucz Resend API
 const DEFAULT_RESEND_API_URL = 'https://api.resend.com/emails';
 const DEFAULT_SENDER = 'Starbucks Operations Suite <onboarding@resend.dev>';
-const DEFAULT_RESEND_API_KEY = 're_2XBwm1nx_JxDSrfAnweY3aiqBkJDpiG8W';
+const DEFAULT_RESEND_API_KEY = '';
 
 class CloudNotificationService {
-  private apiKey: string = DEFAULT_RESEND_API_KEY;
+  private apiKey: string = '';
   private logs: NotificationLogItem[] = [];
   private preferences: NotificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES;
 

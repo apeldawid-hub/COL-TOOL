@@ -164,10 +164,10 @@ export const NotificationsSettingsTab: React.FC<NotificationsSettingsTabProps> =
   };
 
   const handleResetApiKey = () => {
-    const defaultKey = 're_2XBwm1nx_JxDSrfAnweY3aiqBkJDpiG8W';
+    const defaultKey = '';
     setApiKey(defaultKey);
     cloudNotificationService.setApiKey(defaultKey);
-    showNotice(true, 'Przywrócono fabryczny klucz chmurowy Starbucks.');
+    showNotice(true, 'Wyczyszczono klucz chmurowy Resend.');
   };
 
   const handleSaveEmailProfile = () => {
