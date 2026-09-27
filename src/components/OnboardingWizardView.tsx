@@ -25,7 +25,10 @@ import {
   FileText,
   TrendingUp,
   Plus,
+  Play,
+  Info,
 } from 'lucide-react';
+import { useTutorial } from '../context/TutorialContext';
 
 interface OnboardingWizardViewProps {
   onComplete: (config: {
@@ -120,6 +123,7 @@ function detectMonthAndYear(filename: string): { month: string; year: number } {
 }
 
 export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onComplete }) => {
+  const { openModelTour } = useTutorial();
   // Kroki: 1: Powitanie, 2: Profil, 3: Wybór opcji (A/B/C), 4: Wgrywanie plików (A), 5: Weryfikacja w Tabeli (A), 6: Podsumowanie
   const [step, setStep] = useState<number>(1);
 
@@ -142,6 +146,16 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
   // Krok 3: Opcje Danych Początkowych
   const [dataSourceOption, setDataSourceOption] = useState<'A' | 'B' | 'C'>('A');
   const [isCommitting, setIsCommitting] = useState<boolean>(false);
+
+  // Wybór trybu samouczka i pilotażu (zalecany do testów kawiarni)
+  const [enableTutorialMode, setEnableTutorialMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('sbx_tutorial_mode');
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
 
   // Stany weryfikacji plików Opcji A
   const [aopState, setAopState] = useState<UploadSlotState>({
@@ -478,6 +492,12 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
       setIsCommitting(false);
     }
 
+    try {
+      localStorage.setItem('sbx_tutorial_mode', String(enableTutorialMode));
+    } catch (e) {
+      console.warn('Nie udało się zapisać preferencji trybu samouczka:', e);
+    }
+
     const roleLabel =
       selectedRole === 'SM'
         ? 'Store Manager (SM)'
@@ -494,23 +514,23 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#08100C] text-slate-100 flex flex-col justify-between select-none relative overflow-hidden font-sans">
-      {/* Ozdobne tła z gradientami i rozmyciem kawiarnianym */}
-      <div className="absolute -top-40 -left-40 w-[550px] h-[550px] bg-[#006241]/25 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen w-full bg-[#F4F6F4] text-stone-800 flex flex-col justify-between select-none relative overflow-hidden font-sans">
+      {/* Ozdobne tła z delikatnymi pastelowymi gradientami i rozmyciem kawiarnianym */}
+      <div className="absolute -top-40 -left-40 w-[550px] h-[550px] bg-[#006241]/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-[550px] h-[550px] bg-[#CBA258]/15 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#00754A]/10 rounded-full blur-[160px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#00754A]/5 rounded-full blur-[160px] pointer-events-none" />
 
       {/* Pasek Górny */}
-      <header className="px-8 py-4 flex items-center justify-between relative z-10 border-b border-emerald-900/30 bg-[#060c09]/60 backdrop-blur-md">
+      <header className="px-8 py-4 flex items-center justify-between relative z-10 border-b border-stone-200 bg-white/80 backdrop-blur-md shadow-xs">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#006241] to-[#00754A] flex items-center justify-center text-white shadow-lg shadow-emerald-950/60 ring-1 ring-emerald-500/30">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#006241] to-[#00754A] flex items-center justify-center text-white shadow-md shadow-emerald-900/20 ring-1 ring-emerald-500/30">
             <span className="text-xl">☕</span>
           </div>
           <div>
-            <span className="font-black text-sm tracking-wider text-white block leading-tight">
+            <span className="font-black text-sm tracking-wider text-stone-900 block leading-tight">
               STARBUCKS
             </span>
-            <span className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase">
+            <span className="text-[10px] font-bold text-[#006241] tracking-widest uppercase">
               Operations Suite Setup
             </span>
           </div>
@@ -524,10 +544,10 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                 key={s}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   s === step
-                    ? 'w-7 bg-gradient-to-r from-[#006241] to-emerald-400'
+                    ? 'w-7 bg-gradient-to-r from-[#006241] to-emerald-600'
                     : s < step
-                    ? 'w-3 bg-emerald-700'
-                    : 'w-2 bg-slate-800'
+                    ? 'w-3 bg-emerald-500'
+                    : 'w-2 bg-stone-200'
                 }`}
               />
             ))}
@@ -538,7 +558,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
       {/* Główny Kontener Kroków */}
       <main className="flex-1 flex items-center justify-center px-4 py-6 relative z-10">
         <div
-          className={`w-full bg-[#101813]/90 backdrop-blur-xl border border-emerald-800/40 rounded-3xl shadow-2xl p-6 md:p-8 relative overflow-hidden transition-all duration-300 animate-in fade-in ${
+          className={`w-full bg-white border border-stone-200/90 rounded-3xl shadow-xl shadow-stone-900/5 p-6 md:p-8 relative overflow-hidden transition-all duration-300 animate-in fade-in ${
             step === 5 ? 'max-w-5xl' : 'max-w-2xl'
           }`}
         >
@@ -551,60 +571,63 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
           {step === 1 && (
             <div className="text-center py-4 space-y-6 animate-in zoom-in-95 duration-500">
               <div className="relative inline-block mx-auto mb-2">
-                <div className="absolute -inset-4 bg-emerald-500/20 rounded-full blur-xl animate-pulse pointer-events-none" />
-                <div className="w-28 h-28 rounded-full bg-gradient-to-b from-[#006241] to-[#004d33] border-2 border-emerald-400/40 flex items-center justify-center text-white shadow-2xl relative z-10 ring-8 ring-emerald-950/60">
+                <div className="absolute -inset-4 bg-emerald-500/10 rounded-full blur-xl animate-pulse pointer-events-none" />
+                <div className="w-28 h-28 rounded-full bg-gradient-to-b from-[#006241] to-[#004d33] border-2 border-emerald-300 flex items-center justify-center text-white shadow-xl relative z-10 ring-8 ring-emerald-50">
                   <span className="text-5xl drop-shadow-md">☕</span>
                 </div>
-                <div className="absolute -bottom-2 -right-2 p-2 bg-[#CBA258] text-[#1E3932] rounded-full shadow-lg font-black text-xs ring-4 ring-[#101813]">
+                <div className="absolute -bottom-2 -right-2 p-2 bg-[#CBA258] text-[#1E3932] rounded-full shadow-lg font-black text-xs ring-4 ring-white">
                   <Sparkles className="w-4 h-4" />
                 </div>
               </div>
 
               <div>
-                <h1 className="text-3xl font-black text-white tracking-tight sm:text-4xl">
+                <h1 className="text-3xl font-black text-stone-900 tracking-tight sm:text-4xl">
                   Starbucks Operations Suite
                 </h1>
+                <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto">
+                  Zintegrowana platforma operacyjna dla Store Managera i zespołu kierowniczego.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 text-left">
-                <div className="p-3 bg-[#16221b] border border-emerald-900/50 rounded-2xl flex flex-col justify-center">
+                <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl flex flex-col justify-center">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-base">📊</span>
-                    <span className="text-[9px] px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded-full font-bold">
+                    <span className="text-[9px] px-1.5 py-0.5 bg-[#006241] text-white rounded-full font-bold">
                       Dostępny
                     </span>
                   </div>
-                  <div className="text-xs font-bold text-white leading-tight">TPLH Forecast</div>
+                  <div className="text-xs font-bold text-stone-900 leading-tight">TPLH Forecast</div>
                 </div>
 
-                <div className="p-3 bg-[#16221b] border border-emerald-900/50 rounded-2xl flex flex-col justify-center">
+                <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl flex flex-col justify-center">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-base">🗓️</span>
-                    <span className="text-[9px] px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded-full font-bold">
+                    <span className="text-[9px] px-1.5 py-0.5 bg-[#006241] text-white rounded-full font-bold">
                       Dostępny
                     </span>
                   </div>
-                  <div className="text-xs font-bold text-white leading-tight">Grafik Menedżerów</div>
+                  <div className="text-xs font-bold text-stone-900 leading-tight">Grafik Menedżerów</div>
                 </div>
 
-                <div className="p-3 bg-[#131b16] border border-emerald-950/60 rounded-2xl flex flex-col justify-center opacity-85">
+                <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl flex flex-col justify-center opacity-75">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-base">🎓</span>
-                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-950/60 text-amber-300 border border-amber-600/30 rounded-full font-bold">
+                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full font-bold">
                       Wkrótce
                     </span>
                   </div>
-                  <div className="text-xs font-bold text-slate-200 leading-tight">Training Suite</div>
+                  <div className="text-xs font-bold text-stone-600 leading-tight">Training Suite</div>
                 </div>
 
-                <div className="p-3 bg-[#131b16] border border-emerald-950/60 rounded-2xl flex flex-col justify-center opacity-85">
+                <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl flex flex-col justify-center opacity-75">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-base">💰</span>
-                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-950/60 text-amber-300 border border-amber-600/30 rounded-full font-bold">
+                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full font-bold">
                       Wkrótce
                     </span>
                   </div>
-                  <div className="text-xs font-bold text-slate-200 leading-tight">COL Calculator</div>
+                  <div className="text-xs font-bold text-stone-600 leading-tight">COL Calculator</div>
                 </div>
               </div>
 
@@ -612,7 +635,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#006241] via-[#00754A] to-[#00875A] hover:from-[#00754A] hover:to-[#009664] text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-950/80 flex items-center justify-center gap-3 mx-auto transition-all active:scale-[0.98] cursor-pointer ring-1 ring-emerald-400/40"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#006241] via-[#00754A] to-[#00875A] hover:from-[#00754A] hover:to-[#009664] text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-3 mx-auto transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <span>Przejdź przez konfigurację</span>
                   <ArrowRight className="w-4 h-4" />
@@ -627,42 +650,42 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
           {step === 2 && (
             <div className="space-y-5 animate-in fade-in duration-300">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#006241] block mb-1">
                   Krok 1 z 5
                 </span>
-                <h2 className="text-2xl font-black text-white">Identyfikacja Lokalu & Profil</h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <h2 className="text-2xl font-black text-stone-900">Identyfikacja Lokalu & Profil</h2>
+                <p className="text-xs text-stone-500 mt-1">
                   Wybierz profil operacyjny oraz wprowadź swoje dane służbowe.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
                   Kawiarnia Operacyjna Starbucks
                 </label>
-                <div className="p-3 bg-[#17231c] border-2 border-emerald-500/60 rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-950/40">
+                <div className="p-3.5 bg-emerald-50/60 border-2 border-emerald-400/80 rounded-2xl flex items-center justify-between shadow-xs">
                   <div className="flex items-center space-x-3.5">
-                    <div className="p-2.5 bg-[#006241] text-white rounded-xl shadow-md">
+                    <div className="p-2.5 bg-[#006241] text-white rounded-xl shadow-sm">
                       <Store className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-sm font-black text-white flex items-center gap-2">
+                      <div className="text-sm font-black text-stone-900 flex items-center gap-2">
                         {selectedStore.name}
-                        <span className="text-[10px] px-2 py-0.5 bg-emerald-900/60 text-emerald-300 rounded-full font-bold border border-emerald-600/40">
+                        <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-[#006241] rounded-full font-bold border border-emerald-300">
                           Lokal Aktywny
                         </span>
                       </div>
-                      <div className="text-xs text-slate-400 mt-0.5">
-                        Kod jednostki: <strong className="text-emerald-300">{selectedStore.unitCode}</strong> • {selectedStore.district}
+                      <div className="text-xs text-stone-500 mt-0.5">
+                        Kod jednostki: <strong className="text-[#006241]">{selectedStore.unitCode}</strong> • {selectedStore.district}
                       </div>
                     </div>
                   </div>
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-[#006241] shrink-0" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
                   Profil Operacyjny
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -671,8 +694,8 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                     onClick={() => setSelectedRole('SM')}
                     className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
                       selectedRole === 'SM'
-                        ? 'bg-[#006241] border-emerald-400 text-white shadow-md ring-2 ring-emerald-500/30'
-                        : 'bg-[#141e18] border-emerald-900/40 text-slate-400 hover:text-white hover:bg-white/5'
+                        ? 'bg-[#006241] border-[#006241] text-white shadow-md ring-2 ring-emerald-500/20'
+                        : 'bg-stone-50 border-stone-200 text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                     }`}
                   >
                     <UserCheck className="w-5 h-5" />
@@ -684,8 +707,8 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                     onClick={() => setSelectedRole('ASM')}
                     className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
                       selectedRole === 'ASM'
-                        ? 'bg-[#006241] border-emerald-400 text-white shadow-md ring-2 ring-emerald-500/30'
-                        : 'bg-[#141e18] border-emerald-900/40 text-slate-400 hover:text-white hover:bg-white/5'
+                        ? 'bg-[#006241] border-[#006241] text-white shadow-md ring-2 ring-emerald-500/20'
+                        : 'bg-stone-50 border-stone-200 text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                     }`}
                   >
                     <Coffee className="w-5 h-5" />
@@ -697,11 +720,11 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
               {/* Imię i Nazwisko */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Imię i Nazwisko Menedżera <span className="text-emerald-400">*</span>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                    Imię i Nazwisko Menedżera <span className="text-rose-500">*</span>
                   </label>
                   {managerName.trim().length > 0 && (
-                    <span className={`text-[10px] font-semibold ${isNameValid ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <span className={`text-[10px] font-semibold ${isNameValid ? 'text-[#006241]' : 'text-rose-500'}`}>
                       {isNameValid ? '✓ Poprawne' : 'Min. 3 znaki'}
                     </span>
                   )}
@@ -711,30 +734,30 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   value={managerName}
                   onChange={(e) => setManagerName(e.target.value)}
                   placeholder="Wpisz imię i nazwisko..."
-                  className={`w-full bg-[#17231c] border rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors ${
+                  className={`w-full bg-stone-50 border rounded-2xl px-4 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none transition-colors ${
                     step2Touched && !isNameValid
-                      ? 'border-rose-500/80 focus:border-rose-400'
+                      ? 'border-rose-400 focus:border-rose-500'
                       : isNameValid
-                      ? 'border-emerald-500/60 focus:border-emerald-400'
-                      : 'border-emerald-800/50 focus:border-emerald-400'
+                      ? 'border-emerald-400 focus:border-[#006241]'
+                      : 'border-stone-300 focus:border-[#006241]'
                   }`}
                 />
               </div>
 
-              {/* E-mail @amrest.eu */}
+              {/* E-mail @amrest.eu do powiadomień */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Służbowy Adres E-mail (@amrest.eu) <span className="text-emerald-400">*</span>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                    Służbowy E-mail do Powiadomień (@amrest.eu) <span className="text-rose-500">*</span>
                   </label>
                   {managerEmail.trim().length > 0 && (
-                    <span className={`text-[10px] font-semibold ${isEmailValid ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <span className={`text-[10px] font-semibold ${isEmailValid ? 'text-[#006241]' : 'text-amber-600'}`}>
                       {isEmailValid ? '✓ Domena @amrest.eu' : 'Wymagane @amrest.eu'}
                     </span>
                   )}
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
@@ -742,23 +765,27 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                     value={managerEmail}
                     onChange={(e) => setManagerEmail(e.target.value)}
                     placeholder="imie.nazwisko@amrest.eu"
-                    className={`w-full bg-[#17231c] border rounded-2xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors ${
+                    className={`w-full bg-stone-50 border rounded-2xl pl-10 pr-4 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none transition-colors ${
                       step2Touched && !isEmailValid
-                        ? 'border-rose-500/80 focus:border-rose-400'
+                        ? 'border-rose-400 focus:border-rose-500'
                         : isEmailValid
-                        ? 'border-emerald-500/60 focus:border-emerald-400'
-                        : 'border-emerald-800/50 focus:border-emerald-400'
+                        ? 'border-emerald-400 focus:border-[#006241]'
+                        : 'border-stone-300 focus:border-[#006241]'
                     }`}
                   />
                 </div>
+                <p className="text-[10px] text-stone-500 mt-1.5 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-[#006241] shrink-0" />
+                  <span>Adres e-mail będzie służył do przesyłania powiadomień operacyjnych, raportów publikacji grafiku oraz alertów.</span>
+                </p>
               </div>
 
               {/* Przyciski Nawigacji */}
-              <div className="flex items-center justify-between pt-3 border-t border-emerald-900/40">
+              <div className="flex items-center justify-between pt-3 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-800 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Wstecz</span>
@@ -767,7 +794,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   type="button"
                   onClick={handleNext}
                   disabled={step2Touched && !isStep2Valid}
-                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-900/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <span>Dalej</span>
                   <ArrowRight className="w-4 h-4" />
@@ -782,11 +809,11 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
           {step === 3 && (
             <div className="space-y-5 animate-in fade-in duration-300">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#006241] block mb-1">
                   Krok 2 z 5
                 </span>
-                <h2 className="text-2xl font-black text-white">Źródło Danych Początkowych</h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <h2 className="text-2xl font-black text-stone-900">Źródło Danych Początkowych</h2>
+                <p className="text-xs text-stone-500 mt-1">
                   Wybierz, w jaki sposób chcesz przygotować dane do pracy na tym stanowisku.
                 </p>
               </div>
@@ -797,29 +824,29 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   onClick={() => setDataSourceOption('A')}
                   className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
                     dataSourceOption === 'A'
-                      ? 'bg-[#16251e] border-emerald-400 shadow-lg shadow-emerald-950/50'
-                      : 'bg-[#121a15] border-emerald-900/40 hover:border-emerald-700/60'
+                      ? 'bg-emerald-50/80 border-[#006241] shadow-md ring-2 ring-[#006241]/20'
+                      : 'bg-stone-50/60 border-stone-200 hover:border-emerald-300 hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3.5">
-                      <div className="p-2.5 bg-emerald-950 text-emerald-400 rounded-xl border border-emerald-700/50 shrink-0">
+                      <div className="p-2.5 bg-emerald-100 text-[#006241] rounded-xl border border-emerald-300 shrink-0">
                         <UploadCloud className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-white flex items-center gap-2">
+                        <div className="text-sm font-bold text-stone-900 flex items-center gap-2">
                           Opcja A: Import raportów i weryfikacja w tabeli
-                          <span className="text-[10px] px-2 py-0.5 bg-emerald-900/80 text-emerald-300 border border-emerald-600/40 font-bold rounded-full">
+                          <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-[#006241] border border-emerald-300 font-bold rounded-full">
                             Zalecane
                           </span>
                         </div>
-                        <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                        <p className="text-xs text-stone-600 mt-1 leading-relaxed">
                           Wgraj pliki raportów (AOP, Godziny, wiele grafików) i sprawdź poprawność w interaktywnej tabeli z opcją edycji.
                         </p>
                       </div>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      dataSourceOption === 'A' ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-600'
+                      dataSourceOption === 'A' ? 'border-[#006241] bg-[#006241] text-white' : 'border-stone-300'
                     }`}>
                       {dataSourceOption === 'A' && <Check className="w-3 h-3" />}
                     </div>
@@ -831,26 +858,26 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   onClick={() => setDataSourceOption('B')}
                   className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
                     dataSourceOption === 'B'
-                      ? 'bg-[#16251e] border-emerald-400 shadow-lg shadow-emerald-950/50'
-                      : 'bg-[#121a15] border-emerald-900/40 hover:border-emerald-700/60'
+                      ? 'bg-purple-50/80 border-purple-600 shadow-md ring-2 ring-purple-500/20'
+                      : 'bg-stone-50/60 border-stone-200 hover:border-purple-300 hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3.5">
-                      <div className="p-2.5 bg-purple-950 text-purple-400 rounded-xl border border-purple-700/50 shrink-0">
+                      <div className="p-2.5 bg-purple-100 text-purple-700 rounded-xl border border-purple-300 shrink-0">
                         <Database className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-white">
+                        <div className="text-sm font-bold text-stone-900">
                           Opcja B: Kopia Zapasowa
                         </div>
-                        <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                        <p className="text-xs text-stone-600 mt-1 leading-relaxed">
                           Przywróć stan aplikacji ze wskazanego pliku bazy danych SQLite (.db).
                         </p>
                       </div>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      dataSourceOption === 'B' ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-600'
+                      dataSourceOption === 'B' ? 'border-purple-600 bg-purple-600 text-white' : 'border-stone-300'
                     }`}>
                       {dataSourceOption === 'B' && <Check className="w-3 h-3" />}
                     </div>
@@ -858,11 +885,10 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
 
                   {/* Strefa Backupu w Opcji B */}
                   {dataSourceOption === 'B' && (
-                    <div className="mt-3 pt-3 border-t border-emerald-900/40 space-y-3" onClick={(e) => e.stopPropagation()}>
-                      {/* Wybór z istniejących kopii systemowych */}
+                    <div className="mt-3 pt-3 border-t border-purple-200 space-y-3" onClick={(e) => e.stopPropagation()}>
                       {systemBackups.length > 0 && (
                         <div className="space-y-1.5 text-left">
-                          <label className="text-[11px] font-bold text-slate-300 block">
+                          <label className="text-[11px] font-bold text-stone-700 block">
                             Dostępne kopie zapasowe w systemie:
                           </label>
                           <select
@@ -879,10 +905,10 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                                   : 'Wybrano kopię z listy.',
                               });
                             }}
-                            className="w-full px-3 py-2 bg-[#0d1611] border border-purple-800/60 rounded-xl text-xs text-white focus:outline-none focus:border-purple-400"
+                            className="w-full px-3 py-2 bg-white border border-purple-300 rounded-xl text-xs text-stone-900 focus:outline-none focus:border-purple-500"
                           >
                             {systemBackups.map((b) => (
-                              <option key={b.filename} value={b.filename} className="bg-[#121a15] text-white">
+                              <option key={b.filename} value={b.filename} className="text-stone-900">
                                 {b.formattedDate} — {b.reason} ({(b.sizeBytes / (1024 * 1024)).toFixed(2)} MB)
                               </option>
                             ))}
@@ -890,9 +916,8 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                         </div>
                       )}
 
-                      {/* Lub wgranie pliku z dysku */}
-                      <div className="p-3 bg-[#0d1611] rounded-xl border border-dashed border-purple-800/60 text-center space-y-1.5">
-                        <label className="px-3.5 py-1.5 bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 border border-purple-600/40 rounded-xl text-xs font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5">
+                      <div className="p-3 bg-white rounded-xl border border-dashed border-purple-300 text-center space-y-1.5">
+                        <label className="px-3.5 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-800 border border-purple-300 rounded-xl text-xs font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5">
                           <Upload className="w-3.5 h-3.5" />
                           <span>Wskaż inny plik .db z dysku</span>
                           <input
@@ -904,7 +929,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                             }}
                           />
                         </label>
-                        <div className="text-[11px] text-slate-300 font-medium">{backupState.message}</div>
+                        <div className="text-[11px] text-stone-600 font-medium">{backupState.message}</div>
                       </div>
                     </div>
                   )}
@@ -915,26 +940,26 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   onClick={() => setDataSourceOption('C')}
                   className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
                     dataSourceOption === 'C'
-                      ? 'bg-[#16251e] border-emerald-400 shadow-lg shadow-emerald-950/50'
-                      : 'bg-[#121a15] border-emerald-900/40 hover:border-emerald-700/60'
+                      ? 'bg-emerald-50/80 border-[#006241] shadow-md ring-2 ring-[#006241]/20'
+                      : 'bg-stone-50/60 border-stone-200 hover:border-emerald-300 hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3.5">
-                      <div className="p-2.5 bg-slate-800/80 text-slate-300 rounded-xl border border-slate-700/50 shrink-0">
+                      <div className="p-2.5 bg-stone-100 text-stone-700 rounded-xl border border-stone-300 shrink-0">
                         <Layers className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-white">
+                        <div className="text-sm font-bold text-stone-900">
                           Opcja C: Późniejsza konfiguracja
                         </div>
-                        <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                        <p className="text-xs text-stone-600 mt-1 leading-relaxed">
                           Przejdź od razu do pulpitu. Raporty wgrasz w dowolnej chwili.
                         </p>
                       </div>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      dataSourceOption === 'C' ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-600'
+                      dataSourceOption === 'C' ? 'border-[#006241] bg-[#006241] text-white' : 'border-stone-300'
                     }`}>
                       {dataSourceOption === 'C' && <Check className="w-3 h-3" />}
                     </div>
@@ -943,11 +968,11 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
               </div>
 
               {/* Przyciski Nawigacji */}
-              <div className="flex items-center justify-between pt-3 border-t border-emerald-900/40">
+              <div className="flex items-center justify-between pt-3 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-800 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Wstecz</span>
@@ -955,7 +980,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-900/20 flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <span>Dalej</span>
                   <ArrowRight className="w-4 h-4" />
@@ -970,24 +995,24 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
           {step === 4 && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#006241] block mb-1">
                   Krok 3 z 5
                 </span>
-                <h2 className="text-2xl font-black text-white">Panel Wgrywania Raportów</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <h2 className="text-2xl font-black text-stone-900">Panel Wgrywania Raportów</h2>
+                <p className="text-xs text-stone-500 mt-0.5">
                   Dodaj plik AOP, ewidencję MAPAL oraz jeden lub więcej plików grafików (.xlsm).
                 </p>
               </div>
 
               <div className="space-y-3">
                 {/* 1. AOP */}
-                <div className="p-3 bg-[#0d1611] rounded-2xl border border-emerald-900/40 space-y-2">
+                <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white flex items-center gap-2">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-stone-900 flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-[#006241]" />
                       1. Plan AOP P&L (.xlsx, .xlsm)
                     </span>
-                    <label className="px-3 py-1 bg-emerald-900/60 hover:bg-emerald-800/80 text-emerald-200 border border-emerald-600/40 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1">
+                    <label className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-[#006241] border border-emerald-300 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1">
                       <Upload className="w-3 h-3" />
                       <span>Wybierz AOP</span>
                       <input
@@ -1000,24 +1025,24 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                       />
                     </label>
                   </div>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                    {aopState.status === 'validating' && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />}
-                    {aopState.status === 'valid' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                    {aopState.status === 'invalid' && <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}
-                    <span className={aopState.status === 'valid' ? 'text-emerald-300 font-medium' : ''}>
+                  <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
+                    {aopState.status === 'validating' && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />}
+                    {aopState.status === 'valid' && <CheckCircle2 className="w-3.5 h-3.5 text-[#006241]" />}
+                    {aopState.status === 'invalid' && <AlertCircle className="w-3.5 h-3.5 text-rose-500" />}
+                    <span className={aopState.status === 'valid' ? 'text-[#006241] font-medium' : ''}>
                       {aopState.message}
                     </span>
                   </div>
                 </div>
 
                 {/* 2. MAPAL Fichajes */}
-                <div className="p-3 bg-[#0d1611] rounded-2xl border border-emerald-900/40 space-y-2">
+                <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-bold text-stone-900 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-600" />
                       2. MAPAL Fichajes (Godziny Rzeczywiste)
                     </span>
-                    <label className="px-3 py-1 bg-blue-950/60 hover:bg-blue-900/80 text-blue-200 border border-blue-600/40 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1">
+                    <label className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1">
                       <Upload className="w-3 h-3" />
                       <span>Wybierz MAPAL</span>
                       <input
@@ -1030,29 +1055,29 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                       />
                     </label>
                   </div>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                    {fichajesState.status === 'validating' && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />}
-                    {fichajesState.status === 'valid' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                    {fichajesState.status === 'invalid' && <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}
-                    <span className={fichajesState.status === 'valid' ? 'text-emerald-300 font-medium' : ''}>
+                  <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
+                    {fichajesState.status === 'validating' && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />}
+                    {fichajesState.status === 'valid' && <CheckCircle2 className="w-3.5 h-3.5 text-[#006241]" />}
+                    {fichajesState.status === 'invalid' && <AlertCircle className="w-3.5 h-3.5 text-rose-500" />}
+                    <span className={fichajesState.status === 'valid' ? 'text-[#006241] font-medium' : ''}>
                       {fichajesState.message}
                     </span>
                   </div>
                 </div>
 
                 {/* 3. Multi-Upload Grafików Managerskich */}
-                <div className="p-3.5 bg-[#0d1611] rounded-2xl border border-amber-900/40 space-y-3">
+                <div className="p-3.5 bg-amber-50/40 border border-amber-200 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold text-white flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-bold text-stone-900 flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-amber-600" />
                         3. Grafiki Managerskie (.xlsm)
                       </span>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
+                      <p className="text-[10px] text-stone-500 mt-0.5">
                         Możesz wgrać wiele plików jednocześnie (np. 1–9 miesięcy 2026).
                       </p>
                     </div>
-                    <label className="px-3 py-1.5 bg-amber-950/60 hover:bg-amber-900/80 text-amber-200 border border-amber-600/40 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1 shadow-md">
+                    <label className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1 shadow-xs">
                       <Plus className="w-3.5 h-3.5" />
                       <span>Dodaj Grafiki (.xlsm)</span>
                       <input
@@ -1065,30 +1090,29 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                     </label>
                   </div>
 
-                  {/* Lista dodanych plików grafików */}
                   {scheduleFiles.length > 0 ? (
                     <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                       {scheduleFiles.map((sf) => (
                         <div
                           key={sf.id}
-                          className="p-2 bg-[#141e18] border border-emerald-900/40 rounded-xl flex items-center justify-between text-xs"
+                          className="p-2 bg-white border border-stone-200 rounded-xl flex items-center justify-between text-xs shadow-xs"
                         >
                           <div className="flex items-center space-x-2 min-w-0">
-                            <span className="text-[10px] px-2 py-0.5 bg-amber-950 text-amber-300 border border-amber-600/40 rounded-lg font-bold shrink-0">
+                            <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-lg font-bold shrink-0">
                               {sf.month} {sf.year}
                             </span>
-                            <span className="text-slate-200 truncate font-medium text-[11px]">
+                            <span className="text-stone-700 truncate font-medium text-[11px]">
                               {sf.name}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2 shrink-0">
-                            <span className="text-[10px] text-emerald-400 font-semibold">
+                            <span className="text-[10px] text-[#006241] font-semibold">
                               ✓ Gotowy
                             </span>
                             <button
                               type="button"
                               onClick={() => handleRemoveScheduleFile(sf.id)}
-                              className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+                              className="text-stone-400 hover:text-rose-500 transition-colors p-1 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1097,7 +1121,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                       ))}
                     </div>
                   ) : (
-                    <div className="p-3 bg-[#111914] rounded-xl border border-dashed border-amber-900/30 text-center text-[11px] text-slate-500">
+                    <div className="p-3 bg-white/70 rounded-xl border border-dashed border-amber-300 text-center text-[11px] text-stone-500">
                       Brak dodanych plików grafików. Kliknij „Dodaj Grafiki” lub przejdź dalej do weryfikacji tabeli.
                     </div>
                   )}
@@ -1105,11 +1129,11 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
               </div>
 
               {/* Przyciski Nawigacji */}
-              <div className="flex items-center justify-between pt-3 border-t border-emerald-900/40">
+              <div className="flex items-center justify-between pt-3 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-800 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Wstecz</span>
@@ -1117,7 +1141,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-900/20 flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <span>Sprawdź w Tabeli ➔</span>
                 </button>
@@ -1130,23 +1154,23 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
           {/* ========================================================= */}
           {step === 5 && (
             <div className="space-y-4 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/40 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#006241] block">
                     Krok 4 z 5: Inspekcja & Korekta Danych
                   </span>
-                  <h2 className="text-xl font-black text-white">Weryfikacja Danych w Tabeli</h2>
+                  <h2 className="text-xl font-black text-stone-900">Weryfikacja Danych w Tabeli</h2>
                 </div>
 
                 {/* Przełącznik Zakładek */}
-                <div className="flex items-center gap-1.5 p-1 bg-[#141e18] rounded-xl border border-emerald-900/50 self-start">
+                <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl border border-stone-200 self-start">
                   <button
                     type="button"
                     onClick={() => setActiveReviewTab('AOP')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       activeReviewTab === 'AOP'
-                        ? 'bg-[#006241] text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-[#006241] text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
                     📊 Plan AOP ({aopMonths.length})
@@ -1154,10 +1178,10 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   <button
                     type="button"
                     onClick={() => setActiveReviewTab('SCHEDULES')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       activeReviewTab === 'SCHEDULES'
-                        ? 'bg-[#006241] text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-[#006241] text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
                     🗓️ Grafiki ({scheduleFiles.length})
@@ -1165,10 +1189,10 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   <button
                     type="button"
                     onClick={() => setActiveReviewTab('MAPAL')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       activeReviewTab === 'MAPAL'
-                        ? 'bg-[#006241] text-white shadow-sm'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-[#006241] text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
                     ⏱️ MAPAL
@@ -1180,34 +1204,34 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
               {activeReviewTab === 'AOP' && (
                 <div className="space-y-3">
                   {/* Pasek KPI podsumowania */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2.5 bg-[#0d1611] rounded-2xl border border-emerald-900/40 text-center">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2.5 bg-stone-50 rounded-2xl border border-stone-200 text-center">
                     <div>
-                      <div className="text-[10px] text-slate-400 uppercase font-bold">Plan TRX</div>
-                      <div className="text-xs font-black text-white">{aopSummary.totalTrx.toLocaleString('pl-PL')}</div>
+                      <div className="text-[10px] text-stone-500 uppercase font-bold">Plan TRX</div>
+                      <div className="text-xs font-black text-stone-900">{aopSummary.totalTrx.toLocaleString('pl-PL')}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-400 uppercase font-bold">Średni TPLH</div>
-                      <div className="text-xs font-black text-emerald-400">{aopSummary.avgTplh}</div>
+                      <div className="text-[10px] text-stone-500 uppercase font-bold">Średni TPLH</div>
+                      <div className="text-xs font-black text-[#006241]">{aopSummary.avgTplh}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-400 uppercase font-bold">Budżet Godzin</div>
-                      <div className="text-xs font-black text-white">{aopSummary.totalBudgetHours.toFixed(1)} h</div>
+                      <div className="text-[10px] text-stone-500 uppercase font-bold">Budżet Godzin</div>
+                      <div className="text-xs font-black text-stone-900">{aopSummary.totalBudgetHours.toFixed(1)} h</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-400 uppercase font-bold">Plan Sprzedaży</div>
-                      <div className="text-xs font-black text-amber-300">{aopSummary.totalSales.toLocaleString('pl-PL')} PLN</div>
+                      <div className="text-[10px] text-stone-500 uppercase font-bold">Plan Sprzedaży</div>
+                      <div className="text-xs font-black text-amber-700">{aopSummary.totalSales.toLocaleString('pl-PL')} PLN</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-400 uppercase font-bold">Średni COL %</div>
-                      <div className="text-xs font-black text-purple-300">{aopSummary.avgColPct}%</div>
+                      <div className="text-[10px] text-stone-500 uppercase font-bold">Średni COL %</div>
+                      <div className="text-xs font-black text-purple-700">{aopSummary.avgColPct}%</div>
                     </div>
                   </div>
 
                   {/* Interaktywna Tabela 12 miesięcy */}
-                  <div className="border border-emerald-900/50 rounded-2xl overflow-hidden bg-[#0c130f]">
+                  <div className="border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-xs">
                     <div className="max-h-64 overflow-y-auto overflow-x-auto">
-                      <table className="w-full text-left text-xs text-slate-200">
-                        <thead className="bg-[#141f19] text-[10px] uppercase font-bold text-slate-400 sticky top-0 border-b border-emerald-900/50">
+                      <table className="w-full text-left text-xs text-stone-800">
+                        <thead className="bg-stone-100 text-[10px] uppercase font-bold text-stone-600 sticky top-0 border-b border-stone-200">
                           <tr>
                             <th className="p-2">Miesiąc</th>
                             <th className="p-2 text-center">Tyg.</th>
@@ -1218,11 +1242,11 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                             <th className="p-2 text-right">COL (PLN)</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-emerald-950">
+                        <tbody className="divide-y divide-stone-100">
                           {aopMonths.map((row, idx) => (
-                            <tr key={row.key} className="hover:bg-emerald-950/40 transition-colors">
-                              <td className="p-2 font-bold text-white flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <tr key={row.key} className="hover:bg-emerald-50/50 transition-colors">
+                              <td className="p-2 font-bold text-stone-900 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[#006241]" />
                                 {row.month}
                               </td>
                               <td className="p-1 text-center">
@@ -1232,7 +1256,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                                   max={5}
                                   value={row.weeks_count}
                                   onChange={(e) => handleAopCellChange(idx, 'weeks_count', Number(e.target.value))}
-                                  className="w-10 bg-[#16241c] border border-emerald-800/60 rounded-lg px-1 py-0.5 text-center text-xs text-white focus:outline-none focus:border-emerald-400"
+                                  className="w-10 bg-stone-50 border border-stone-300 rounded-lg px-1 py-0.5 text-center text-xs text-stone-900 focus:outline-none focus:border-[#006241]"
                                 />
                               </td>
                               <td className="p-1 text-right">
@@ -1240,7 +1264,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                                   type="number"
                                   value={row.plan_trx}
                                   onChange={(e) => handleAopCellChange(idx, 'plan_trx', Number(e.target.value))}
-                                  className="w-20 bg-[#16241c] border border-emerald-800/60 rounded-lg px-1.5 py-0.5 text-right text-xs text-white focus:outline-none focus:border-emerald-400 font-mono"
+                                  className="w-20 bg-stone-50 border border-stone-300 rounded-lg px-1.5 py-0.5 text-right text-xs text-stone-900 focus:outline-none focus:border-[#006241] font-mono"
                                 />
                               </td>
                               <td className="p-1 text-right">
@@ -1249,10 +1273,10 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                                   step="0.05"
                                   value={row.target_tplh}
                                   onChange={(e) => handleAopCellChange(idx, 'target_tplh', Number(e.target.value))}
-                                  className="w-16 bg-[#16241c] border border-emerald-800/60 rounded-lg px-1.5 py-0.5 text-right text-xs text-emerald-300 font-bold focus:outline-none focus:border-emerald-400 font-mono"
+                                  className="w-16 bg-stone-50 border border-stone-300 rounded-lg px-1.5 py-0.5 text-right text-xs text-[#006241] font-bold focus:outline-none focus:border-[#006241] font-mono"
                                 />
                               </td>
-                              <td className="p-2 text-right font-mono font-bold text-emerald-400">
+                              <td className="p-2 text-right font-mono font-bold text-[#006241]">
                                 {row.labor_budget}h
                               </td>
                               <td className="p-1 text-right">
@@ -1260,7 +1284,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                                   type="number"
                                   value={row.plan_sales}
                                   onChange={(e) => handleAopCellChange(idx, 'plan_sales', Number(e.target.value))}
-                                  className="w-24 bg-[#16241c] border border-emerald-800/60 rounded-lg px-1.5 py-0.5 text-right text-xs text-amber-200 focus:outline-none focus:border-emerald-400 font-mono"
+                                  className="w-24 bg-stone-50 border border-stone-300 rounded-lg px-1.5 py-0.5 text-right text-xs text-amber-800 focus:outline-none focus:border-[#006241] font-mono"
                                 />
                               </td>
                               <td className="p-1 text-right">
@@ -1268,7 +1292,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                                   type="number"
                                   value={row.plan_col_pln}
                                   onChange={(e) => handleAopCellChange(idx, 'plan_col_pln', Number(e.target.value))}
-                                  className="w-20 bg-[#16241c] border border-emerald-800/60 rounded-lg px-1.5 py-0.5 text-right text-xs text-purple-200 focus:outline-none focus:border-emerald-400 font-mono"
+                                  className="w-20 bg-stone-50 border border-stone-300 rounded-lg px-1.5 py-0.5 text-right text-xs text-purple-800 focus:outline-none focus:border-[#006241] font-mono"
                                 />
                               </td>
                             </tr>
@@ -1283,11 +1307,11 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
               {/* ZAKŁADKA 2: ZESTAWIENIE GRAFIKÓW */}
               {activeReviewTab === 'SCHEDULES' && (
                 <div className="space-y-3">
-                  <div className="p-3 bg-[#0d1611] rounded-2xl border border-emerald-900/40 flex items-center justify-between text-xs">
-                    <span className="text-slate-300">
+                  <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 flex items-center justify-between text-xs">
+                    <span className="text-stone-700">
                       Wgrane pliki grafików operacyjnych: <strong>{scheduleFiles.length} miesięcy</strong>
                     </span>
-                    <label className="px-3 py-1 bg-amber-950/60 hover:bg-amber-900/80 text-amber-200 border border-amber-600/40 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1">
+                    <label className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1">
                       <Plus className="w-3.5 h-3.5" />
                       <span>Dodaj kolejny</span>
                       <input
@@ -1301,9 +1325,9 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                   </div>
 
                   {scheduleFiles.length > 0 ? (
-                    <div className="border border-emerald-900/50 rounded-2xl overflow-hidden bg-[#0c130f]">
-                      <table className="w-full text-left text-xs text-slate-200">
-                        <thead className="bg-[#141f19] text-[10px] uppercase font-bold text-slate-400 border-b border-emerald-900/50">
+                    <div className="border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+                      <table className="w-full text-left text-xs text-stone-800">
+                        <thead className="bg-stone-100 text-[10px] uppercase font-bold text-stone-600 border-b border-stone-200">
                           <tr>
                             <th className="p-2.5">Okres</th>
                             <th className="p-2.5">Nazwa Pliku</th>
@@ -1312,33 +1336,33 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                             <th className="p-2.5 text-right">Akcja</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-emerald-950">
+                        <tbody className="divide-y divide-stone-100">
                           {scheduleFiles.map((sf) => (
-                            <tr key={sf.id} className="hover:bg-emerald-950/30">
-                              <td className="p-2.5 font-bold text-amber-300">
+                            <tr key={sf.id} className="hover:bg-emerald-50/40">
+                              <td className="p-2.5 font-bold text-amber-800">
                                 {sf.month} {sf.year}
                               </td>
-                              <td className="p-2.5 text-slate-300 truncate max-w-[200px]">
+                              <td className="p-2.5 text-stone-700 truncate max-w-[200px]">
                                 <div className="truncate font-medium">{sf.name}</div>
                                 {sf.shiftsCount !== undefined && (
-                                  <div className="text-[10px] text-slate-400">
+                                  <div className="text-[10px] text-stone-500">
                                     {sf.shiftsCount} zmian • {sf.totalHours || 0}h łącznie
                                   </div>
                                 )}
                               </td>
                               <td className="p-2.5 text-center">
-                                <span className="px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-600/40 rounded-full text-[10px] font-bold">
+                                <span className="px-2 py-0.5 bg-emerald-100 text-[#006241] border border-emerald-300 rounded-full text-[10px] font-bold">
                                   {sf.managersCount || 7} Menedżerów
                                 </span>
                               </td>
-                              <td className="p-2.5 text-center text-emerald-400 font-semibold text-[11px]">
+                              <td className="p-2.5 text-center text-[#006241] font-semibold text-[11px]">
                                 ✓ Kodeks Pracy OK
                               </td>
                               <td className="p-2.5 text-right">
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveScheduleFile(sf.id)}
-                                  className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+                                  className="text-stone-400 hover:text-rose-500 transition-colors p-1 cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1349,7 +1373,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                       </table>
                     </div>
                   ) : (
-                    <div className="p-6 bg-[#0c130f] rounded-2xl border border-dashed border-emerald-900/40 text-center text-xs text-slate-400">
+                    <div className="p-6 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-center text-xs text-stone-500">
                       Nie dodano jeszcze zewnętrznych plików grafików. System może zainicjalizować standardowe szablony grafików.
                     </div>
                   )}
@@ -1358,31 +1382,31 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
 
               {/* ZAKŁADKA 3: MAPAL */}
               {activeReviewTab === 'MAPAL' && (
-                <div className="p-4 bg-[#0d1611] rounded-2xl border border-emerald-900/40 space-y-3 text-xs">
+                <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-3 text-xs">
                   <div className="flex items-center space-x-3">
-                    <Clock className="w-6 h-6 text-blue-400" />
+                    <Clock className="w-6 h-6 text-blue-600" />
                     <div>
-                      <div className="font-bold text-white text-sm">Status Ewidencji MAPAL Fichajes</div>
-                      <div className="text-slate-400 text-[11px]">{fichajesState.message}</div>
+                      <div className="font-bold text-stone-900 text-sm">Status Ewidencji MAPAL Fichajes</div>
+                      <div className="text-stone-500 text-[11px]">{fichajesState.message}</div>
                     </div>
                   </div>
                   {fichajesState.data ? (
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-900/30 text-center">
-                      <div className="p-2 bg-[#141e18] rounded-xl">
-                        <span className="text-slate-400 text-[10px] block">Liczba Logowań</span>
-                        <strong className="text-white text-sm">{fichajesState.data.records?.length || 0}</strong>
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-200 text-center">
+                      <div className="p-2 bg-white border border-stone-200 rounded-xl">
+                        <span className="text-stone-500 text-[10px] block">Liczba Logowań</span>
+                        <strong className="text-stone-900 text-sm">{fichajesState.data.records?.length || 0}</strong>
                       </div>
-                      <div className="p-2 bg-[#141e18] rounded-xl">
-                        <span className="text-slate-400 text-[10px] block">Godziny Rzeczywiste</span>
-                        <strong className="text-emerald-400 text-sm">{fichajesState.data.totalHours || 0} h</strong>
+                      <div className="p-2 bg-white border border-stone-200 rounded-xl">
+                        <span className="text-stone-500 text-[10px] block">Godziny Rzeczywiste</span>
+                        <strong className="text-[#006241] text-sm">{fichajesState.data.totalHours || 0} h</strong>
                       </div>
-                      <div className="p-2 bg-[#141e18] rounded-xl">
-                        <span className="text-slate-400 text-[10px] block">Pracownicy</span>
-                        <strong className="text-white text-sm">{fichajesState.data.uniqueEmployees || 0}</strong>
+                      <div className="p-2 bg-white border border-stone-200 rounded-xl">
+                        <span className="text-stone-500 text-[10px] block">Pracownicy</span>
+                        <strong className="text-stone-900 text-sm">{fichajesState.data.uniqueEmployees || 0}</strong>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-slate-400 text-[11px] pt-1">
+                    <div className="text-stone-500 text-[11px] pt-1">
                       Brak wgranego pliku Fichajes. Możesz zaimportować raport w dowolnej chwili z menu.
                     </div>
                   )}
@@ -1390,11 +1414,11 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
               )}
 
               {/* Przyciski Nawigacji */}
-              <div className="flex items-center justify-between pt-3 border-t border-emerald-900/40">
+              <div className="flex items-center justify-between pt-3 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-800 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Wstecz</span>
@@ -1402,7 +1426,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/60 flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-6 py-2 bg-gradient-to-r from-[#006241] to-[#00754A] hover:from-[#00754A] hover:to-[#00875A] text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-900/20 flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <span>Zatwierdź & Podsumowanie ➔</span>
                 </button>
@@ -1415,39 +1439,39 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
           {/* ========================================================= */}
           {step === 6 && (
             <div className="space-y-5 text-center animate-in fade-in duration-300">
-              <div className="w-14 h-14 mx-auto rounded-3xl bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-xl shadow-emerald-950/80">
+              <div className="w-14 h-14 mx-auto rounded-3xl bg-emerald-50 border border-emerald-300 flex items-center justify-center text-[#006241] shadow-md shadow-emerald-900/10">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
 
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#006241] block mb-1">
                   Krok 5 z 5: Gotowe
                 </span>
-                <h2 className="text-2xl font-black text-white">Wszystko Przygotowane!</h2>
-                <p className="text-xs text-slate-400 mt-0.5 max-w-md mx-auto">
+                <h2 className="text-2xl font-black text-stone-900">Wszystko Przygotowane!</h2>
+                <p className="text-xs text-stone-500 mt-0.5 max-w-md mx-auto">
                   Dane operacyjne kawiarni zostały pomyślnie zweryfikowane.
                 </p>
               </div>
 
               {/* Podsumowanie wyborów */}
-              <div className="p-3.5 bg-[#16221b] border border-emerald-900/50 rounded-2xl text-left space-y-1.5 text-xs">
-                <div className="flex justify-between py-1 border-b border-emerald-900/30">
-                  <span className="text-slate-400">Kawiarnia:</span>
-                  <strong className="text-white">{selectedStore.name} ({selectedStore.unitCode})</strong>
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl text-left space-y-1.5 text-xs">
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500">Kawiarnia:</span>
+                  <strong className="text-stone-900">{selectedStore.name} ({selectedStore.unitCode})</strong>
                 </div>
-                <div className="flex justify-between py-1 border-b border-emerald-900/30">
-                  <span className="text-slate-400">Profil i Użytkownik:</span>
-                  <strong className="text-emerald-300">
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500">Profil i Użytkownik:</span>
+                  <strong className="text-[#006241]">
                     {managerName || 'Menedżer'} ({selectedRole})
                   </strong>
                 </div>
-                <div className="flex justify-between py-1 border-b border-emerald-900/30">
-                  <span className="text-slate-400">E-mail:</span>
-                  <strong className="text-emerald-300">{managerEmail || 'Brak'}</strong>
+                <div className="flex justify-between py-1 border-b border-stone-200">
+                  <span className="text-stone-500">E-mail do Powiadomień:</span>
+                  <strong className="text-[#006241]">{managerEmail || 'Brak'}</strong>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-400">Zaimportowane Dane:</span>
-                  <strong className="text-white">
+                  <span className="text-stone-500">Zaimportowane Dane:</span>
+                  <strong className="text-stone-900">
                     {dataSourceOption === 'A'
                       ? `AOP (${aopMonths.length} mies.) • ${scheduleFiles.length} Grafików • MAPAL`
                       : dataSourceOption === 'B'
@@ -1457,39 +1481,132 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                 </div>
               </div>
 
+              {/* Wybór Trybu Działania: Ikonki (i) ze szczegółami funkcji */}
+              <div className="text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">
+                    Ikonki Informacyjne (i) & Podpowiedzi:
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Opcja 1: Samouczek & Ikonki (i) */}
+                  <div
+                    onClick={() => setEnableTutorialMode(true)}
+                    className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                      enableTutorialMode
+                        ? 'bg-emerald-50/90 border-[#006241] shadow-md ring-2 ring-[#006241]/20'
+                        : 'bg-white border-stone-200 hover:border-emerald-300 opacity-70'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs ${
+                            enableTutorialMode ? 'bg-[#006241] text-white font-black' : 'bg-stone-100 text-stone-600'
+                          }`}>
+                            i
+                          </div>
+                          <span className="text-xs font-bold text-stone-900">
+                            Włącz Ikonki (i) przy funkcjach
+                          </span>
+                        </div>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-[#CBA258] text-[#1E3932] font-black rounded-md shadow-xs">
+                          Zalecany
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-600 mt-2 leading-relaxed">
+                        Obok każdej większej funkcji pojawi się klikalna ikonka <strong>(i)</strong>, w której w każdej chwili przeczytasz co funkcja robi i jakich reguł przestrzega.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#006241] font-semibold pt-1 border-t border-emerald-200">
+                      <span>✓ Klikalne dymki wyjaśniające przy każdej funkcji</span>
+                    </div>
+                  </div>
+
+                  {/* Opcja 2: Tryb Czysty */}
+                  <div
+                    onClick={() => setEnableTutorialMode(false)}
+                    className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                      !enableTutorialMode
+                        ? 'bg-emerald-50/90 border-[#006241] shadow-md ring-2 ring-[#006241]/20'
+                        : 'bg-white border-stone-200 hover:border-emerald-300 opacity-70'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs ${
+                            !enableTutorialMode ? 'bg-[#006241] text-white font-black' : 'bg-stone-100 text-stone-600'
+                          }`}>
+                            🚀
+                          </div>
+                          <span className="text-xs font-bold text-stone-900">
+                            Tryb Czysty (Ekspert)
+                          </span>
+                        </div>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-700 font-bold rounded-md">
+                          Minimalistyczny
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-600 mt-2 leading-relaxed">
+                        Czysty interfejs operacyjny bez ikonek <strong>(i)</strong>. W każdej chwili możesz włączyć ikonki w Ustawieniach.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-stone-500 font-semibold pt-1 border-t border-stone-200">
+                      <span>• Ukryte ikonki wyjaśniające</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Szybka wskazówka */}
-              <div className="p-2.5 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-[11px] text-emerald-300 flex items-center gap-2 text-left">
-                <HelpCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 flex items-center gap-2 text-left">
+                <HelpCircle className="w-4 h-4 shrink-0 text-[#006241]" />
                 <span>
                   <strong>Wskazówka:</strong> Pływające logo Starbucks ☕ w prawym dolnym rogu grafiku rozwija szybką nawigację miesięcy oraz generator AI.
                 </span>
               </div>
 
-              {/* Przyciski Nawigacji */}
-              <div className="flex items-center justify-between pt-3 border-t border-emerald-900/40">
+              {/* Przyciski Nawigacji z Animowanym Samouczkiem obok Rozpocznij Pracę */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Wstecz</span>
                 </button>
-                <button
-                  type="button"
-                  disabled={isCommitting}
-                  onClick={handleFinish}
-                  className="px-8 py-3 bg-gradient-to-r from-[#006241] via-[#00754A] to-[#00875A] hover:from-[#00754A] hover:to-[#009664] text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-950/80 flex items-center gap-2.5 transition-all active:scale-[0.98] cursor-pointer ring-1 ring-emerald-400/40 disabled:opacity-50"
-                >
-                  {isCommitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Zapisywanie w SQLite...</span>
-                    </>
-                  ) : (
-                    <span>🚀 Rozpocznij Pracę</span>
-                  )}
-                </button>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  {/* Przycisk Samouczka */}
+                  <button
+                    type="button"
+                    onClick={() => openModelTour(1)}
+                    className="flex-1 sm:flex-none px-5 py-3 bg-white hover:bg-emerald-50/80 text-[#006241] border-2 border-[#006241] font-bold text-xs rounded-2xl shadow-xs hover:shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-[#006241]" />
+                    <span>▶ Uruchom Animowany Samouczek</span>
+                  </button>
+
+                  {/* Przycisk Rozpocznij Pracę */}
+                  <button
+                    type="button"
+                    disabled={isCommitting}
+                    onClick={handleFinish}
+                    className="flex-1 sm:flex-none px-7 py-3 bg-gradient-to-r from-[#006241] via-[#00754A] to-[#00875A] hover:from-[#00754A] hover:to-[#009664] text-white font-black text-xs rounded-2xl shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                  >
+                    {isCommitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Zapisywanie w SQLite...</span>
+                      </>
+                    ) : (
+                      <span>🚀 Rozpocznij Pracę</span>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1497,7 +1614,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
       </main>
 
       {/* Pasek Dolny */}
-      <footer className="px-8 py-3 text-center text-xs text-emerald-300/40 border-t border-emerald-900/30 bg-[#060c09]/60 backdrop-blur-md relative z-10">
+      <footer className="px-8 py-3 text-center text-xs text-stone-400 border-t border-stone-200 bg-white/80 backdrop-blur-md relative z-10">
         Starbucks Operations Suite © 2026
       </footer>
     </div>

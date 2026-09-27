@@ -17,9 +17,9 @@ import {
 import { ManagerScheduleView } from './modules/managers-schedule';
 import { TrainingsView } from './modules/trainings';
 import { ColCalculatorView } from './modules/col-calculator';
-import { ModuleDateBar } from './components/ModuleDateBar';
-import { UnifiedSettingsModal } from './components/UnifiedSettingsModal';
+import { UnifiedSettingsModal, SettingsTabId } from './components/UnifiedSettingsModal';
 import { ComingSoonOverlayWrapper } from './components/ComingSoonOverlayWrapper';
+import { InteractiveModelTutorial } from './components/InteractiveModelTutorial';
 import {
   AppModule,
   AopPlanRecord,
@@ -35,6 +35,9 @@ import { DEFAULT_SHIFT_DEFINITIONS } from './modules/managers-schedule/constants
 
 import { SystemClock } from './services/systemClock';
 import { useSystemClock } from './hooks/useSystemClock';
+import { cloudNotificationService } from './services/cloudNotificationService';
+import { firebaseTelemetryService } from './services/firebaseTelemetryService';
+import './services/zoomService';
 
 // Domyślna lista miesięcy po polsku
 const DEFAULT_MONTHS = [
@@ -155,6 +158,7 @@ export const App: React.FC = () => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId | undefined>(undefined);
   const [isBugReporterOpen, setIsBugReporterOpen] = useState<boolean>(false);
   const [activeViewerWeek, setActiveViewerWeek] = useState<{
     key: string;
@@ -174,6 +178,16 @@ export const App: React.FC = () => {
       }
     };
     initYears();
+
+    // Jednorazowa cicha telemetria pierwszego uruchomienia aplikacji (First Launch Ping)
+    cloudNotificationService.checkAndSendFirstLaunchPing().catch((err) => {
+      console.warn('First launch ping silent catch:', err);
+    });
+
+    // Synchronizacja bazy floty urządzeń (Firebase Firestore Heartbeat)
+    firebaseTelemetryService.recordOrUpdateHeartbeat().catch((err) => {
+      console.warn('Firebase telemetry heartbeat silent catch:', err);
+    });
 
     // Nasłuchiwanie automatycznych aktualizacji w tle
     if (typeof window !== 'undefined' && (window as any).api?.onUpdaterEvent) {
@@ -440,55 +454,72 @@ export const App: React.FC = () => {
   // 1. Ekran Powitalny / Menu Startowe (Pierwsze uruchomienie po instalacji)
   if (!hasCompletedOnboarding) {
     return (
-      <OnboardingWizardView
-        onComplete={(config) => {
-          try {
-            localStorage.setItem('sbx_onboarding_completed', 'true');
-            localStorage.setItem('sbx_store_name', config.storeName);
-            localStorage.setItem('sbx_unit_code', config.unitCode);
-            localStorage.setItem('sbx_user_name', config.userName);
-            localStorage.setItem('sbx_user_role', config.role);
-            localStorage.setItem('sbx_user_email', config.userEmail);
-          } catch {}
+      <>
+        <OnboardingWizardView
+          onComplete={(config) => {
+            try {
+              localStorage.setItem('sbx_onboarding_completed', 'true');
+              localStorage.setItem('sbx_store_name', config.storeName);
+              localStorage.setItem('sbx_unit_code', config.unitCode);
+              localStorage.setItem('sbx_user_name', config.userName);
+              localStorage.setItem('sbx_user_role', config.role);
+              localStorage.setItem('sbx_user_email', config.userEmail);
+            } catch {}
 
-          const apiObj = (window as any).api || (window as any).electronAPI;
-          if (apiObj?.saveAppSettings) {
-            apiObj.saveAppSettings({
-              sbx_onboarding_completed: 'true',
-              onboarding_completed: 'true',
-              store_name: config.storeName,
-              unit_code: config.unitCode,
-              user_name: config.userName,
-              user_role: config.role,
-              user_email: config.userEmail,
-            }).catch(console.error);
-          }
+            const apiObj = (window as any).api || (window as any).electronAPI;
+            if (apiObj?.saveAppSettings) {
+              apiObj.saveAppSettings({
+                sbx_onboarding_completed: 'true',
+                onboarding_completed: 'true',
+                store_name: config.storeName,
+                unit_code: config.unitCode,
+                user_name: config.userName,
+                user_role: config.role,
+                user_email: config.userEmail,
+              }).catch(console.error);
+            }
 
-          setLoggedInUser(config.userName ? `${config.userName} (${config.role.replace(/[^A-Z]/g, '')})` : config.role);
-          setHasCompletedOnboarding(true);
-          setIsLoggedIn(true);
-          setActiveModule('dashboard');
-          loadMonthData();
+            setLoggedInUser(config.userName ? `${config.userName} (${config.role.replace(/[^A-Z]/g, '')})` : config.role);
+            setHasCompletedOnboarding(true);
+            setIsLoggedIn(true);
+            setActiveModule('dashboard');
+            loadMonthData();
 
-          if (config.dataSourceOption === 'A') {
-            setIsImportModalOpen(true);
-          } else if (config.dataSourceOption === 'B') {
-            setIsBackupModalOpen(true);
-          }
-        }}
-      />
+            // Automatyczna wysyłka e-maila powitalnego i rejestracja kontaktu w chmurze
+            if (config.userEmail) {
+              cloudNotificationService.sendWelcomeNotification({
+                userName: config.userName || 'Store Manager',
+                userEmail: config.userEmail,
+                userRole: config.role,
+                storeName: config.storeName,
+                unitCode: config.unitCode,
+              }).catch((err) => console.warn('Błąd wysyłki powitania:', err));
+            }
+
+            if (config.dataSourceOption === 'A') {
+              setIsImportModalOpen(true);
+            } else if (config.dataSourceOption === 'B') {
+              setIsBackupModalOpen(true);
+            }
+          }}
+        />
+        <InteractiveModelTutorial />
+      </>
     );
   }
 
   // 2. Standardowy Ekran Logowania (kolejne uruchomienia)
   if (!isLoggedIn) {
     return (
-      <LoginView
-        onLogin={(role) => {
-          if (role) setLoggedInUser(role);
-          setIsLoggedIn(true);
-        }}
-      />
+      <>
+        <LoginView
+          onLogin={(role) => {
+            if (role) setLoggedInUser(role);
+            setIsLoggedIn(true);
+          }}
+        />
+        <InteractiveModelTutorial />
+      </>
     );
   }
 
@@ -500,7 +531,10 @@ export const App: React.FC = () => {
           onSelectModule={setActiveModule}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenSettings={() => {
+            setSettingsInitialTab(undefined);
+            setIsSettingsOpen(true);
+          }}
           onOpenImportModal={() => setIsImportModalOpen(true)}
           onRefresh={loadMonthData}
           isLoading={isLoading}
@@ -517,6 +551,12 @@ export const App: React.FC = () => {
           userName={loggedInUser}
           selectedYear={selectedYear}
           selectedMonth={selectedMonth}
+          onNavigateModule={setActiveModule}
+          onOpenNotificationsSettings={() => {
+            setSettingsInitialTab('notifications');
+            setIsSettingsOpen(true);
+          }}
+          onOpenBackupModal={() => setIsBackupModalOpen(true)}
         />
 
         <main className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-5 py-4 pb-24 w-full">
@@ -662,10 +702,14 @@ export const App: React.FC = () => {
       {/* Centralne Okno Ustawień Konfiguracji */}
       <UnifiedSettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={() => {
+          setIsSettingsOpen(false);
+          setSettingsInitialTab(undefined);
+        }}
         activeModule={activeModule}
         selectedYear={selectedYear}
         selectedMonth={selectedMonth}
+        initialTab={settingsInitialTab}
         onRefreshData={() => {
           loadMonthData();
         }}
@@ -678,10 +722,6 @@ export const App: React.FC = () => {
         hasUpdateAvailable={hasUpdateAvailable}
         onOpenBugReporter={() => {
           setIsBugReporterOpen(true);
-        }}
-        onRerunOnboarding={() => {
-          setHasCompletedOnboarding(false);
-          setIsSettingsOpen(false);
         }}
       />
 
@@ -712,6 +752,9 @@ export const App: React.FC = () => {
                       activeModule === 'col_calculator' ? 'COL Calculator' : 'System Core',
         }}
       />
+
+      {/* Okno Interaktywnego Animowanego Samouczka Modelowego */}
+      <InteractiveModelTutorial />
     </div>
   );
 };

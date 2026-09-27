@@ -313,6 +313,9 @@ export class BackupManager {
         return 'Przed importem MAPAL Fichajes';
       case 'pre_restore_safety':
         return 'Kopia ratunkowa przed przywracaniem';
+      case 'pre_vacuum':
+      case 'pre_optimize_vacuum':
+        return 'Przed optymalizacją VACUUM';
       default:
         return raw.replace(/_/g, ' ');
     }

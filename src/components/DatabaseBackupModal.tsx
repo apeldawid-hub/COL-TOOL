@@ -15,8 +15,15 @@ import {
   FolderArchive,
   UploadCloud,
   DownloadCloud,
-  Trash2
+  Trash2,
+  Activity,
+  Zap,
+  Layers,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import { databaseHealthService } from '../services/databaseHealthService';
+import { DatabaseHealthStatus } from '../types';
 
 interface DatabaseBackupRecord {
   filename: string;
@@ -49,6 +56,13 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
 }) => {
   const [backups, setBackups] = useState<DatabaseBackupRecord[]>([]);
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
+  const [healthStatus, setHealthStatus] = useState<DatabaseHealthStatus | null>(() =>
+    databaseHealthService.getHealth()
+  );
+  const [isCheckingHealth, setIsCheckingHealth] = useState<boolean>(false);
+  const [isOptimizing, setIsOptimizing] = useState<boolean>(false);
+  const [showTableDetails, setShowTableDetails] = useState<boolean>(false);
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [isRestoring, setIsRestoring] = useState<boolean>(false);
@@ -66,18 +80,55 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
     setErrorMessage(null);
     try {
       if ((window as any).api?.getDatabaseBackups) {
-        const [loadedBackups, status] = await Promise.all([
+        const [loadedBackups, status, health] = await Promise.all([
           (window as any).api.getDatabaseBackups(),
-          (window as any).api.getDatabaseStatus ? (window as any).api.getDatabaseStatus() : Promise.resolve(null)
+          (window as any).api.getDatabaseStatus ? (window as any).api.getDatabaseStatus() : Promise.resolve(null),
+          databaseHealthService.checkHealth().catch(() => null)
         ]);
         setBackups(loadedBackups || []);
         if (status) setDbStatus(status);
+        if (health) setHealthStatus(health);
+      } else {
+        const health = await databaseHealthService.checkHealth();
+        setHealthStatus(health);
       }
     } catch (err: any) {
       console.error('Błąd ładowania danych kopii zapasowych:', err);
       setErrorMessage(err.message || 'Nie udało się pobrać listy kopii zapasowych.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRunHealthCheck = async () => {
+    setIsCheckingHealth(true);
+    setErrorMessage(null);
+    try {
+      const res = await databaseHealthService.checkHealth();
+      setHealthStatus(res);
+      setSuccessMessage(`Test spójności SQLite zakończony: ${res.integrity === 'ok' ? 'Baza jest w 100% spójna ✓' : res.integrityMessage}`);
+    } catch (err: any) {
+      console.error('Błąd testu spójności bazy:', err);
+      setErrorMessage(err.message || 'Nie udało się przeprowadzić testu spójności.');
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  };
+
+  const handleRunVacuum = async () => {
+    setIsOptimizing(true);
+    setErrorMessage(null);
+    try {
+      const res = await databaseHealthService.optimizeDatabase();
+      if (res.health) setHealthStatus(res.health);
+      setSuccessMessage(res.message || 'Optymalizacja VACUUM zakończona sukcesem.');
+      await loadBackupData();
+      if (onRestoreSuccess) onRestoreSuccess();
+    } catch (err: any) {
+      console.error('Błąd optymalizacji VACUUM:', err);
+      setErrorMessage(err.message || 'Wystąpił błąd podczas optymalizacji VACUUM.');
+    } finally {
+      setIsOptimizing(false);
     }
   };
 
@@ -129,7 +180,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
       if ((window as any).api?.exportHistoricalPackage) {
         const res = await (window as any).api.exportHistoricalPackage();
         if (res.success) {
-          setSuccessMessage(res.message || 'Pomyślnie wyeksportowano pełną paczkę danych do folderu ./IMPORT/.');
+          setSuccessMessage(res.message || 'Pomyślnie wyeksportowano pełną paczkę danych i otwarto folder w Finderze.');
         } else {
           setErrorMessage('Wystąpił błąd podczas eksportu paczki danych.');
         }
@@ -429,7 +480,171 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
 
         {/* ZAWARTOŚĆ GŁÓWNA ZE SCROLLEM */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-          
+
+          {/* INSPEKTOR ZDROWIA & OPTYMALIZACJI SQLITE (DATABASE HEALTH & VACUUM) */}
+          <div className="bg-gradient-to-br from-stone-50 via-emerald-50/20 to-stone-50 p-4.5 rounded-2xl border border-emerald-900/15 shadow-2xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-[#006241] border border-emerald-200 shadow-2xs">
+                  <Activity className="w-4 h-4 text-[#006241]" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black tracking-wider uppercase text-[#1E3932] flex items-center gap-2">
+                    <span>Inspektor Zdrowia & Spójności SQLite</span>
+                    {healthStatus?.integrity === 'ok' ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-[#006241] text-[10px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        100% Spójna (OK)
+                      </span>
+                    ) : healthStatus ? (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-rose-600" />
+                        Błąd Spójności
+                      </span>
+                    ) : null}
+                  </h3>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    Test integralności PRAGMA integrity_check, defragmentacja pamięci podręcznej i monitoring kopii.
+                  </p>
+                </div>
+              </div>
+
+              {/* Przyciski szybkiej akcji testu i VACUUM */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleRunHealthCheck}
+                  disabled={isCheckingHealth}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 text-xs font-bold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Uruchom PRAGMA integrity_check i PRAGMA quick_check"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-stone-500 ${isCheckingHealth ? 'animate-spin' : ''}`} />
+                  <span>{isCheckingHealth ? 'Badanie...' : 'Test Spójności'}</span>
+                </button>
+
+                <button
+                  onClick={handleRunVacuum}
+                  disabled={isOptimizing}
+                  className="px-3 py-1.5 rounded-xl bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Uruchamia VACUUM oraz PRAGMA optimize w celu odzyskania miejsca na dysku"
+                >
+                  <Zap className={`w-3.5 h-3.5 text-[#CBA258] ${isOptimizing ? 'animate-bounce' : ''}`} />
+                  <span>{isOptimizing ? 'Optymalizowanie...' : 'Optymalizuj (VACUUM)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* OSTRZEŻENIE O ZALEGŁEJ KOPII ZAPASOWEJ (> 7 DNI) */}
+            {healthStatus?.isBackupOverdue && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-start gap-2.5 text-amber-950 animate-in fade-in">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span>Zalecana kopia zapasowa bazy danych!</span>
+                    <span className="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 text-[10px] font-mono font-bold">
+                      {healthStatus.daysSinceLastBackup !== undefined ? `+${healthStatus.daysSinceLastBackup} dni` : 'brak kopii'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 mt-0.5">
+                    {healthStatus.daysSinceLastBackup !== undefined
+                      ? `Od ostatniego zapisu minęło już ${healthStatus.daysSinceLastBackup} dni (zalecane: max 7 dni). Utwórz nową kopię, aby zabezpieczyć najnowsze grafiki i logowania.`
+                      : 'W systemie nie znaleziono żadnej kopii bezpieczeństwa. Zaleca się wykonanie pierwszej kopii.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* METRYKI BAZY DANYCH */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                  Rozmiar Pliku
+                </span>
+                <span className="text-sm font-black text-stone-900">
+                  {healthStatus?.sizeFormatted || '—'}
+                </span>
+                <span className="text-[10px] text-stone-500 block mt-0.5">
+                  Strony: {healthStatus?.pageCount || 0} x {healthStatus?.pageSize || 4096}B
+                </span>
+              </div>
+
+              <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                  Wolne / Pofragmentowane
+                </span>
+                <div className="flex items-center gap-1">
+                  <span className={`text-sm font-black ${healthStatus?.wastedBytes && healthStatus.wastedBytes > 128 * 1024 ? 'text-amber-600' : 'text-stone-900'}`}>
+                    {healthStatus?.wastedFormatted || '0.0 KB'}
+                  </span>
+                  {healthStatus?.wastedBytes && healthStatus.wastedBytes > 128 * 1024 ? (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">VACUUM</span>
+                  ) : (
+                    <span className="text-[9px] text-emerald-600 font-bold">✓ Czysto</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-stone-500 block mt-0.5">
+                  Freelist: {healthStatus?.freelistCount || 0} stron
+                </span>
+              </div>
+
+              <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                  Rekordy w Tabelach
+                </span>
+                <span className="text-sm font-black text-emerald-800">
+                  {healthStatus?.totalRecordsCount.toLocaleString('pl-PL') || '—'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowTableDetails(!showTableDetails)}
+                  className="text-[10px] text-[#006241] font-bold hover:underline flex items-center gap-0.5 mt-0.5 cursor-pointer"
+                >
+                  <span>15 tabel operacyjnych</span>
+                  {showTableDetails ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                </button>
+              </div>
+
+              <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                  Logi Czarnej Skrzynki
+                </span>
+                <span className="text-sm font-black text-stone-900">
+                  {healthStatus?.archivedLogsCount || 0} plików
+                </span>
+                <span className="text-[10px] text-stone-500 block mt-0.5">
+                  Łącznie: {healthStatus?.archivedLogsSizeFormatted || '0.0 KB'}
+                </span>
+              </div>
+            </div>
+
+            {/* ROZWIJANA LISTA SZCZEGÓŁOWA 15 TABEL OPERACYJNYCH */}
+            {showTableDetails && healthStatus?.tableStats && (
+              <div className="bg-white p-3 rounded-xl border border-emerald-200 animate-in fade-in">
+                <div className="text-xs font-bold text-stone-800 mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-[#006241]" />
+                    Struktura tabel SQLite w pliku tplh_forecast.db
+                  </span>
+                  <span className="text-[10px] text-stone-500 font-mono">
+                    Łącznie wierszy: {healthStatus.totalRecordsCount.toLocaleString('pl-PL')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                  {healthStatus.tableStats.map((t) => (
+                    <div key={t.tableName} className="flex items-center justify-between p-1.5 px-2 rounded-lg bg-stone-50 border border-stone-100 text-[11px]">
+                      <div className="truncate mr-2">
+                        <span className="font-semibold text-stone-800 block truncate">{t.label}</span>
+                        <code className="text-[9px] text-stone-400 font-mono">{t.tableName}</code>
+                      </div>
+                      <span className="font-mono font-bold text-[#006241] shrink-0">
+                        {t.rowCount.toLocaleString('pl-PL')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* CENTRUM DANYCH & PACZEK HISTORYCZNYCH (CLEAN SLATE & IMPORT HUB) */}
           <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200">
             <div className="flex items-center justify-between mb-3">

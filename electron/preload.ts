@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webFrame } from 'electron';
 
 export interface IElectronAPI {
   getAopPlan: (year: number, month: string) => Promise<any>;
@@ -75,6 +75,8 @@ export interface IElectronAPI {
   restoreDatabaseBackup: (filename: string) => Promise<{ success: boolean; message: string }>;
   restoreDatabaseBackupBuffer: (buffer: ArrayBuffer) => Promise<{ success: boolean; message: string }>;
   getDatabaseStatus: () => Promise<{ dbPath: string; exists: boolean; sizeBytes: number; lastModified: string; backupsCount: number; latestBackup?: any }>;
+  checkDatabaseHealth: () => Promise<any>;
+  optimizeDatabase: () => Promise<any>;
   // Moduł Centrum Danych & Paczek Historycznych (Clean Slate & Import Hub)
   exportHistoricalPackage: (customTargetDir?: string) => Promise<{ success: boolean; message: string; details?: any }>;
   importHistoricalPackage: (customSourceDir?: string) => Promise<{ success: boolean; message: string; details?: any }>;
@@ -104,6 +106,9 @@ export interface IElectronAPI {
   getUpdateStatus: () => Promise<any>;
   onUpdaterEvent: (callback: (payload: any) => void) => () => void;
   openExternalUrl: (url: string) => Promise<boolean>;
+  // Skalowanie interfejsu (UI Zoom)
+  setZoomFactor: (factor: number) => boolean;
+  getZoomFactor: () => number;
   // System Diagnostyki, Czarnej Skrzynki i Zgłaszania Błędów
   logError: (payload: { level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'; source: string; message: string; stack?: string; metadata?: any }) => Promise<boolean>;
   getRecentLogs: (limit?: number) => Promise<any[]>;
@@ -174,6 +179,8 @@ const api: IElectronAPI = {
   restoreDatabaseBackup: (filename) => ipcRenderer.invoke('db:restore-backup', filename),
   restoreDatabaseBackupBuffer: (buffer) => ipcRenderer.invoke('db:restore-backup-buffer', buffer),
   getDatabaseStatus: () => ipcRenderer.invoke('db:get-database-status'),
+  checkDatabaseHealth: () => ipcRenderer.invoke('db:check-health'),
+  optimizeDatabase: () => ipcRenderer.invoke('db:optimize'),
   // Moduł Centrum Danych & Paczek Historycznych (Clean Slate & Import Hub)
   exportHistoricalPackage: (customTargetDir?: string) => ipcRenderer.invoke('db:export-historical-package', customTargetDir),
   importHistoricalPackage: (customSourceDir?: string) => ipcRenderer.invoke('db:import-historical-package', customSourceDir),
@@ -201,6 +208,22 @@ const api: IElectronAPI = {
     };
   },
   openExternalUrl: (url) => ipcRenderer.invoke('system:open-external', url),
+  // Skalowanie interfejsu (UI Zoom)
+  setZoomFactor: (factor: number) => {
+    try {
+      webFrame.setZoomFactor(factor);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  getZoomFactor: () => {
+    try {
+      return webFrame.getZoomFactor();
+    } catch {
+      return 1.0;
+    }
+  },
   // System Diagnostyki, Czarnej Skrzynki i Zgłaszania Błędów
   logError: (payload) => ipcRenderer.invoke('logger:log', payload),
   getRecentLogs: (limit) => ipcRenderer.invoke('logger:get-recent-logs', limit),

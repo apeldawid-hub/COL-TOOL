@@ -125,6 +125,8 @@ export class AppUpdater {
     releaseNotes: string;
     downloadUrl: string;
     zipName: string;
+    isPatch: boolean;
+    sizeMB?: number;
   } | null> {
     return new Promise((resolve, reject) => {
       const options = {
@@ -147,17 +149,30 @@ export class AppUpdater {
               const rawTag = release.tag_name || '';
               const version = rawTag.replace(/^v/, '');
               const isArm = process.arch === 'arm64';
-              
-              // Poszukaj odpowiedniego archiwum .zip
-              // Dla Apple Silicon: Starbucks-Operations-Suite-X.X.X-arm64-mac.zip
-              // Dla Intel: Starbucks-Operations-Suite-X.X.X-mac.zip
               const assets = release.assets || [];
+              
+              // 1. Sprawdź czy jest dostępny szybki mikropatch OTA (sos-patch-*.zip)
+              const patchAsset = assets.find((a: any) => a.name.startsWith('sos-patch-') && a.name.endsWith('.zip'));
+              
+              if (patchAsset) {
+                const sizeMB = patchAsset.size ? +(patchAsset.size / (1024 * 1024)).toFixed(2) : 1.5;
+                return resolve({
+                  version,
+                  releaseDate: release.published_at || new Date().toISOString(),
+                  releaseNotes: release.body || '⚡ Błyskawiczny patch OTA z usprawnieniami systemu.',
+                  downloadUrl: patchAsset.browser_download_url,
+                  zipName: patchAsset.name,
+                  isPatch: true,
+                  sizeMB
+                });
+              }
+
+              // 2. Fallback do pełnego archiwum .zip macOS
               let matchedAsset = assets.find((a: any) => 
                 isArm ? a.name.includes('arm64-mac.zip') : (a.name.includes('-mac.zip') && !a.name.includes('arm64'))
               );
 
               if (!matchedAsset) {
-                // Fallback do dowolnego .zip
                 matchedAsset = assets.find((a: any) => a.name.endsWith('-mac.zip') || a.name.endsWith('.zip'));
               }
 
@@ -165,12 +180,16 @@ export class AppUpdater {
                 ? matchedAsset.browser_download_url 
                 : `https://github.com/apeldawid-hub/COL-TOOL/releases/download/v${version}/Starbucks-Operations-Suite-${version}-${isArm ? 'arm64-' : ''}mac.zip`;
 
+              const sizeMB = matchedAsset?.size ? +(matchedAsset.size / (1024 * 1024)).toFixed(1) : 85;
+
               resolve({
                 version,
                 releaseDate: release.published_at || new Date().toISOString(),
                 releaseNotes: release.body || 'Nowa wersja Starbucks Operations Suite z usprawnieniami.',
                 downloadUrl,
-                zipName: matchedAsset ? matchedAsset.name : `sos-update-${version}.zip`
+                zipName: matchedAsset ? matchedAsset.name : `sos-update-${version}.zip`,
+                isPatch: false,
+                sizeMB
               });
             } catch (err) {
               reject(err);
@@ -190,8 +209,10 @@ export class AppUpdater {
    * Niezależne pobieranie paczki ZIP z postępem (Bypass dla macOS ShipIt)
    */
   public async downloadCustomZip(url: string): Promise<string> {
-    const tempZipPath = path.join(app.getPath('temp'), `sos-update-${Date.now()}.zip`);
+    const isPatch = url.includes('sos-patch-') || !!this.updateStatus.versionInfo?.isPatch;
+    const tempZipPath = path.join(app.getPath('temp'), isPatch ? `sos-patch-${Date.now()}.zip` : `sos-update-${Date.now()}.zip`);
     this.downloadedZipPath = tempZipPath;
+    const currentVersionInfo = this.updateStatus.versionInfo;
 
     return new Promise((resolve, reject) => {
       const followRedirects = (currentUrl: string, redirectCount = 0) => {
@@ -228,6 +249,7 @@ export class AppUpdater {
 
               this.updateStatus = {
                 status: 'downloading',
+                versionInfo: currentVersionInfo,
                 progress: {
                   percent,
                   bytesPerSecond,
@@ -253,12 +275,12 @@ export class AppUpdater {
             fileStream.close(() => {
               this.updateStatus = {
                 status: 'downloaded',
-                versionInfo: this.updateStatus.versionInfo
+                versionInfo: currentVersionInfo
               };
               this.sendToRenderer('app:updater-event', {
                 event: 'update-downloaded',
                 status: 'downloaded',
-                info: this.updateStatus.versionInfo
+                info: currentVersionInfo
               });
               resolve(tempZipPath);
             });
@@ -281,12 +303,119 @@ export class AppUpdater {
   }
 
   /**
-   * Automatyczna podmiana aplikacji i restart na macOS (Obejście Apple Developer ID)
+   * Błyskawiczne nałożenie mikropatcha OTA (podmiana app.asar lub folderu zasobów w tle)
+   */
+  public applyHotPatch(zipPath: string): boolean {
+    try {
+      console.log('⚡ [Hot-Patch] Przygotowywanie instalacji patcha OTA:', zipPath);
+
+      // Wyznacz ścieżkę do bieżącego pakietu .app
+      const execPath = process.execPath;
+      const appMatch = execPath.match(/^(.+?\.app)(\/Contents\/MacOS\/.*)?$/);
+      const appBundlePath = appMatch ? appMatch[1] : path.resolve(execPath, '../../..');
+      const resourcesDir = path.join(appBundlePath, 'Contents/Resources');
+
+      const tempExtractDir = path.join(app.getPath('temp'), `sos_patch_extract_${Date.now()}`);
+      const scriptPath = path.join(app.getPath('temp'), `sos_patch_apply_${Date.now()}.sh`);
+      const currentPid = process.pid;
+
+      const bashScript = `#!/usr/bin/env bash
+set -x
+exec > /tmp/sos_patch.log 2>&1
+
+PID=${currentPid}
+ZIP_PATH="${zipPath}"
+APP_PATH="${appBundlePath}"
+RESOURCES_DIR="${resourcesDir}"
+EXTRACT_DIR="${tempExtractDir}"
+
+echo "Rozpoczynam patchowanie dla PID $PID..."
+
+# 1. Czekaj na zakończenie bieżącego procesu aplikacji
+while kill -0 $PID 2>/dev/null; do
+  sleep 0.1
+done
+
+echo "Proces zakończony. Rozpakowuję patch $ZIP_PATH..."
+
+# 2. Rozpakuj mikropatch
+mkdir -p "$EXTRACT_DIR"
+unzip -q -o "$ZIP_PATH" -d "$EXTRACT_DIR"
+
+# 3. Podmień app.asar lub pliki zasobów
+if [ -f "$EXTRACT_DIR/app.asar" ]; then
+  echo "Podmieniam app.asar..."
+  rm -f "$RESOURCES_DIR/app.asar"
+  cp "$EXTRACT_DIR/app.asar" "$RESOURCES_DIR/app.asar"
+fi
+
+if [ -d "$RESOURCES_DIR/app" ] && [ -d "$EXTRACT_DIR/dist" ]; then
+  echo "Podmieniam folder app..."
+  cp -R "$EXTRACT_DIR/dist" "$RESOURCES_DIR/app/"
+  cp -R "$EXTRACT_DIR/dist-electron" "$RESOURCES_DIR/app/"
+  [ -f "$EXTRACT_DIR/package.json" ] && cp -f "$EXTRACT_DIR/package.json" "$RESOURCES_DIR/app/package.json"
+fi
+
+# 4. Zdejmij flagę kwarantanny macOS Gatekeeper
+xattr -rd com.apple.quarantine "$APP_PATH" 2>/dev/null || true
+
+# 5. Posprzątaj pliki tymczasowe
+rm -rf "$EXTRACT_DIR" "$ZIP_PATH"
+
+echo "Uruchamiam aplikację: $APP_PATH"
+# 6. Uruchom zaktualizowaną aplikację (wymuś nową instancję)
+sleep 0.2
+open -n "$APP_PATH" || open "$APP_PATH"
+`;
+
+      fs.writeFileSync(scriptPath, bashScript, { mode: 0o755 });
+
+      console.log('🚀 [Hot-Patch] Uruchamianie bezpiecznego skryptu podmiany i restartu:', scriptPath);
+
+      const child = spawn('/bin/bash', [scriptPath], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
+
+      // Zakończ natychmiast obecny proces
+      app.exit(0);
+      return true;
+    } catch (err) {
+      console.error('❌ [Hot-Patch] Błąd przygotowania patcha:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Automatyczna podmiana aplikacji i restart na macOS
    */
   public executeInPlaceMacUpdate(): boolean {
     if (!this.downloadedZipPath || !fs.existsSync(this.downloadedZipPath)) {
       console.error('Brak pobranego pliku aktualizacji ZIP.');
       return false;
+    }
+
+    const zipPath = this.downloadedZipPath;
+    const zipName = path.basename(zipPath);
+
+    // 1. Sprawdź czy to mikropatch OTA
+    let isPatch = this.updateStatus.versionInfo?.isPatch || zipName.includes('patch');
+    
+    // Jeśli nie jesteśmy pewni, zbadaj zawartość zipa
+    if (!isPatch) {
+      try {
+        const { execSync } = require('child_process');
+        const listOutput = execSync(`unzip -l "${zipPath}" | head -n 15`).toString();
+        if (listOutput.includes('app.asar') || listOutput.includes('dist-electron') || !listOutput.includes('.app/')) {
+          isPatch = true;
+        }
+      } catch (_) {}
+    }
+
+    if (isPatch) {
+      console.log('⚡ [AutoUpdater] Wykryto paczkę Hot-Patch OTA, stosuję szybkie nałożenie...');
+      return this.applyHotPatch(zipPath);
     }
 
     try {
@@ -300,8 +429,11 @@ export class AppUpdater {
       const currentPid = process.pid;
 
       const bashScript = `#!/usr/bin/env bash
+set -x
+exec > /tmp/sos_update_full.log 2>&1
+
 PID=${currentPid}
-ZIP_PATH="${this.downloadedZipPath}"
+ZIP_PATH="${zipPath}"
 APP_PATH="${appBundlePath}"
 EXTRACT_DIR="${tempExtractDir}"
 
@@ -332,7 +464,8 @@ if [ -n "$NEW_APP" ] && [ -d "$NEW_APP" ]; then
   rm -rf "$EXTRACT_DIR" "$ZIP_PATH"
   
   # 8. Uruchom zaktualizowaną aplikację
-  open "$APP_PATH"
+  sleep 0.2
+  open -n "$APP_PATH" || open "$APP_PATH"
 fi
 `;
 

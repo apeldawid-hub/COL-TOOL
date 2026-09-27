@@ -1652,9 +1652,30 @@ function setupIpcHandlers() {
     return BackupManager.getInstance().getDatabaseStatus();
   });
 
+  // Inspektor Zdrowia & Optymalizacji SQLite (Health Check & VACUUM)
+  ipcMain.handle('db:check-health', () => {
+    return dbManager.checkHealth();
+  });
+
+  ipcMain.handle('db:optimize', () => {
+    const res = dbManager.optimizeDatabase();
+    if (res.success && mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return res;
+  });
+
   // Moduł Centrum Danych & Paczek Historycznych (Clean Slate & Import Hub)
-  ipcMain.handle('db:export-historical-package', (_event, customTargetDir?: string) => {
-    return dbManager.exportHistoricalDataPackage(customTargetDir);
+  ipcMain.handle('db:export-historical-package', async (_event, customTargetDir?: string) => {
+    const res = dbManager.exportHistoricalDataPackage(customTargetDir);
+    if (res.success && res.targetDir) {
+      try {
+        await shell.openPath(res.targetDir);
+      } catch (err) {
+        console.warn('Nie udało się automatycznie otworzyć folderu eksportu:', err);
+      }
+    }
+    return res;
   });
 
   ipcMain.handle('db:import-historical-package', (_event, customSourceDir?: string) => {

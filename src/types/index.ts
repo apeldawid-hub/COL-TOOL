@@ -560,3 +560,49 @@ export type AppModule =
   | 'col_calculator'
   | 'analytics'
   | 'ibs_ims';
+
+// ----------------------------------------------------
+// Inspektor Spójności i Zdrowia Bazy SQLite (Health Check & VACUUM)
+// ----------------------------------------------------
+
+export interface DatabaseTableStat {
+  tableName: string;
+  label: string;
+  rowCount: number;
+}
+
+export interface DatabaseHealthStatus {
+  integrity: 'ok' | 'corrupted' | 'error';
+  integrityMessage: string;
+  quickCheck: 'ok' | 'error';
+  dbPath: string;
+  sizeBytes: number;
+  sizeFormatted: string;
+  pageSize: number;
+  pageCount: number;
+  freelistCount: number;
+  wastedBytes: number;
+  wastedFormatted: string;
+  tableStats: DatabaseTableStat[];
+  totalRecordsCount: number;
+  archivedLogsCount: number;
+  archivedLogsSizeFormatted: string;
+  backupsCount: number;
+  lastBackupDate?: string;
+  lastBackupFormatted?: string;
+  daysSinceLastBackup?: number;
+  isBackupOverdue: boolean;
+  lastIntegrityCheckTime: string;
+  recommendations: string[];
+}
+
+export interface DatabaseOptimizationResult {
+  success: boolean;
+  message: string;
+  beforeSizeBytes: number;
+  afterSizeBytes: number;
+  reclaimedBytes: number;
+  reclaimedFormatted: string;
+  durationMs: number;
+  health: DatabaseHealthStatus;
+}

@@ -23,6 +23,8 @@ import { InterStoreSupportModal } from './InterStoreSupportModal';
 import { AutoScheduleResult } from '../services/autoSchedulerEngine';
 import { DEFAULT_SHIFT_DEFINITIONS } from '../constants/defaultShifts';
 import { SystemClock } from '../../../services/systemClock';
+import { useTutorial } from '../../../context/TutorialContext';
+import { FeatureInfoButton } from '../../../components/FeatureInfoButton';
 import {
   Calendar,
   Users,
@@ -42,7 +44,9 @@ import {
   CalendarCheck,
   Lock,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  BookOpen,
+  CheckSquare,
 } from 'lucide-react';
 
 interface ManagerScheduleViewProps {
@@ -63,6 +67,9 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   const [activeTab, setActiveTab] = useState<'schedule' | 'tor'>('schedule');
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(getMonthNumber(currentMonthName));
+
+  // Hook trybu samouczka
+  const { isTutorialMode, openModelTour } = useTutorial();
 
   const [isLoading, setIsLoading] = useState(true);
   const [scheduleData, setScheduleData] = useState<ManagerScheduleMonthData | null>(null);
@@ -342,6 +349,19 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
                 <div className="flex items-center gap-1.5 font-bold text-stone-800">
                   <Calendar className="w-4 h-4 text-[#006241]" />
                   <span>Kalendarz miesiąca:</span>
+                  <FeatureInfoButton
+                    title="Normy Kodeksu Pracy (Art. 130 § 2 KP)"
+                    category="KODEKS PRACY"
+                    description="Nominalny czas pracy pracownika w danym miesiącu kalendarzowym."
+                    details={[
+                      "Dni robocze x 8.0h (odliczenie świąt przypadających od poniedziałku do soboty)",
+                      "Dla etatu 1.0 = pełna norma, dla 0.75 = 75% normy, dla 0.50 = 50% normy"
+                    ]}
+                    rules={[
+                      "Święto przypadające w sobotę obniża wymiar o 8h (np. 15.08, 26.12)",
+                      "Każde zaplanowane L4 lub urlop H w dzień roboczy zalicza wymiar etatu (8.0h x etat)"
+                    ]}
+                  />
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -358,6 +378,18 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
                 <div className="flex items-center gap-1.5 pl-2 border-l border-stone-200">
                   <ShoppingBag className="w-3.5 h-3.5 text-emerald-700" />
                   <span className="font-semibold text-stone-700">Niedziele Handlowe:</span>
+                  <FeatureInfoButton
+                    title="Niedziele Handlowe & Dni Wolne od Pracy"
+                    category="STANDARDY"
+                    description="Ustawa o ograniczeniu handlu w niedziele i święta definiuje 7 niedziel handlowych w roku."
+                    details={[
+                      "W niedziele handlowe kawiarnia w CH Janki funkcjonuje w pełnym wymiarze godzin",
+                      "W niedziele niehandlowe lokal i centrum handlowe są zamknięte"
+                    ]}
+                    rules={[
+                      "Art. 151¹⁰ KP: pracownik musi mieć zapewnioną co najmniej 1 wolną niedzielę na 4 kolejne tygodnie"
+                    ]}
+                  />
                   {(scheduleData.tradingSundaysList && scheduleData.tradingSundaysList.length > 0) ? (
                     <div className="flex items-center gap-1">
                       {scheduleData.tradingSundaysList.map(tradingDay => (
@@ -397,6 +429,37 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* 🎓 BANER SAMOUCZEK & WSKAZÓWKI PILOTAŻU DLA GRAFIKU MANAGERSKIEGO */}
+          {isTutorialMode && (
+            <div className="p-3.5 bg-gradient-to-r from-[#1E3932] via-[#122822] to-[#0c1c18] border border-emerald-500/40 rounded-2xl text-xs text-emerald-100 shadow-md flex items-center justify-between gap-3 flex-wrap animate-in fade-in duration-200">
+              <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+                <div className="p-2 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-400/30 shrink-0">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-white text-xs font-bold">Wskazówki Pilotażu: Grafik Managerski & Kodeks Pracy</strong>
+                    <span className="text-[9px] px-1.5 py-0.2 bg-amber-400 text-amber-950 rounded-full font-black uppercase">
+                      Moduł 2
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                    🛡️ <strong>4 Tarcze KP</strong> (11h odpoczynku, 35h tydz., max 12h, max 3 niedziele) • ⌨️ <strong>Klawisze:</strong> A (AM), P (PM), O (OFF), H (Urlop), L (L4) • ☕ <strong>Speed-Dial:</strong> AutoScheduling AI (20k prób), Smart Paste dyspozycji i TOR.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openModelTour(1, 'schedule')}
+                className="px-3 py-1.5 bg-[#006241] hover:bg-[#00754A] text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border border-emerald-400/40 shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Animowany Samouczek Grafiku ➔</span>
+              </button>
             </div>
           )}
 

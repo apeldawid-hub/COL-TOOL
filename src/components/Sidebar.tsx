@@ -20,7 +20,11 @@ import {
   Sparkles,
   RefreshCw,
   Bug,
+  BookOpen,
+  Bell,
 } from 'lucide-react';
+import { useTutorial } from '../context/TutorialContext';
+import { desktopNotificationService } from '../services/desktopNotificationService';
 
 interface SidebarProps {
   activeModule: AppModule;
@@ -111,6 +115,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isLoading,
   onLogout,
 }) => {
+  const { isTutorialMode, openModelTour } = useTutorial();
+  const [unreadCount, setUnreadCount] = React.useState<number>(() =>
+    desktopNotificationService.getUnreadCount()
+  );
+
+  React.useEffect(() => {
+    const unsubscribe = desktopNotificationService.subscribe(() => {
+      setUnreadCount(desktopNotificationService.getUnreadCount());
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <aside
       className={`bg-[#1E3932] text-white flex flex-col justify-between shrink-0 select-none transition-all duration-300 ease-in-out border-r border-[#006241]/30 relative z-30 ${
@@ -264,6 +280,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!isCollapsed && <span>Import</span>}
           </button>
         )}
+
+        {/* Interaktywny Samouczek Starbucks */}
+        <button
+          onClick={() => openModelTour(1, activeModule === 'labor_forecast' ? 'tplh' : 'schedule')}
+          title={isCollapsed ? 'Interaktywny Samouczek' : undefined}
+          className={`w-full flex items-center rounded-2xl text-xs font-semibold text-emerald-100/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer ${
+            isCollapsed ? 'justify-center p-3' : 'px-3.5 py-2 justify-between'
+          }`}
+        >
+          <div className="flex items-center space-x-3 truncate">
+            <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+            {!isCollapsed && <span>Samouczek</span>}
+          </div>
+          {!isCollapsed && (
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase ${
+              isTutorialMode ? 'bg-amber-400 text-amber-950' : 'bg-white/10 text-white/60'
+            }`}>
+              {isTutorialMode ? 'Pilotaż' : 'Wył'}
+            </span>
+          )}
+        </button>
 
         {/* Ustawienia Konfiguracji (Dynamiczne pozycjonowanie wg modułu) */}
         {onOpenSettings && (

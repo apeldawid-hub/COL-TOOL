@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { TutorialProvider } from './context/TutorialContext';
 import { logger } from './services/logger';
 import './index.css';
 
@@ -11,7 +12,9 @@ logger.init();
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary moduleName="Aplikacja Główna" fallbackTitle="Awaria Aplikacji Starbucks Operations Suite">
-      <App />
+      <TutorialProvider>
+        <App />
+      </TutorialProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

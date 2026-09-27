@@ -35,9 +35,30 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
   const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'>('idle');
   const [availableVersion, setAvailableVersion] = useState<string | null>(null);
   const [releaseNotes, setReleaseNotes] = useState<string | null>(null);
+  const [isPatch, setIsPatch] = useState<boolean>(false);
+  const [patchSizeMB, setPatchSizeMB] = useState<number | null>(null);
   const [progress, setProgress] = useState<{ percent: number; bytesPerSecond: number; transferred: number; total: number } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<string | null>(null);
+  const [isAutoUpdateEnabled, setIsAutoUpdateEnabled] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('sbx_auto_update_enabled');
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleAutoUpdate = (enabled: boolean) => {
+    setIsAutoUpdateEnabled(enabled);
+    try {
+      localStorage.setItem('sbx_auto_update_enabled', String(enabled));
+      const apiObj = (window as any).api || (window as any).electronAPI;
+      if (apiObj?.saveAppSettings) {
+        apiObj.saveAppSettings({ sbx_auto_update_enabled: String(enabled) }).catch(console.error);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -56,6 +77,8 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
           setStatus(state.status);
           if (state.versionInfo?.version) setAvailableVersion(state.versionInfo.version);
           if (state.versionInfo?.releaseNotes) setReleaseNotes(state.versionInfo.releaseNotes);
+          if (state.versionInfo?.isPatch !== undefined) setIsPatch(!!state.versionInfo.isPatch);
+          if (state.versionInfo?.sizeMB) setPatchSizeMB(state.versionInfo.sizeMB);
           if (state.progress) setProgress(state.progress);
           if (state.error) setErrorMessage(state.error);
         }
@@ -71,6 +94,14 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
         if (payload.event === 'update-available') {
           setAvailableVersion(payload.info?.version || null);
           setReleaseNotes(payload.info?.releaseNotes || 'Nowe usprawnienia i optymalizacje systemu.');
+          setIsPatch(!!payload.info?.isPatch);
+          if (payload.info?.sizeMB) setPatchSizeMB(payload.info.sizeMB);
+
+          // Automatyczne pobieranie w tle, jeśli włączono opcję Auto-Update
+          if (isAutoUpdateEnabled && (window as any).api?.downloadUpdate) {
+            console.log('⚡ [Auto-Update] Automatyczne pobieranie wykrytej aktualizacji w tle...');
+            (window as any).api.downloadUpdate().catch(console.error);
+          }
         } else if (payload.event === 'download-progress') {
           setProgress(payload.progress);
         } else if (payload.event === 'update-downloaded') {
@@ -105,12 +136,15 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
     if (typeof window !== 'undefined' && (window as any).api?.checkForUpdates) {
       try {
         const res = await (window as any).api.checkForUpdates();
-        if (res.success && res.updateInfo) {
-          const remoteVer = res.updateInfo.version;
-          if (remoteVer && remoteVer !== currentVer) {
+        if (res.success) {
+          if (res.updateInfo?.version && res.updateInfo.version !== currentVer) {
             setStatus('available');
-            setAvailableVersion(remoteVer);
+            setAvailableVersion(res.updateInfo.version);
             setReleaseNotes(typeof res.updateInfo.releaseNotes === 'string' ? res.updateInfo.releaseNotes : 'Nowe usprawnienia i optymalizacje systemu.');
+            return;
+          } else {
+            // Aplikacja jest w 100% aktualna
+            setStatus('not-available');
             return;
           }
         }
@@ -125,7 +159,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
       }
     }
 
-    // 2. Bezpośrednie zapytanie do GitHub API (jako niezawodny fallback i w trybie dev)
+    // 2. Bezpośrednie zapytanie do GitHub API (fallback)
     try {
       const response = await fetch('https://api.github.com/repos/apeldawid-hub/COL-TOOL/releases/latest');
       if (response.ok) {
@@ -146,9 +180,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
       }
     } catch (fetchErr: any) {
       console.error('Błąd pobierania z GitHub API:', fetchErr);
-      if (status === 'checking') {
-        setStatus('not-available');
-      }
+      setStatus('not-available');
     }
   };
 
@@ -235,6 +267,41 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
             </div>
           </div>
 
+          {/* Karta Konfiguracji: Automatyczne Aktualizacje OTA w Tle */}
+          <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-2xs flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl border ${isAutoUpdateEnabled ? 'bg-emerald-50 border-emerald-200 text-[#006241]' : 'bg-stone-100 border-stone-200 text-stone-500'}`}>
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-stone-900">Automatyczne Aktualizacje w Tle (Auto-Update OTA)</span>
+                  <span className={`text-[9px] px-2 py-0.5 font-bold rounded-full uppercase ${isAutoUpdateEnabled ? 'bg-emerald-100 text-[#006241]' : 'bg-stone-200 text-stone-600'}`}>
+                    {isAutoUpdateEnabled ? 'Włączone (Zalecane)' : 'Wyłączone'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  Aplikacja sama w tle sprawdza i natychmiast pobiera mikropatche OTA bez konieczności ręcznego klikania.
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <button
+              type="button"
+              onClick={() => toggleAutoUpdate(!isAutoUpdateEnabled)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isAutoUpdateEnabled ? 'bg-[#006241]' : 'bg-stone-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  isAutoUpdateEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Status aktualizacji */}
           {status === 'checking' && (
             <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-800">
@@ -266,28 +333,47 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
           )}
 
           {status === 'available' && (
-            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl space-y-3">
+            <div className={`p-4 rounded-xl border space-y-3 ${
+              isPatch 
+                ? 'bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/50 border-emerald-300 shadow-sm' 
+                : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200'
+            }`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-amber-100 rounded-lg text-amber-800">
-                    <ArrowUpCircle className="w-5 h-5" />
+                  <div className={`p-2 rounded-lg ${
+                    isPatch ? 'bg-emerald-600 text-white shadow-xs' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {isPatch ? <Zap className="w-5 h-5 animate-pulse text-emerald-200" /> : <ArrowUpCircle className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">Dostępna nowa wersja: v{availableVersion}</h3>
-                    <p className="text-xs text-gray-600">Gotowa do natychmiastowego pobrania w tle.</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-gray-900">
+                        {isPatch ? `⚡ Błyskawiczny Patch OTA: v${availableVersion}` : `Dostępna nowa wersja: v${availableVersion}`}
+                      </h3>
+                      {isPatch && (
+                        <span className="px-2 py-0.5 text-[10px] font-black bg-emerald-700 text-white rounded-md tracking-wider">
+                          HOT-PATCH (~{patchSizeMB || 1.5} MB)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      {isPatch 
+                        ? 'Lekka aktualizacja w locie — pobiera się w 1 sekundę i nakłada natychmiast.' 
+                        : 'Pełna wersja instalatora systemowego.'}
+                    </p>
                   </div>
                 </div>
                 <button
                   onClick={handleDownloadUpdate}
-                  className="px-3.5 py-1.5 bg-[#006241] hover:bg-[#004d33] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition-all"
+                  className="px-3.5 py-1.5 bg-[#006241] hover:bg-[#004d33] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition-all hover:scale-105"
                 >
                   <Download className="w-4 h-4" />
-                  Pobierz teraz
+                  {isPatch ? 'Pobierz patch (1s)' : 'Pobierz teraz'}
                 </button>
               </div>
 
               {releaseNotes && (
-                <div className="p-3 bg-white/80 rounded-lg border border-amber-100 text-xs text-gray-700 max-h-32 overflow-y-auto">
+                <div className="p-3 bg-white/80 rounded-lg border border-emerald-200/50 text-xs text-gray-700 max-h-32 overflow-y-auto">
                   <p className="font-bold text-gray-900 mb-1">Co nowego w tej wersji:</p>
                   <div className="whitespace-pre-line text-gray-600">{releaseNotes}</div>
                 </div>
@@ -300,7 +386,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-blue-900 flex items-center gap-2">
                   <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
-                  Pobieranie aktualizacji ({progress.percent}%)
+                  {isPatch ? 'Pobieranie mikropatcha...' : `Pobieranie aktualizacji (${progress.percent}%)`}
                 </span>
                 <span className="text-blue-700 font-medium">
                   {formatBytes(progress.transferred)} / {formatBytes(progress.total)} ({formatBytes(progress.bytesPerSecond)}/s)
@@ -313,18 +399,22 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                 />
               </div>
               <p className="text-[11px] text-blue-600">
-                Możesz swobodnie kontynuować pracę. Aplikacja poinformuje Cię po zakończeniu pobierania.
+                {isPatch ? 'Mikropaczka zajmuje zaledwie ~1.5 MB i pobierze się natychmiast.' : 'Możesz swobodnie kontynuować pracę. Aplikacja poinformuje Cię po zakończeniu pobierania.'}
               </p>
             </div>
           )}
 
           {status === 'downloaded' && (
-            <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between">
+            <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                 <div className="text-xs">
-                  <p className="font-bold text-emerald-950 text-sm">Aktualizacja jest gotowa do instalacji!</p>
-                  <p className="text-emerald-700">Wszystkie dane bazy SQLite zostaną w 100% zachowane.</p>
+                  <p className="font-bold text-emerald-950 text-sm">
+                    {isPatch ? '⚡ Patch OTA gotowy do natychmiastowego zastosowania!' : 'Aktualizacja jest gotowa do instalacji!'}
+                  </p>
+                  <p className="text-emerald-700">
+                    {isPatch ? 'Restart trwa 1 sekundę. Baza SQLite w 100% zachowana.' : 'Wszystkie dane bazy SQLite zostaną w 100% zachowane.'}
+                  </p>
                 </div>
               </div>
               <button
@@ -332,7 +422,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                 className="px-4 py-2 bg-[#006241] hover:bg-[#004d33] text-white text-xs font-black rounded-lg shadow-md flex items-center gap-1.5 transition-transform hover:scale-105"
               >
                 <Zap className="w-4 h-4 text-emerald-300" />
-                Zainstaluj & Restartuj
+                Zastosuj & Relaunch
               </button>
             </div>
           )}

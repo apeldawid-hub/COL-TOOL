@@ -16,6 +16,8 @@ import { LaborLogViewerModal } from './LaborLogViewerModal';
 import { ManagerLaborBridgeModal } from './ManagerLaborBridgeModal';
 import { MondayProjectionModal } from './MondayProjectionModal';
 import { LaborForecastWidget } from './LaborForecastWidget';
+import { useTutorial } from '../../../context/TutorialContext';
+import { FeatureInfoButton } from '../../../components/FeatureInfoButton';
 import {
   TrendingUp,
   Target,
@@ -23,7 +25,10 @@ import {
   Waves,
   Calendar,
   Sparkles,
-  X
+  X,
+  BookOpen,
+  HelpCircle,
+  Zap,
 } from 'lucide-react';
 
 interface LaborForecastViewProps {
@@ -68,6 +73,8 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
   managerEmployees: _managerEmployees,
   onNavigateToManagerSchedule
 }) => {
+  const { isTutorialMode, openModelTour } = useTutorial();
+
   // Stany otwarcia poszczególnych modali akcji
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isFlashForecastOpen, setIsFlashForecastOpen] = useState(false);
@@ -157,12 +164,32 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
             <strong className="text-stone-900">{mtdHours.toFixed(1)}h</strong>
             <span className="text-stone-400">/</span>
             <strong className="text-[#006241] font-black">{mtdTplh.toFixed(2)} TPLH</strong>
+            <FeatureInfoButton
+              title="MTD Velocity & Wypracowany Budżet"
+              category="TPLH & ROBOCIZNA"
+              description="Wskaźnik tempa realizacji budżetu robocizny na podstawie dotychczasowych rzeczywistych transakcji TRX i zaraportowanych godzin pracy w miesiącu."
+              details={[
+                "Śledzi faktyczną efektywność TPLH od 1. dnia miesiąca",
+                "Pozwala z wyprzedzeniem korygować obsadę w kolejnych tygodniach"
+              ]}
+              tips="Jeśli MTD TPLH jest wyższe niż cel AOP, lokal wypracowuje dodatkowy bufor bezpieczeństwa."
+            />
           </div>
 
           {/* Floor Hours Safe Base */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-xs" title="Baza nienaruszalna Floor Hours (32.0h/dzień = 224h/tydzień)">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
             <span className="text-emerald-800 font-bold">Floor: 32h/d</span>
+            <FeatureInfoButton
+              title="Nienaruszalna Baza Floor Hours (32.0h/dzień)"
+              category="TPLH & ROBOCIZNA"
+              description="Minimalna dobowa obsada operacyjna kawiarni 108120 Janki zapewniająca bezpieczne otwarcie i zamknięcie lokalu."
+              rules={[
+                "1 MGR + 1 Barista rano (AM) oraz 1 MGR + 1 Barista wieczorem (PM) = 32.0h / dobę",
+                "Łącznie 224.0h w każdym 7-dniowym tygodniu operacyjnym"
+              ]}
+              tips="Godziny poniżej bazy Floor nigdy nie powinny być redukowane, aby chronić bezpieczeństwo i standardy serwisu."
+            />
           </div>
 
           {/* Pula Flex */}
@@ -170,20 +197,73 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
             <Waves className="w-3.5 h-3.5 text-sky-700" />
             <span className="text-sky-800 font-medium">Pula Flex:</span>
             <strong className="text-sky-950 font-black">+{mtdFlexHours.toFixed(1)}h</strong>
+            <FeatureInfoButton
+              title="Pula Flex dla Baristów"
+              category="TPLH & ROBOCIZNA"
+              description="Nadwyżka wypracowanych godzin robocizny ponad bazę Floor Hours (Tydzień - 224.0h)."
+              details={[
+                "Zapewnia wsparcie drugiego i trzeciego baristy na barze w godzinach szczytu (Peak Hours)",
+                "Może być swobodnie alokowana na piątki i soboty"
+              ]}
+              tips="Wykorzystuj pulę Flex do wzmocnienia Customer Connection podczas weekendowych peaków."
+            />
           </div>
 
           {/* Strategia AI Badge */}
-          <button
-            type="button"
-            onClick={() => setIsAiTrendsModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-xs font-bold text-purple-900 transition-all cursor-pointer shadow-2xs"
-            title="Kliknij, aby otworzyć panel strategii AI i wniosków z trendów"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-            <span>AI: {selectedStrategy === 'floor_safe' ? 'Floor-Safe' : selectedStrategy === 'growth' ? 'Growth' : 'Balanced'}</span>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsAiTrendsModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-xs font-bold text-purple-900 transition-all cursor-pointer shadow-2xs"
+              title="Kliknij, aby otworzyć panel strategii AI i wniosków z trendów"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>AI: {selectedStrategy === 'floor_safe' ? 'Floor-Safe' : selectedStrategy === 'growth' ? 'Growth' : 'Balanced'}</span>
+            </button>
+            <FeatureInfoButton
+              title="Strategie Sezonowe AI AOP"
+              category="AI & OPTYMALIZACJA"
+              description="Model uczenia maszynowego analizujący wielomiesięczną historię popytu i transakcji lokalu 108120 Janki."
+              details={[
+                "Floor-Safe: maksymalna ochrona TPLH w niskim sezonie (styczeń–kwiecień)",
+                "Balanced: optymalny balans godzin i Customer Connection",
+                "Growth: dynamiczne dociążenie sobót i piątków w sezonie szczytowym (maj–sierpień)"
+              ]}
+            />
+          </div>
         </div>
       </div>
+
+      {/* 🎓 BANER SAMOUCZEK & WSKAZÓWKI PILOTAŻU (Renderowany tylko w trybie samouczka) */}
+      {isTutorialMode && (
+        <div className="p-3.5 bg-gradient-to-r from-emerald-950/80 via-[#0a1811] to-[#0d2217] border border-emerald-500/40 rounded-2xl text-xs text-emerald-100 shadow-md flex items-center justify-between gap-3 flex-wrap animate-in fade-in duration-200">
+          <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+            <div className="p-2 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-400/30 shrink-0">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <strong className="text-white text-xs font-bold">Wskazówki Pilotażu: TPLH Forecast & Labor</strong>
+                <span className="text-[9px] px-1.5 py-0.2 bg-amber-400 text-amber-950 rounded-full font-black uppercase">
+                  Moduł 1
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                🛡️ <strong>Floor 32h/d</strong> (224h/tydz.) to nienaruszalna baza • 🌊 <strong>Pula Flex</strong> to godziny ponad Floor do manipulacji dniami szczytu • 🔮 <strong>W poniedziałek</strong> silnik predykcji domyka tydzień W+2.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => openModelTour(1, 'tplh')}
+            className="px-3 py-1.5 bg-[#006241] hover:bg-[#00754A] text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border border-emerald-400/40 shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Animowany Samouczek TPLH ➔</span>
+          </button>
+        </div>
+      )}
 
       {/* 📊 GŁÓWNA TABELA TYGODNIOWA (W1-W5 / W5+W1) */}
       {summary ? (

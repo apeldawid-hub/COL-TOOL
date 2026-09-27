@@ -1450,12 +1450,17 @@ export class DatabaseManager {
   // =========================================================================
 
   /**
-   * Eksportuje pełną paczkę danych operacyjnych do wskazanego katalogu (domyślnie ./IMPORT)
+   * Eksportuje pełną paczkę danych operacyjnych do wskazanego katalogu (domyślnie userData/IMPORT lub ./IMPORT w dev)
    */
-  public exportHistoricalDataPackage(customTargetDir?: string): { success: boolean; message: string; details: any } {
+  public exportHistoricalDataPackage(customTargetDir?: string): { success: boolean; message: string; details: any; targetDir?: string } {
     if (!this.db) throw new Error('Baza nie została zainicjalizowana.');
 
-    const targetDir = customTargetDir || path.join(process.cwd(), 'IMPORT');
+    const targetDir = customTargetDir || (
+      (typeof app !== 'undefined' && app && app.isPackaged)
+        ? path.join(app.getPath('userData'), 'IMPORT')
+        : path.join(process.cwd(), 'IMPORT')
+    );
+
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
@@ -1523,7 +1528,8 @@ export class DatabaseManager {
 
     return {
       success: true,
-      message: `Pomyślnie wyeksportowano ${Object.keys(exportSummary).length} tabel do folderu IMPORT.`,
+      message: `Pomyślnie wyeksportowano ${Object.keys(exportSummary).length} tabel do folderu: ${targetDir}`,
+      targetDir,
       details: manifest
     };
   }
@@ -1535,6 +1541,7 @@ export class DatabaseManager {
     let sourceDir = customSourceDir;
     if (!sourceDir) {
       const candidates = [
+        (typeof app !== 'undefined' && app && app.isPackaged) ? path.join(app.getPath('userData'), 'IMPORT') : null,
         path.join(process.cwd(), 'IMPORT'),
         (typeof app !== 'undefined' && app) ? path.join(app.getPath('userData'), 'IMPORT') : null,
         (typeof process !== 'undefined' && process.resourcesPath) ? path.join(process.resourcesPath, 'IMPORT') : null,
@@ -1547,7 +1554,9 @@ export class DatabaseManager {
         }
       }
       if (!sourceDir) {
-        sourceDir = path.join(process.cwd(), 'IMPORT');
+        sourceDir = (typeof app !== 'undefined' && app && app.isPackaged)
+          ? path.join(app.getPath('userData'), 'IMPORT')
+          : path.join(process.cwd(), 'IMPORT');
       }
     }
 
@@ -1625,6 +1634,297 @@ export class DatabaseManager {
     return {
       success: true,
       message: 'Baza danych została zresetowana do czystego stanu instalacyjnego. Usunięto dane operacyjne, zachowując reguły, normy KP i katalog zmian Starbucks.'
+    };
+  }
+
+  /**
+   * Wykonuje pełną autodiagnostykę i badanie integralności bazy danych SQLite:
+   * PRAGMA integrity_check, PRAGMA quick_check, statystyki stron i freelist,
+   * zliczanie rekordów we wszystkich kluczowych tabelach operacyjnych oraz weryfikacja
+   * stanu kopii zapasowych (detekcja zaległości >7 dni).
+   */
+  public checkHealth(): any {
+    if (!this.db) {
+      throw new Error('Baza danych nie została zainicjalizowana. Wywołaj najpierw init().');
+    }
+
+    let integrity: 'ok' | 'corrupted' | 'error' = 'ok';
+    let integrityMessage = 'Baza danych SQLite jest w 100% spójna i poprawna.';
+    let quickCheck: 'ok' | 'error' = 'ok';
+
+    try {
+      const res = this.db.exec('PRAGMA integrity_check;');
+      if (res && res.length > 0 && res[0].values && res[0].values.length > 0) {
+        const val = String(res[0].values[0][0]);
+        if (val.toLowerCase() !== 'ok') {
+          integrity = 'corrupted';
+          integrityMessage = val;
+        }
+      }
+    } catch (err: any) {
+      integrity = 'error';
+      integrityMessage = err.message || 'Błąd testu integralności SQLite.';
+    }
+
+    try {
+      const qres = this.db.exec('PRAGMA quick_check;');
+      if (qres && qres.length > 0 && qres[0].values && qres[0].values.length > 0) {
+        const val = String(qres[0].values[0][0]);
+        if (val.toLowerCase() !== 'ok') {
+          quickCheck = 'error';
+        }
+      }
+    } catch {
+      quickCheck = 'error';
+    }
+
+    let pageSize = 4096;
+    let pageCount = 0;
+    let freelistCount = 0;
+
+    try {
+      const psRes = this.db.exec('PRAGMA page_size;');
+      if (psRes?.[0]?.values?.[0]?.[0]) pageSize = Number(psRes[0].values[0][0]);
+    } catch {}
+
+    try {
+      const pcRes = this.db.exec('PRAGMA page_count;');
+      if (pcRes?.[0]?.values?.[0]?.[0]) pageCount = Number(pcRes[0].values[0][0]);
+    } catch {}
+
+    try {
+      const fcRes = this.db.exec('PRAGMA freelist_count;');
+      if (fcRes?.[0]?.values?.[0]?.[0]) freelistCount = Number(fcRes[0].values[0][0]);
+    } catch {}
+
+    const wastedBytes = freelistCount * pageSize;
+    const wastedFormatted = wastedBytes > 1024 * 1024
+      ? `${(wastedBytes / (1024 * 1024)).toFixed(2)} MB`
+      : `${(wastedBytes / 1024).toFixed(1)} KB`;
+
+    let sizeBytes = 0;
+    if (fs.existsSync(this.dbFilePath)) {
+      sizeBytes = fs.statSync(this.dbFilePath).size;
+    } else {
+      sizeBytes = pageCount * pageSize;
+    }
+    const sizeFormatted = sizeBytes > 1024 * 1024
+      ? `${(sizeBytes / (1024 * 1024)).toFixed(2)} MB`
+      : `${(sizeBytes / 1024).toFixed(1)} KB`;
+
+    const tables = [
+      { tableName: 'labor_actuals_log', label: 'Ewidencja Fichajes (MAPAL)' },
+      { tableName: 'manager_schedule_shifts', label: 'Zmiany Menedżerów' },
+      { tableName: 'aop_plans', label: 'Plany Roczne & Miesięczne AOP' },
+      { tableName: 'calendar_weeks', label: 'Tygodnie Biznesowe' },
+      { tableName: 'weekly_actual_trx', label: 'Transakcje i Godziny Tygodni' },
+      { tableName: 'manager_schedule_versions', label: 'Wersje i Migawki Grafiku' },
+      { tableName: 'manager_employees', label: 'Kierownicy (Baza Zespołu)' },
+      { tableName: 'manager_monthly_roster', label: 'Autonomiczne Składy Miesięczne' },
+      { tableName: 'manager_monthly_norms', label: 'Normy Kodeksu Pracy' },
+      { tableName: 'training_partners', label: 'Szkolenia: Baza Partnerów' },
+      { tableName: 'training_shifts', label: 'Szkolenia: Zmiany First 30' },
+      { tableName: 'training_skill_checks', label: 'Szkolenia: Arkusze Egzaminów' },
+      { tableName: 'floor_rules', label: 'Reguły Obsady Floor Hours' },
+      { tableName: 'nc_rules', label: 'Reguły Non-Coverage (NC)' },
+      { tableName: 'app_settings', label: 'Konfiguracja Lokalu & Ustawienia' },
+    ];
+
+    let totalRecordsCount = 0;
+    const tableStats = tables.map((t) => {
+      let rowCount = 0;
+      try {
+        const cntRes = this.db!.exec(`SELECT COUNT(*) FROM ${t.tableName}`);
+        if (cntRes?.[0]?.values?.[0]?.[0] !== undefined) {
+          rowCount = Number(cntRes[0].values[0][0]);
+          totalRecordsCount += rowCount;
+        }
+      } catch {
+        rowCount = 0;
+      }
+      return {
+        tableName: t.tableName,
+        label: t.label,
+        rowCount,
+      };
+    });
+
+    let archivedLogsCount = 0;
+    let archivedLogsSizeBytes = 0;
+    try {
+      const userData = app?.getPath ? app.getPath('userData') : process.cwd();
+      const logsDir = path.join(userData, 'logs');
+      if (fs.existsSync(logsDir)) {
+        const files = fs.readdirSync(logsDir);
+        for (const f of files) {
+          if (f.endsWith('.log') || f.endsWith('.json')) {
+            archivedLogsCount++;
+            archivedLogsSizeBytes += fs.statSync(path.join(logsDir, f)).size;
+          }
+        }
+      }
+    } catch {}
+
+    const backupDir = (typeof app !== 'undefined' && app && app.isPackaged)
+      ? path.join(app.getPath('userData'), 'backups', 'db_backups')
+      : path.join(process.cwd(), 'backups', 'db_backups');
+
+    let backupsCount = 0;
+    let lastBackupDate: string | undefined;
+    let lastBackupFormatted: string | undefined;
+
+    if (fs.existsSync(backupDir)) {
+      const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db') && f.startsWith('tplh_forecast_'));
+      backupsCount = files.length;
+      if (files.length > 0) {
+        let newestMtime = 0;
+        for (const f of files) {
+          try {
+            const m = fs.statSync(path.join(backupDir, f)).mtimeMs;
+            if (m > newestMtime) {
+              newestMtime = m;
+              lastBackupDate = new Date(m).toISOString();
+              lastBackupFormatted = new Date(m).toLocaleString('pl-PL', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+            }
+          } catch {}
+        }
+      }
+    }
+
+    let daysSinceLastBackup: number | undefined = undefined;
+    let isBackupOverdue = false;
+
+    if (lastBackupDate) {
+      const diffMs = Date.now() - new Date(lastBackupDate).getTime();
+      daysSinceLastBackup = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+      if (daysSinceLastBackup >= 7) {
+        isBackupOverdue = true;
+      }
+    } else {
+      isBackupOverdue = true;
+    }
+
+    const recommendations: string[] = [];
+    if (integrity !== 'ok') {
+      recommendations.push('Wykryto problem ze spójnością bazy SQLite! Zalecane przywrócenie ostatniej kopii zapasowej.');
+    }
+    if (isBackupOverdue) {
+      if (daysSinceLastBackup !== undefined) {
+        recommendations.push(`Od ostatniej kopii zapasowej minęło ${daysSinceLastBackup} dni. Zalecane jest wykonanie nowej kopii.`);
+      } else {
+        recommendations.push('Nie wykryto żadnej kopii zapasowej bazy SQLite. Wykonaj pierwszą kopię bezpieczeństwa.');
+      }
+    }
+    if (wastedBytes > 128 * 1024) {
+      recommendations.push(`Baza zawiera ${wastedFormatted} pofragmentowanego miejsca na stronach. Uruchomienie VACUUM skompresuje bazę i przyspieszy operacje dyskowe.`);
+    }
+    if (recommendations.length === 0) {
+      recommendations.push('Baza danych działa w 100% optymalnie. Brak uwag dotyczących spójności.');
+    }
+
+    return {
+      integrity,
+      integrityMessage,
+      quickCheck,
+      dbPath: this.dbFilePath,
+      sizeBytes,
+      sizeFormatted,
+      pageSize,
+      pageCount,
+      freelistCount,
+      wastedBytes,
+      wastedFormatted,
+      tableStats,
+      totalRecordsCount,
+      archivedLogsCount,
+      archivedLogsSizeFormatted: (archivedLogsSizeBytes / 1024).toFixed(1) + ' KB',
+      backupsCount,
+      lastBackupDate,
+      lastBackupFormatted,
+      daysSinceLastBackup,
+      isBackupOverdue,
+      lastIntegrityCheckTime: new Date().toISOString(),
+      recommendations,
+    };
+  }
+
+  /**
+   * Wykonuje optymalizację SQLite (VACUUM + PRAGMA optimize):
+   * 1. Zapisuje aktualny stan na dysk
+   * 2. Wykonuje kopię ratunkową
+   * 3. Uruchamia VACUUM (reorganizacja stron, zwolnienie pamięci, odbudowa indeksów)
+   * 4. Eksportuje skompresowaną bazę i zwraca raport oszczędności miejsca.
+   */
+  public optimizeDatabase(): any {
+    if (!this.db) {
+      throw new Error('Baza danych nie została zainicjalizowana. Wywołaj najpierw init().');
+    }
+
+    const startTime = Date.now();
+    const beforeSizeBytes = fs.existsSync(this.dbFilePath) ? fs.statSync(this.dbFilePath).size : 0;
+
+    // 1. Zapis bieżący
+    this.persist();
+
+    // 2. Kopia ratunkowa przed VACUUM
+    const backupDir = (typeof app !== 'undefined' && app && app.isPackaged)
+      ? path.join(app.getPath('userData'), 'backups', 'db_backups')
+      : path.join(process.cwd(), 'backups', 'db_backups');
+
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    if (fs.existsSync(this.dbFilePath)) {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const timestampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+      const targetPath = path.join(backupDir, `tplh_forecast_${timestampStr}_pre_vacuum.db`);
+      try {
+        fs.copyFileSync(this.dbFilePath, targetPath);
+      } catch (e) {
+        console.warn('Ostrzeżenie: backup przed VACUUM nie powiódł się:', e);
+      }
+    }
+
+    // 3. Wykonanie VACUUM i PRAGMA optimize
+    try {
+      this.db.exec('VACUUM;');
+      this.db.exec('PRAGMA optimize;');
+    } catch (err: any) {
+      throw new Error(`Błąd podczas wykonywania VACUUM w SQLite: ${err.message}`);
+    }
+
+    // 4. Ponowny eksport na dysk
+    this.persist();
+
+    const afterSizeBytes = fs.existsSync(this.dbFilePath) ? fs.statSync(this.dbFilePath).size : 0;
+    const reclaimedBytes = Math.max(0, beforeSizeBytes - afterSizeBytes);
+    const reclaimedFormatted = reclaimedBytes > 1024 * 1024
+      ? `${(reclaimedBytes / (1024 * 1024)).toFixed(2)} MB`
+      : `${(reclaimedBytes / 1024).toFixed(1)} KB`;
+
+    const durationMs = Date.now() - startTime;
+    const health = this.checkHealth();
+
+    console.log(`⚡ Zakończono optymalizację SQLite (VACUUM). Zredukowano rozmiar o ${reclaimedFormatted} w ${durationMs} ms.`);
+
+    return {
+      success: true,
+      message: reclaimedBytes > 0
+        ? `Optymalizacja VACUUM zakończona sukcesem. Odzyskano ${reclaimedFormatted} miejsca na dysku w ${durationMs} ms.`
+        : `Baza danych była już w pełni skompresowana. Czas optymalizacji: ${durationMs} ms.`,
+      beforeSizeBytes,
+      afterSizeBytes,
+      reclaimedBytes,
+      reclaimedFormatted,
+      durationMs,
+      health,
     };
   }
 }

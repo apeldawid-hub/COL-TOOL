@@ -39,14 +39,46 @@ import {
   Info,
   Check,
   Bug,
+  CheckSquare,
+  BookOpen,
+  Mail,
+  Loader2,
+  Bell,
+  Laptop,
+  Flame,
+  Activity,
+  Zap,
+  RefreshCw,
+  ShieldAlert,
+  Monitor,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
+import { useTutorial } from '../context/TutorialContext';
 import { POLISH_MONTHS, AVAILABLE_YEARS } from './ModuleDateBar';
 import { SystemClock } from '../services/systemClock';
 import { ManagerScheduleEngine } from '../modules/managers-schedule/services/managerScheduleEngine';
 import { DEFAULT_SHIFT_DEFINITIONS } from '../modules/managers-schedule/constants/defaultShifts';
 import { APP_VERSION, APP_SHORT_NAME } from '../version';
+import { cloudNotificationService } from '../services/cloudNotificationService';
+import { NotificationsSettingsTab } from './NotificationsSettingsTab';
+import { FirebaseFleetPanel } from './FirebaseFleetPanel';
+import { databaseHealthService } from '../services/databaseHealthService';
+import { DatabaseHealthStatus } from '../types';
+import { zoomService, ZOOM_PRESETS } from '../services/zoomService';
 
-export type SettingsTabId = 'labor_forecast' | 'managers_schedule' | 'trainings' | 'col_calculator' | 'system';
+export type SettingsTabId =
+  | 'labor_forecast'
+  | 'managers_schedule'
+  | 'trainings'
+  | 'col_calculator'
+  | 'notifications_app'
+  | 'notifications_email'
+  | 'notifications'
+  | 'firebase_fleet'
+  | 'testing_guide'
+  | 'appearance'
+  | 'system';
 
 interface UnifiedSettingsModalProps {
   isOpen: boolean;
@@ -54,12 +86,12 @@ interface UnifiedSettingsModalProps {
   activeModule: AppModule;
   selectedYear: number;
   selectedMonth: string;
+  initialTab?: SettingsTabId;
   onRefreshData?: () => void;
   onOpenBackupModal?: () => void;
   onOpenUpdateModal?: () => void;
   hasUpdateAvailable?: boolean;
   onOpenBugReporter?: () => void;
-  onRerunOnboarding?: () => void;
 }
 
 const DEFAULT_NC_RULES: NcRuleRecord[] = [
@@ -76,12 +108,12 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
   activeModule,
   selectedYear,
   selectedMonth,
+  initialTab,
   onRefreshData,
   onOpenBackupModal,
   onOpenUpdateModal,
   hasUpdateAvailable,
   onOpenBugReporter,
-  onRerunOnboarding,
 }) => {
   // Mapowanie aktywnego modułu na zakładkę ustawień (dynamiczne pozycjonowanie)
   const getInitialTab = (mod: AppModule): SettingsTabId => {
@@ -100,20 +132,97 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
     }
   };
 
-  const [activeTab, setActiveTab] = useState<SettingsTabId>(getInitialTab(activeModule));
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab || getInitialTab(activeModule));
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  // Weryfikacja uprawnień deweloperskich / administratorskich
+  const isDeveloper = (() => {
+    try {
+      if (import.meta.env.DEV) return true;
+      const userEmail = (localStorage.getItem('sbx_user_email') || '').toLowerCase();
+      const userRole = (localStorage.getItem('sbx_user_role') || '').toUpperCase();
+      const isDevMode = localStorage.getItem('sbx_dev_mode') === 'true';
+      return (
+        userEmail === 'apeldawid@gmail.com' ||
+        isDevMode ||
+        userRole === 'DEV' ||
+        userRole === 'ADMIN' ||
+        userRole === 'DM'
+      );
+    } catch {
+      return false;
+    }
+  })();
+
+  // Hook trybu samouczka i przewodnika pilotażu kawiarni
+  const { isTutorialMode, setTutorialMode, toggleTutorialMode, openGuideModal, openModelTour } = useTutorial();
 
   // Sub-zakładki dla poszczególnych modułów
   const [mgrSubTab, setMgrSubTab] = useState<'shifts' | 'team' | 'norms' | 'law'>('shifts');
   const [laborSubTab, setLaborSubTab] = useState<'aop' | 'nc' | 'floor'>('aop');
 
-  // Synchronizacja przy otwarciu na bazie aktualnie wyświetlanego modułu
+  // Synchronizacja przy otwarciu na bazie aktualnie wyświetlanego modułu lub initialTab
   useEffect(() => {
     if (isOpen) {
-      setActiveTab(getInitialTab(activeModule));
+      if (initialTab) {
+        setActiveTab(initialTab);
+      } else {
+        setActiveTab(getInitialTab(activeModule));
+      }
       setSaveSuccessMsg(null);
     }
-  }, [isOpen, activeModule]);
+  }, [isOpen, activeModule, initialTab]);
+
+  // Stan: Diagnostyka i Zdrowie Bazy SQLite
+  const [dbHealth, setDbHealth] = useState<DatabaseHealthStatus | null>(() => databaseHealthService.getHealth());
+  const [isCheckingDbHealth, setIsCheckingDbHealth] = useState<boolean>(false);
+  const [isOptimizingDb, setIsOptimizingDb] = useState<boolean>(false);
+  const [dbHealthActionMsg, setDbHealthActionMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      databaseHealthService.checkHealth().then(setDbHealth).catch(() => {});
+    }
+  }, [isOpen]);
+
+  const handleCheckDbIntegrity = async () => {
+    setIsCheckingDbHealth(true);
+    setDbHealthActionMsg(null);
+    try {
+      const res = await databaseHealthService.checkHealth();
+      setDbHealth(res);
+      setDbHealthActionMsg(`Test spójności: ${res.integrity === 'ok' ? 'Baza jest w 100% spójna ✓' : res.integrityMessage}`);
+    } catch (err: any) {
+      setDbHealthActionMsg(`Błąd: ${err.message}`);
+    } finally {
+      setIsCheckingDbHealth(false);
+    }
+  };
+
+  const handleOptimizeDb = async () => {
+    setIsOptimizingDb(true);
+    setDbHealthActionMsg(null);
+    try {
+      const res = await databaseHealthService.optimizeDatabase();
+      if (res.health) setDbHealth(res.health);
+      setDbHealthActionMsg(res.message);
+      if (onRefreshData) onRefreshData();
+    } catch (err: any) {
+      setDbHealthActionMsg(`Błąd: ${err.message}`);
+    } finally {
+      setIsOptimizingDb(false);
+    }
+  };
+
+  // Stan: Skalowanie Interfejsu (UI Zoom)
+  const [currentZoom, setCurrentZoom] = useState<number>(() => zoomService.getZoom());
+
+  useEffect(() => {
+    const unsubscribe = zoomService.subscribe((zoom) => {
+      setCurrentZoom(zoom);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Stan: Moduł 1 (AOP & NC)
   const [aopYear, setAopYear] = useState<number>(selectedYear);
@@ -147,6 +256,35 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
   const [smBonusCap, setSmBonusCap] = useState<number>(2250);
   const [asmBonusCap, setAsmBonusCap] = useState<number>(1000);
   const [ssvBonusCap, setSsvBonusCap] = useState<number>(700);
+
+  // Stan: Powiadomienia Chmurowe (Resend API)
+  const [resendApiKey, setResendApiKey] = useState<string>(() => cloudNotificationService.getApiKey());
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState<boolean>(false);
+  const [testEmailStatus, setTestEmailStatus] = useState<{ success: boolean; msg: string } | null>(null);
+
+  const handleSaveApiKey = () => {
+    cloudNotificationService.setApiKey(resendApiKey);
+    setSaveSuccessMsg('Zapisano klucz Resend API w konfiguracji!');
+    setTimeout(() => setSaveSuccessMsg(null), 3000);
+  };
+
+  const handleSendTestEmail = async () => {
+    const userEmail = localStorage.getItem('sbx_user_email') || 'kontakt@amrest.eu';
+    setIsSendingTestEmail(true);
+    setTestEmailStatus(null);
+    try {
+      const res = await cloudNotificationService.sendTestNotification(userEmail);
+      if (res.success) {
+        setTestEmailStatus({ success: true, msg: `Wysłano e-mail testowy na adres: ${userEmail}!` });
+      } else {
+        setTestEmailStatus({ success: false, msg: res.error || 'Nie udało się wysłać e-maila testowego.' });
+      }
+    } catch (err: any) {
+      setTestEmailStatus({ success: false, msg: err.message || 'Błąd wysyłki e-mail.' });
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
 
   // Pobieranie danych dla aktywnej zakładki
   useEffect(() => {
@@ -481,14 +619,124 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                 )}
               </button>
 
-              {/* TAB 5: Baza Danych & Kawiarnia */}
+              {/* KATEGORIA: POWIADOMIENIA I ALERTY */}
+              <div className="pt-2">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  Powiadomienia & Komunikacja
+                </div>
+
+                {/* TAB: Powiadomienia w Aplikacji (Desktop & macOS) */}
+                <button
+                  onClick={() => setActiveTab('notifications_app')}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all text-left cursor-pointer mb-1 ${
+                    activeTab === 'notifications_app'
+                      ? 'bg-[#1E3932] text-white shadow-xs'
+                      : 'text-stone-700 hover:bg-stone-200/70'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <Laptop className={`w-4 h-4 ${activeTab === 'notifications_app' ? 'text-[#CBA258]' : 'text-[#006241]'}`} />
+                    <span>W Aplikacji & Desktop</span>
+                  </div>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                    activeTab === 'notifications_app' ? 'bg-emerald-900 text-emerald-200' : 'bg-stone-200 text-stone-600'
+                  }`}>
+                    macOS
+                  </span>
+                </button>
+
+                {/* TAB: Powiadomienia E-mail (Chmura Resend) */}
+                <button
+                  onClick={() => setActiveTab('notifications_email')}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all text-left cursor-pointer ${
+                    activeTab === 'notifications_email'
+                      ? 'bg-[#006241] text-white shadow-xs'
+                      : 'text-stone-700 hover:bg-stone-200/70'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <Mail className={`w-4 h-4 ${activeTab === 'notifications_email' ? 'text-white' : 'text-[#CBA258]'}`} />
+                    <span>Powiadomienia E-mail</span>
+                  </div>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                    activeTab === 'notifications_email' ? 'bg-emerald-900 text-emerald-200' : 'bg-stone-200 text-stone-600'
+                  }`}>
+                    Resend
+                  </span>
+                </button>
+              </div>
+
+              {/* TAB 5: Samouczek & Przewodnik Kawiarni */}
+              <button
+                onClick={() => setActiveTab('testing_guide')}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeTab === 'testing_guide'
+                    ? 'bg-[#006241] text-white shadow-xs'
+                    : 'text-stone-700 hover:bg-stone-200/70'
+                }`}
+              >
+                <div className="flex items-center space-x-2.5">
+                  <BookOpen className={`w-4 h-4 ${activeTab === 'testing_guide' ? 'text-white' : 'text-amber-600'}`} />
+                  <span>Samouczek & Pilotaż</span>
+                </div>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                  isTutorialMode ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-stone-200 text-stone-600'
+                }`}>
+                  {isTutorialMode ? 'WŁ' : 'WYŁ'}
+                </span>
+              </button>
+
+              {/* TAB 6: Baza Danych & Kawiarnia */}
               <div className="pt-3">
                 <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                  System & Lokalne
+                  {isDeveloper ? 'System & Baza Floty' : 'System & Lokalne'}
                 </div>
+
+                {/* TAB: Baza Floty & Instalacje Firebase — WIDOCZNY WYŁĄCZNIE W WERSJI DEWELOPERSKIEJ / ADMIN */}
+                {isDeveloper && (
+                  <button
+                    onClick={() => setActiveTab('firebase_fleet')}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all text-left cursor-pointer mb-1 ${
+                      activeTab === 'firebase_fleet'
+                        ? 'bg-[#1E3932] text-white shadow-xs'
+                        : 'text-stone-700 hover:bg-stone-200/70'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <Flame className={`w-4 h-4 ${activeTab === 'firebase_fleet' ? 'text-amber-400' : 'text-amber-500'}`} />
+                      <span>Flota & Instalacje</span>
+                    </div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                      activeTab === 'firebase_fleet' ? 'bg-amber-950 text-amber-300' : 'bg-amber-100 text-amber-900'
+                    }`}>
+                      Dev / Firebase
+                    </span>
+                  </button>
+                )}
+
+                {/* TAB: Skalowanie & Wygląd (UI Zoom) */}
+                <button
+                  onClick={() => setActiveTab('appearance')}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all text-left cursor-pointer mb-1 ${
+                    activeTab === 'appearance'
+                      ? 'bg-[#006241] text-white shadow-xs'
+                      : 'text-stone-700 hover:bg-stone-200/70'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <Monitor className={`w-4 h-4 ${activeTab === 'appearance' ? 'text-white' : 'text-[#006241]'}`} />
+                    <span>Skalowanie & Wygląd</span>
+                  </div>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold font-mono ${
+                    activeTab === 'appearance' ? 'bg-emerald-900 text-emerald-200' : 'bg-stone-200 text-stone-700'
+                  }`}>
+                    {Math.round(currentZoom * 100)}%
+                  </span>
+                </button>
+
                 <button
                   onClick={() => setActiveTab('system')}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all text-left cursor-pointer ${
                     activeTab === 'system'
                       ? 'bg-[#006241] text-white shadow-xs'
                       : 'text-stone-700 hover:bg-stone-200/70'
@@ -1424,7 +1672,424 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
             )}
 
             {/* ======================================================== */}
-            {/* ZAKŁADKA 5: SYSTEM & BAZA */}
+            {/* ZAKŁADKA 5: SAMOUCZEK & PRZEWODNIK PILOTAŻU KAWIARNI */}
+            {/* ======================================================== */}
+            {activeTab === 'testing_guide' && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <div className="border-b border-stone-200 pb-4 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-black text-stone-900">
+                        Samouczek & Przewodnik Pilotażu Kawiarni
+                      </h3>
+                      <span className="px-2 py-0.5 text-[10px] font-black bg-amber-400 text-amber-950 rounded-full uppercase">
+                        Pilotaż Janki
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Zarządzaj trybem samouczka oraz przeglądaj instrukcje operacyjne dla gotowych Modułów 1 i 2.
+                    </p>
+                  </div>
+
+                  {/* Przełącznik Główny Trybu Samouczka */}
+                  <div className="flex items-center gap-3 bg-stone-100 p-1.5 px-3 rounded-2xl border border-stone-200">
+                    <span className="text-xs font-bold text-stone-700">Tryb Samouczka:</span>
+                    <button
+                      type="button"
+                      onClick={toggleTutorialMode}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isTutorialMode ? 'bg-[#006241]' : 'bg-stone-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          isTutorialMode ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-xs font-black ${isTutorialMode ? 'text-[#006241]' : 'text-stone-400'}`}>
+                      {isTutorialMode ? 'WŁĄCZONY' : 'WYŁĄCZONY'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Trybu Samouczka & Ikonki (i) */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  isTutorialMode
+                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                    : 'bg-stone-50 border-stone-200 text-stone-700'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${
+                      isTutorialMode ? 'bg-emerald-500 text-slate-950 shadow-xs' : 'bg-stone-200 text-stone-500'
+                    }`}>
+                      i
+                    </div>
+                    <div className="flex-1 text-xs">
+                      <div className="font-black text-sm flex items-center gap-2">
+                        <span>{isTutorialMode ? 'Ikonki Informacyjne (i) są AKTYWNE' : 'Ikonki Informacyjne (i) są WYŁĄCZONE'}</span>
+                        {isTutorialMode && (
+                          <span className="text-[10px] px-2 py-0.5 bg-emerald-200 text-emerald-900 rounded-full font-bold">
+                            Zalecane
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 leading-relaxed text-stone-600">
+                        {isTutorialMode
+                          ? 'W widokach Modułu 1 (TPLH) i Modułu 2 (Grafik) obok każdej większej funkcji wyświetlana jest klikalna ikonka (i), w której możesz przeczytać jak działa dana funkcja i jakich reguł Starbucks / Kodeksu Pracy przestrzega.'
+                          : 'Aplikacja działa w trybie minimalistycznym bez dodatkowych ikonek (i). W każdej chwili możesz je ponownie włączyć jednym kliknięciem.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BANER URUCHOMIENIA ANIMOWANEGO SAMOUCZKA MODELOWEGO */}
+                <div className="p-4 bg-gradient-to-r from-[#1E3932] via-[#0f2d22] to-[#0a1e16] rounded-2xl border border-emerald-500/40 text-white flex items-center justify-between gap-4 shadow-md flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-400/30 shrink-0">
+                      <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white">Animowany Samouczek Interaktywny (5 Scen)</h4>
+                      <p className="text-[11px] text-emerald-200/80 mt-0.5">
+                        Uruchom dynamiczną prezentację modelową TPLH, ochrony Floor 32h, 4 Tarcz KP i generatora AI.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      openModelTour(1);
+                    }}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>▶ Uruchom Animację Modelową</span>
+                  </button>
+                </div>
+
+                {/* 4 KAFLE PRZEWODNIKA DO OTWARCIA W MODALU */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-3">
+                    Interaktywne Sekcje Przewodnika Pilotażowego
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Karta 1: Moduł 1 TPLH */}
+                    <div className="p-4 bg-stone-50 hover:bg-emerald-50/40 transition-all rounded-2xl border border-stone-200 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4 text-[#006241]" />
+                            <span className="text-xs font-black text-stone-900">Moduł 1: TPLH & Robocizna</span>
+                          </div>
+                          <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-md">
+                            v1.0 Gotowy
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-2 leading-relaxed">
+                          Poznaj mechanizmy predykcji MTD Velocity, bazę Floor Hours (32h/dzień), pulę Flex dla baristów oraz algorytm Flash Forecast Poniedziałek.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          openModelTour(1, 'tplh');
+                        }}
+                        className="w-full py-2 bg-[#006241] hover:bg-[#00754A] text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Otwórz Samouczek TPLH (5 Scen) ➔</span>
+                      </button>
+                    </div>
+
+                    {/* Karta 2: Moduł 2 Grafik */}
+                    <div className="p-4 bg-stone-50 hover:bg-emerald-50/40 transition-all rounded-2xl border border-stone-200 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-[#006241]" />
+                            <span className="text-xs font-black text-stone-900">Moduł 2: Managers Schedule</span>
+                          </div>
+                          <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-md">
+                            v1.0 Gotowy
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-2 leading-relaxed">
+                          Sprawdź 4 Tarcze Kodeksu Pracy, silnik AutoScheduling AI (20k prób), asystenta kompromisów WhatsApp, Smart Paste z Excela oraz rozliczenie TOR.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          openModelTour(1, 'schedule');
+                        }}
+                        className="w-full py-2 bg-[#006241] hover:bg-[#00754A] text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Otwórz Samouczek Grafiku (6 Scen) ➔</span>
+                      </button>
+                    </div>
+
+                    {/* Karta 3: Samouczek Ustawień */}
+                    <div className="p-4 bg-stone-50 hover:bg-amber-50/40 transition-all rounded-2xl border border-stone-200 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Database className="w-4 h-4 text-amber-600" />
+                            <span className="text-xs font-black text-stone-900">Samouczek Ustawień & Importu</span>
+                          </div>
+                          <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-900 font-bold rounded-md">
+                            6 Scen
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-2 leading-relaxed">
+                          Poznaj wszystkie opcje konfiguracyjne: AOP, Non-Coverage, Floor Hours, katalog zmian, skład 7 kierowników, normy KP 10 lat, COL ZUS 19.48% oraz kopie SQLite.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          openModelTour(1, 'settings');
+                        }}
+                        className="w-full py-2 bg-[#006241] hover:bg-[#00754A] text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Otwórz Samouczek Ustawień ➔</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* ZAKŁADKI: POWIADOMIENIA W APLIKACJI & E-MAIL (RESEND) */}
+            {/* ======================================================== */}
+            {activeTab === 'notifications_app' && (
+              <NotificationsSettingsTab initialMode="desktop" onRefreshData={onRefreshData} />
+            )}
+            {activeTab === 'notifications_email' && (
+              <NotificationsSettingsTab initialMode="email" onRefreshData={onRefreshData} />
+            )}
+            {activeTab === 'notifications' && (
+              <NotificationsSettingsTab initialMode="desktop" onRefreshData={onRefreshData} />
+            )}
+
+            {/* ======================================================== */}
+            {/* ZAKŁADKA: FLOTA & BAZA INSTALACJI (FIREBASE FIRESTORE — TYLKO DEV) */}
+            {/* ======================================================== */}
+            {isDeveloper && activeTab === 'firebase_fleet' && (
+              <FirebaseFleetPanel />
+            )}
+
+            {/* ======================================================== */}
+            {/* ZAKŁADKA: SKALOWANIE & WYGLĄD INTERFEJSU (UI ZOOM) */}
+            {/* ======================================================== */}
+            {activeTab === 'appearance' && (
+              <div className="space-y-6 animate-in fade-in duration-150">
+                <div className="border-b border-stone-200 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-black text-stone-900 flex items-center gap-2">
+                        <Monitor className="w-5 h-5 text-[#006241]" />
+                        <span>Skalowanie Interfejsu & Gęstość Widoku (UI Zoom)</span>
+                      </h3>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        Dostosuj optymalną skalę renderowania (70% – 135%) do rozdzielczości ekranu (MacBook 13"/14", monitor biurowy 24"-27", ekrany 4K).
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-stone-500 font-bold">Bieżąca skala:</span>
+                      <span className="px-3 py-1 rounded-xl bg-[#006241] text-white text-sm font-black font-mono shadow-xs">
+                        {Math.round(currentZoom * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Główny panel suwaka i presetów */}
+                <div className="p-6 bg-gradient-to-br from-stone-50 via-white to-emerald-50/20 rounded-3xl border border-stone-200 shadow-xs space-y-6">
+                  {/* Suwak płynnej regulacji */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+                        <Sliders className="w-4 h-4 text-[#006241]" />
+                        <span>Płynna regulacja powiększenia</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => zoomService.zoomOut(0.05)}
+                          className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-300 rounded-xl text-stone-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                          title="Pomniejsz o 5% (Cmd + -)"
+                        >
+                          -5%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => zoomService.resetZoom()}
+                          className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-300 rounded-xl text-stone-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                          title="Przywróć 100% (Cmd + 0)"
+                        >
+                          100% (Reset)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => zoomService.zoomIn(0.05)}
+                          className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-stone-300 rounded-xl text-stone-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                          title="Powiększ o 5% (Cmd + +)"
+                        >
+                          +5%
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl border border-stone-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-stone-500">
+                        <span className="flex items-center gap-1">
+                          <ZoomOut className="w-4 h-4 text-stone-400" />
+                          <span>70% (Minimalne)</span>
+                        </span>
+                        <span className="text-[#006241] font-black text-base font-mono">
+                          {Math.round(currentZoom * 100)}%
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span>135% (Maksymalne)</span>
+                          <ZoomIn className="w-4 h-4 text-stone-400" />
+                        </span>
+                      </div>
+
+                      <input
+                        type="range"
+                        min="70"
+                        max="135"
+                        step="1"
+                        value={Math.round(currentZoom * 100)}
+                        onChange={(e) => zoomService.setZoom(parseInt(e.target.value, 10) / 100)}
+                        className="w-full accent-[#006241] cursor-pointer h-2 bg-stone-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Kafelki rekomendowanych presetów */}
+                  <div className="space-y-2.5">
+                    <span className="text-xs font-black uppercase tracking-wider text-stone-700">
+                      Rekomendowane Presety wg Typu Wyświetlacza
+                    </span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {[
+                        { val: 0.75, label: '75%', desc: 'Monitory 4K & Ultrawide' },
+                        { val: 0.85, label: '85%', desc: 'Biurowy 24" – 27"' },
+                        { val: 0.90, label: '90%', desc: 'Laptop 15" – 16"' },
+                        { val: 1.00, label: '100%', desc: 'Domyślny Starbucks 1:1' },
+                        { val: 1.10, label: '110%', desc: 'Komfortowy / Większy' },
+                        { val: 1.15, label: '115%', desc: 'MacBook Air / Pro 13"' },
+                        { val: 1.25, label: '125%', desc: 'Maksymalna czytelność' },
+                        { val: 1.35, label: '135%', desc: 'Powiększenie dla prezentacji' },
+                      ].map((item) => {
+                        const isCurrent = Math.abs(currentZoom - item.val) < 0.02;
+                        return (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() => zoomService.setZoom(item.val)}
+                            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                              isCurrent
+                                ? 'bg-[#006241] text-white border-[#006241] shadow-md ring-2 ring-emerald-500/20'
+                                : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200 shadow-2xs'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className={`text-sm font-black font-mono ${isCurrent ? 'text-white' : 'text-stone-900'}`}>
+                                {item.label}
+                              </span>
+                              {isCurrent && (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                              )}
+                            </div>
+                            <p className={`text-[10px] mt-1 line-clamp-1 ${isCurrent ? 'text-emerald-100' : 'text-stone-500'}`}>
+                              {item.desc}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sekcja Podglądu na żywo (Live Interactive Preview) */}
+                <div className="p-5 bg-stone-50 rounded-3xl border border-stone-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#CBA258]" />
+                      <span>Podgląd Renderowania Elementów w Bieżącej Skali</span>
+                    </span>
+                    <span className="text-[11px] text-stone-500">
+                      Wszystkie moduły skalują się bez utraty ostrości czcionek i ikon
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Przykładowy kafelek AOP */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-stone-500">
+                        <span>Budżet TPLH (W+2)</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-[#006241] text-[10px] font-mono font-black">6.70 Cel</span>
+                      </div>
+                      <div className="text-lg font-black text-stone-900 font-mono">2 140.5 h</div>
+                      <div className="text-[10px] text-stone-500 flex justify-between">
+                        <span>Transakcje (TRX):</span>
+                        <strong className="text-stone-800">14 340</strong>
+                      </div>
+                    </div>
+
+                    {/* Przykładowa zmiana grafiku */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-stone-500">
+                        <span>Dyżur Menedżerski</span>
+                        <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-mono">08:00 - 16:30</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 rounded-xl bg-[#006241] text-white text-xs font-black">AM 8h</span>
+                        <span className="text-xs font-bold text-stone-800">Kierownik Zmiany</span>
+                      </div>
+                      <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>Odpoczynek 11h Kodeksu Pracy zachowany</span>
+                      </div>
+                    </div>
+
+                    {/* Skróty Klawiszowe */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-stone-200 shadow-2xs space-y-2">
+                      <div className="text-[11px] font-bold text-stone-500">Skróty Klawiaturowe (Globalne)</div>
+                      <div className="text-xs space-y-1 text-stone-700">
+                        <div className="flex justify-between items-center">
+                          <span>Powiększ (+5%):</span>
+                          <kbd className="px-1.5 py-0.5 bg-stone-100 border border-stone-300 rounded text-[10px] font-mono font-bold">Cmd +</kbd>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>Pomniejsz (-5%):</span>
+                          <kbd className="px-1.5 py-0.5 bg-stone-100 border border-stone-300 rounded text-[10px] font-mono font-bold">Cmd -</kbd>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>Reset (100%):</span>
+                          <kbd className="px-1.5 py-0.5 bg-stone-100 border border-stone-300 rounded text-[10px] font-mono font-bold">Cmd 0</kbd>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* ZAKŁADKA 6: SYSTEM & BAZA */}
             {/* ======================================================== */}
             {activeTab === 'system' && (() => {
               const currentStoreName = (() => {
@@ -1485,70 +2150,233 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Karta 2: Baza Operacyjna & MAPAL */}
-                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                        <h4 className="text-sm font-bold text-stone-900">Baza Operacyjna & Integracje</h4>
+                    {/* Karta Skalowania Interfejsu & Gęstości Widoku (UI Zoom) */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between pb-2 border-b border-stone-200/80">
+                          <div className="flex items-center gap-2">
+                            <Monitor className="w-5 h-5 text-[#006241]" />
+                            <h4 className="text-sm font-bold text-stone-900">Skalowanie Interfejsu (UI Zoom)</h4>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-[#006241] text-white text-[11px] font-black font-mono">
+                            {Math.round(currentZoom * 100)}%
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-stone-500 mt-2">
+                          Dostosuj skalę do ekranu (MacBook 13" vs monitor biurowy 27").
+                        </p>
+
+                        {/* Suwak regulacji */}
+                        <div className="mt-3 space-y-2 bg-white p-3 rounded-xl border border-stone-200">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-stone-600">
+                            <span className="flex items-center gap-1">
+                              <ZoomOut className="w-3 h-3 text-stone-400" />
+                              <span>70%</span>
+                            </span>
+                            <span className="text-[#006241] font-black text-xs font-mono">
+                              {Math.round(currentZoom * 100)}%
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span>135%</span>
+                              <ZoomIn className="w-3 h-3 text-stone-400" />
+                            </span>
+                          </div>
+
+                          <input
+                            type="range"
+                            min="70"
+                            max="135"
+                            step="1"
+                            value={Math.round(currentZoom * 100)}
+                            onChange={(e) => zoomService.setZoom(parseInt(e.target.value, 10) / 100)}
+                            className="w-full accent-[#006241] cursor-pointer"
+                          />
+
+                          {/* Przyciski Presetów */}
+                          <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-stone-100">
+                            {[0.80, 0.90, 1.00, 1.10, 1.25].map((val) => {
+                              const isCurrent = Math.abs(currentZoom - val) < 0.02;
+                              return (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => zoomService.setZoom(val)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                    isCurrent
+                                      ? 'bg-[#006241] text-white'
+                                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                                  }`}
+                                >
+                                  {Math.round(val * 100)}%
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs space-y-2 text-stone-600">
-                        <div className="flex items-center justify-between">
-                          <span className="text-stone-500">Baza Danych:</span>
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-md font-bold text-[10px] flex items-center gap-1">
-                            <Database className="w-3 h-3 text-emerald-600" />
-                            SQLite Desktop (Aktywna)
-                          </span>
+
+                      {/* Stopka z przyciskami krokowymi i skrótami */}
+                      <div className="pt-2 flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => zoomService.zoomOut(0.05)}
+                            className="px-2 py-1 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-stone-800 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                            title="Pomniejsz o 5% (Cmd + -)"
+                          >
+                            -5%
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => zoomService.resetZoom()}
+                            className="px-2 py-1 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-stone-800 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                            title="Przywróć 100% (Cmd + 0)"
+                          >
+                            100%
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => zoomService.zoomIn(0.05)}
+                            className="px-2 py-1 bg-white hover:bg-stone-100 border border-stone-300 rounded-lg text-stone-800 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                            title="Powiększ o 5% (Cmd + +)"
+                          >
+                            +5%
+                          </button>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-stone-500">Ewidencja MAPAL:</span>
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 border border-blue-300 rounded-md font-bold text-[10px] flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-blue-600" />
-                            Zsynchronizowana
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-stone-500">Baza Floor Hours:</span>
-                          <span className="font-bold text-stone-800">32.0 h / dobę (224.0 h / tydz.)</span>
-                        </div>
+
+                        <span className="text-[10px] text-stone-400 font-mono">
+                          Skróty: <kbd className="font-bold">Cmd +/-/0</kbd>
+                        </span>
                       </div>
                     </div>
 
-                    {/* Karta 3: Kopie Zapasowe SQLite */}
-                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Database className="w-5 h-5 text-[#006241]" />
-                        <h4 className="text-sm font-bold text-stone-900">Kopie Zapasowe SQLite</h4>
+                    {/* Karta 2: Autodiagnostyka & Zdrowie Bazy SQLite (PRAGMA integrity_check & VACUUM) */}
+                    <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3.5 col-span-1 md:col-span-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-[#006241] border border-emerald-200 shadow-2xs">
+                            <Activity className="w-4 h-4 text-[#006241]" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                              <span>Autodiagnostyka & Zdrowie Bazy SQLite</span>
+                              {dbHealth?.integrity === 'ok' ? (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-[#006241] text-[10px] font-bold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  100% Spójna (OK)
+                                </span>
+                              ) : dbHealth ? (
+                                <span className="px-2 py-0.5 rounded-full bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-bold">
+                                  Błąd Spójności
+                                </span>
+                              ) : null}
+                            </h4>
+                            <p className="text-[11px] text-stone-500 mt-0.5">
+                              Test integralności PRAGMA integrity_check, optymalizacja pamięci podręcznej VACUUM i stan kopii.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Przyciski szybkiej diagnostyki i VACUUM */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={handleCheckDbIntegrity}
+                            disabled={isCheckingDbHealth}
+                            className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-bold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            title="Uruchamia PRAGMA integrity_check"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 text-stone-500 ${isCheckingDbHealth ? 'animate-spin' : ''}`} />
+                            <span>{isCheckingDbHealth ? 'Testowanie...' : 'Test Spójności'}</span>
+                          </button>
+
+                          <button
+                            onClick={handleOptimizeDb}
+                            disabled={isOptimizingDb}
+                            className="px-2.5 py-1.5 rounded-xl bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            title="Uruchamia VACUUM oraz PRAGMA optimize"
+                          >
+                            <Zap className={`w-3.5 h-3.5 text-[#CBA258] ${isOptimizingDb ? 'animate-bounce' : ''}`} />
+                            <span>{isOptimizingDb ? 'Optymalizowanie...' : 'Optymalizuj (VACUUM)'}</span>
+                          </button>
+
+                          {onOpenBackupModal && (
+                            <button
+                              onClick={() => {
+                                onClose();
+                                onOpenBackupModal();
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-900 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Database className="w-3.5 h-3.5 text-stone-300" />
+                              <span>Menedżer Kopii</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs text-stone-600">
-                        Zarządzaj migawkami bazy danych przed importami raportów lub przywracaj punkty zapisu.
-                      </p>
-                      {onOpenBackupModal && (
-                        <button
-                          onClick={() => {
-                            onClose();
-                            onOpenBackupModal();
-                          }}
-                          className="w-full py-2 px-3 bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Database className="w-4 h-4" />
-                          <span>Otwórz Menedżer Kopii</span>
-                        </button>
+
+                      {/* Komunikat z wykonanej akcji */}
+                      {dbHealthActionMsg && (
+                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-medium flex items-center justify-between animate-in fade-in">
+                          <span>{dbHealthActionMsg}</span>
+                          <button onClick={() => setDbHealthActionMsg(null)} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold">✕</button>
+                        </div>
                       )}
+
+                      {/* Ostrzeżenie o zaległej kopii */}
+                      {dbHealth?.isBackupOverdue && (
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-2 animate-in fade-in">
+                          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <strong>Zalecana kopia bezpieczeństwa:</strong> Od ostatniego zapisu minęło{' '}
+                            {dbHealth.daysSinceLastBackup !== undefined ? `${dbHealth.daysSinceLastBackup} dni (zalecane max 7 dni).` : 'nieznana liczba dni (brak kopii).'}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Metryki */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                          <span className="text-[10px] text-stone-400 font-bold uppercase block">Rozmiar Bazy</span>
+                          <span className="font-black text-stone-900 text-sm">{dbHealth?.sizeFormatted || '—'}</span>
+                          <span className="text-[10px] text-stone-500 block mt-0.5">{dbHealth?.pageCount || 0} stron</span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                          <span className="text-[10px] text-stone-400 font-bold uppercase block">Pofragmentowane</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-black text-stone-900 text-sm">{dbHealth?.wastedFormatted || '0.0 KB'}</span>
+                            {dbHealth?.wastedBytes && dbHealth.wastedBytes > 128 * 1024 ? (
+                              <span className="text-[9px] px-1 rounded bg-amber-100 text-amber-800 font-bold">VACUUM</span>
+                            ) : null}
+                          </div>
+                          <span className="text-[10px] text-stone-500 block mt-0.5">Freelist: {dbHealth?.freelistCount || 0} stron</span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                          <span className="text-[10px] text-stone-400 font-bold uppercase block">Zarchiwizowane Wiersze</span>
+                          <span className="font-black text-emerald-800 text-sm">{dbHealth?.totalRecordsCount.toLocaleString('pl-PL') || '—'}</span>
+                          <span className="text-[10px] text-stone-500 block mt-0.5">15 tabel operacyjnych</span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-stone-200">
+                          <span className="text-[10px] text-stone-400 font-bold uppercase block">Kopie Zapasowe</span>
+                          <span className="font-black text-stone-900 text-sm">{dbHealth?.backupsCount || 0} kopii</span>
+                          <span className="text-[10px] text-stone-500 block mt-0.5">Ostatnia: {dbHealth?.lastBackupFormatted?.split(',')[0] || 'brak'}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Karta 4: Aktualizacje Systemu */}
+                    {/* Karta 4: Aktualizacje Online */}
                     <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 text-emerald-600" />
-                          <h4 className="text-sm font-bold text-stone-900">Aktualizacje Aplikacji</h4>
+                          <Sparkles className="w-5 h-5 text-[#006241]" />
+                          <h4 className="text-sm font-bold text-stone-900">Aktualizacje Online (OTA)</h4>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">
-                          v{APP_VERSION}
+                        <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-[#006241] font-bold rounded-md">
+                          {localStorage.getItem('sbx_auto_update_enabled') !== 'false' ? 'Auto-Update: WŁ' : 'Auto-Update: WYŁ'}
                         </span>
                       </div>
                       <p className="text-xs text-stone-600">
-                        Sprawdź dostępność nowych wydań i pobierz najnowsze pakiety usprawnień.
+                        Aplikacja automatycznie w tle pobiera mikropatche OTA i instaluje nowe funkcje bez utraty danych SQLite.
                       </p>
                       {onOpenUpdateModal && (
                         <button
@@ -1559,7 +2387,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                           className="w-full py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Sparkles className="w-4 h-4" />
-                          <span>{hasUpdateAvailable ? 'Dostępna nowa wersja!' : 'Centrum Aktualizacji'}</span>
+                          <span>{hasUpdateAvailable ? 'Dostępna nowa wersja!' : 'Centrum Aktualizacji & Auto-Update'}</span>
                         </button>
                       )}
                     </div>
@@ -1587,27 +2415,42 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                       )}
                     </div>
 
-                    {/* Karta 6: Kreator Startowy */}
+                    {/* Karta 6: Profil Operacyjny & Skrót do Powiadomień */}
                     <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <RotateCcw className="w-5 h-5 text-[#006241]" />
-                        <h4 className="text-sm font-bold text-stone-900">Kreator Pierwszego Uruchomienia</h4>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-5 h-5 text-[#006241]" />
+                          <h4 className="text-sm font-bold text-stone-900">Powiadomienia & E-mail</h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-[#006241] font-bold rounded-md">
+                          Resend Cloud ✓
+                        </span>
                       </div>
-                      <p className="text-xs text-stone-600">
-                        Uruchom ponownie pełny kreator konfiguracji kawiarni i importu danych.
-                      </p>
-                      {onRerunOnboarding && (
-                        <button
-                          onClick={() => {
-                            onClose();
-                            onRerunOnboarding();
-                          }}
-                          className="w-full py-2 px-3 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-stone-300"
-                        >
-                          <RotateCcw className="w-4 h-4 text-[#006241]" />
-                          <span>Uruchom Kreator Startowy</span>
-                        </button>
-                      )}
+
+                      <div className="text-xs text-stone-600 space-y-1.5 bg-white p-3 rounded-xl border border-stone-200">
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Adres e-mail powiadomień:</span>
+                          <strong className="text-stone-900 font-mono text-[11px]">
+                            {localStorage.getItem('sbx_user_email') || 'apeldawid@gmail.com'}
+                          </strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Alerty Kodeksu Pracy:</span>
+                          <span className="text-emerald-700 font-bold">Aktywne ✓</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Publikacja Grafiku (7 dni):</span>
+                          <span className="text-emerald-700 font-bold">Aktywne ✓</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setActiveTab('notifications')}
+                        className="w-full py-2 px-3 bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Bell className="w-3.5 h-3.5 text-[#CBA258]" />
+                        <span>Otwórz Centrum Powiadomień & Studio Szablonów ➔</span>
+                      </button>
                     </div>
                   </div>
                 </div>

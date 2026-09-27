@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ShiftDefinition } from '../../../types';
-import { X, Clock, Sun, Moon, Briefcase, CalendarOff, Check, UserCheck, Plus, Minus, Sparkles } from 'lucide-react';
+import { X, Clock, Sun, Moon, Briefcase, CalendarOff, Check, UserCheck, Plus, Minus, Sparkles, Search } from 'lucide-react';
 
 interface ShiftPickerPopoverProps {
   currentShiftCode: string;
@@ -89,6 +89,7 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
   const initialDispo = rawInitDispo === 'FULL' ? '' : rawInitDispo;
   const [selectedDispo, setSelectedDispo] = useState<string>(initialDispo);
   const [selectedShiftCode, setSelectedShiftCode] = useState<string>(currentShiftCode || 'OFF');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const initialDef = shiftDefinitions.find(s => s.code === currentShiftCode);
   const [selectedHours, setSelectedHours] = useState<number>(
@@ -166,11 +167,22 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
     );
   };
 
+  // Filtrowanie zmian wg wyszukiwarki
+  const filteredShifts = useMemo(() => {
+    if (!searchQuery.trim()) return shiftDefinitions;
+    const q = searchQuery.toLowerCase().trim();
+    return shiftDefinitions.filter(s =>
+      s.code.toLowerCase().includes(q) ||
+      s.name.toLowerCase().includes(q) ||
+      (s.category && s.category.toLowerCase().includes(q))
+    );
+  }, [shiftDefinitions, searchQuery]);
+
   // Grupowanie zmian wg kategorii
-  const coverageShifts = shiftDefinitions.filter(s => s.category === 'coverage' || (!s.is_nc && !s.is_absence && s.category !== 'dispo'));
-  const ncShifts = shiftDefinitions.filter(s => s.is_nc || s.category === 'nc');
-  const absenceShifts = shiftDefinitions.filter(s => s.is_absence || s.category === 'absence');
-  const dispoShifts = shiftDefinitions.filter(s => s.category === 'dispo');
+  const coverageShifts = filteredShifts.filter(s => s.category === 'coverage' || (!s.is_nc && !s.is_absence && s.category !== 'dispo'));
+  const ncShifts = filteredShifts.filter(s => s.is_nc || s.category === 'nc');
+  const absenceShifts = filteredShifts.filter(s => s.is_absence || s.category === 'absence');
+  const dispoShifts = filteredShifts.filter(s => s.category === 'dispo');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fade-in">
@@ -323,6 +335,27 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
             <p className="text-[10px] text-stone-500 mt-2 leading-tight">
               💡 Puste okienko to domyślna pełna dostępność. Wprowadzone preferencje (<strong>M</strong>, <strong>Z</strong> oraz <span className="text-rose-700 font-bold">OFF</span>) wyświetlają się po lewej stronie kwadratu dnia w grafiku.
             </p>
+          </div>
+
+          {/* PASEK WYSZUKIWANIA ZMIAN */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Wyszukaj zmianę po kodzie lub nazwie (np. AM, PM, SUP, NC, Urlop, Szkolenie)..."
+              className="w-full pl-9 pr-8 py-2 bg-stone-50 hover:bg-white focus:bg-white border border-stone-300 focus:border-[#006241] rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#006241]/20 transition-all shadow-2xs font-medium"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 rounded-full hover:bg-stone-200 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Sekcja 1: Floor / Coverage (Obsługa sali i baru) */}
