@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.43](#v2.8.43--2026-09-27)** | 2026-09-27 | Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny | `patch` | 🚀 Opublikowana |
 | **[v2.8.42](#v2.8.42--2026-09-27)** | 2026-09-27 | Integracja Finansowa AOP 2026: Sprzedaż (Sales), Średni Paragon (AGC) & Prognoza % COL | `patch` | 🚀 Opublikowana |
 | **[v2.8.41](#v2.8.41--2026-09-27)** | 2026-09-27 | Predykcja Zespołowa (Ensemble AI) & Dekompozycja Niedziel Handlowych | `patch` | 🚀 Opublikowana |
 | **[v2.8.40](#v2.8.40--2026-09-27)** | 2026-09-27 | Skalowanie Interfejsu (UI Zoom) & Autodiagnostyka Bazy SQLite | `patch` | 🚀 Opublikowana |
@@ -19,6 +20,26 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.43] — 2026-09-27
+**Tytuł:** Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Automatyczny parser dziennych raportów sprzedaży i robocizny dzień po dniu (Net Sales, TRX, AGC, Delivery, Godziny, TPLH)
+- Pełnoekranowy podgląd weryfikacyjny z możliwością edycji i natychmiastowym przeliczaniem metryk (AGC, TPLH)
+- Automatyczna agregacja tygodniowa W1–W5 i zasilenie bazy SQLite (daily_kpi_actuals_log, weekly_actual_trx, aop_plans)
+
+#### ✨ Nowe Funkcje:
+- Wykrywanie i parsowanie dziennych raportów wykonania KPI (wyodrębnianie dat, sprzedaży netto, transakcji, godzin i dostaw)
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Interaktywny panel weryfikacji raportu dziennego w ImportModal z kafelkami podsumowania, badges agregacji tygodniowej W1-W5 i edycją wierszy
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Dedykowana tabela SQLite daily_kpi_actuals_log oraz automatyczna aktualizacja rzeczywistych wartości w weekly_actual_trx i aop_plans
+
+---
 
 ### [v2.8.42] — 2026-09-27
 **Tytuł:** Integracja Finansowa AOP 2026: Sprzedaż (Sales), Średni Paragon (AGC) & Prognoza % COL  

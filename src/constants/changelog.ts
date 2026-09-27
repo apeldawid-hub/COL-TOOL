@@ -24,6 +24,35 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.43',
+    date: '2026-09-27',
+    title: 'Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Automatyczny parser dziennych raportów sprzedaży i robocizny dzień po dniu (Net Sales, TRX, AGC, Delivery, Godziny, TPLH)',
+      'Pełnoekranowy podgląd weryfikacyjny z możliwością edycji i natychmiastowym przeliczaniem metryk (AGC, TPLH)',
+      'Automatyczna agregacja tygodniowa W1–W5 i zasilenie bazy SQLite (daily_kpi_actuals_log, weekly_actual_trx, aop_plans)'
+    ],
+    items: [
+      {
+        type: 'feature',
+        module: 'labor_forecast',
+        description: 'Wykrywanie i parsowanie dziennych raportów wykonania KPI (wyodrębnianie dat, sprzedaży netto, transakcji, godzin i dostaw)'
+      },
+      {
+        type: 'enhancement',
+        module: 'labor_forecast',
+        description: 'Interaktywny panel weryfikacji raportu dziennego w ImportModal z kafelkami podsumowania, badges agregacji tygodniowej W1-W5 i edycją wierszy'
+      },
+      {
+        type: 'database',
+        module: 'database',
+        description: 'Dedykowana tabela SQLite daily_kpi_actuals_log oraz automatyczna aktualizacja rzeczywistych wartości w weekly_actual_trx i aop_plans'
+      }
+    ]
+  },
+  {
     version: '2.8.42',
     date: '2026-09-27',
     title: 'Integracja Finansowa AOP 2026: Sprzedaż (Sales), Średni Paragon (AGC) & Prognoza % COL',

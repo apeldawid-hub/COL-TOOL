@@ -31,6 +31,7 @@ export interface IElectronAPI {
   commitMapalImport: (payload: { records: any[] }) => Promise<{ success: boolean; message: string; reportType: string; importedCount: number }>;
   commitScheduleImport: (payload: { scheduleData: any }) => Promise<{ success: boolean; message: string; reportType: string; importedCount: number }>;
   commitMultipleSchedulesImport: (payload: { schedules: any[] }) => Promise<{ success: boolean; message: string; reportType: string; totalMonths: number; totalShifts: number; totalEvents: number }>;
+  commitDailyKpiImport: (payload: { dailyKpiData: any }) => Promise<{ success: boolean; message: string; reportType: string; importedCount: number }>;
   getSystemTime: () => Promise<{ iso: string; timestamp: string; hours: number; minutes: number; seconds: number; day: number; month: number; year: number }>;
   getAppSettings: () => Promise<{ settings: Record<string, string>; hasCompletedOnboarding: boolean; hasExistingData: boolean }>;
   saveAppSettings: (settings: Record<string, string>) => Promise<boolean>;
@@ -149,6 +150,7 @@ const api: IElectronAPI = {
   commitMapalImport: (payload) => ipcRenderer.invoke('import:commit-mapal', payload),
   commitScheduleImport: (payload) => ipcRenderer.invoke('import:commit-schedule', payload),
   commitMultipleSchedulesImport: (payload) => ipcRenderer.invoke('import:commit-multiple-schedules', payload),
+  commitDailyKpiImport: (payload) => ipcRenderer.invoke('import:commit-daily-kpi', payload),
   getSystemTime: () => ipcRenderer.invoke('system:get-time'),
   getAppSettings: () => ipcRenderer.invoke('app:get-settings'),
   saveAppSettings: (settings) => ipcRenderer.invoke('app:save-settings', settings),

@@ -7,7 +7,52 @@ import { MapalParser } from './mapalParser';
 
 const XLSX: any = (xlsxModule as any).default || xlsxModule;
 
-export type DetectedReportType = 'AOP_PL' | 'MAPAL_FICHAJES' | 'MANAGER_SCHEDULE' | 'UNKNOWN';
+export type DetectedReportType = 'AOP_PL' | 'MAPAL_FICHAJES' | 'MANAGER_SCHEDULE' | 'DAILY_KPI_ACTUAL' | 'UNKNOWN';
+
+export interface DailyKpiDayPreview {
+  date: string;          // np. '2026-09-01'
+  dayOfMonth: number;    // 1
+  dayLabel: string;      // 'Tuesday, 1 Sep'
+  salesNet: number;      // 13182.27
+  trx: number;           // 429
+  agc: number;           // 30.73
+  deliveryTrx: number;   // 8
+  hours: number;         // 56.2
+  tplh: number;          // 7.63
+  weekNum: string;       // 'W1'
+  weekKey: string;       // '2026_Wrzesień_W1'
+}
+
+export interface DailyKpiWeekPreview {
+  weekKey: string;
+  weekNum: string;
+  daysCount: number;
+  salesNet: number;
+  trx: number;
+  hours: number;
+  deliveryTrx: number;
+  agc: number;
+  tplh: number;
+}
+
+export interface DailyKpiPreviewData {
+  year: number;
+  month: number;
+  monthName: string;
+  monthKey: string;      // '2026_Wrzesień'
+  storeName: string;
+  days: DailyKpiDayPreview[];
+  summary: {
+    reportedDaysCount: number;
+    totalSalesNet: number;
+    totalTrx: number;
+    totalHours: number;
+    totalDeliveryTrx: number;
+    avgAgc: number;
+    avgTplh: number;
+  };
+  weeklyBreakdown: DailyKpiWeekPreview[];
+}
 
 export interface ManagerScheduleShiftPreview {
   day: number;
@@ -105,6 +150,8 @@ export interface ParseReportPreviewResult {
   };
   // Schedule Preview
   scheduleData?: SchedulePreviewData;
+  // Daily KPI Preview
+  dailyKpiData?: DailyKpiPreviewData;
   validation: {
     isValid: boolean;
     warnings: string[];
@@ -163,6 +210,8 @@ export class UniversalReportParser {
         return await this.parseMapalForPreview(workbook, buffer);
       } else if (detectedType === 'MANAGER_SCHEDULE') {
         return await this.parseScheduleForPreview(workbook);
+      } else if (detectedType === 'DAILY_KPI_ACTUAL') {
+        return await this.parseDailyKpiForPreview(workbook);
       } else {
         return {
           success: false,
@@ -171,9 +220,9 @@ export class UniversalReportParser {
           validation: {
             isValid: false,
             warnings: [],
-            errors: ['Nie rozpoznano struktury raportu AOP P&L, MAPAL Fichajes ani Grafiku Managerskiego.']
+            errors: ['Nie rozpoznano struktury raportu AOP P&L, MAPAL Fichajes, Raportu Dziennego KPI ani Grafiku Managerskiego.']
           },
-          message: 'Nie udało się automatycznie rozpoznać formatu raportu. Upewnij się, że przesyłasz oficjalny raport AOP P&L, raport MAPAL Fichajes lub plik Grafiku Managerskiego (.xlsm).'
+          message: 'Nie udało się automatycznie rozpoznać formatu raportu. Upewnij się, że przesyłasz oficjalny raport AOP P&L, raport MAPAL Fichajes, raport dzienny KPI (Actual) lub plik Grafiku Managerskiego (.xlsm).'
         };
       }
     } catch (err: any) {
@@ -210,6 +259,12 @@ export class UniversalReportParser {
       .slice(0, 35)
       .map(row => (Array.isArray(row) ? row.join(' ') : ''))
       .join('\n');
+
+    // 0. Sprawdzenie formatu Raportu Dziennego KPI (Day & Date, Sales Net, TRX, AGC, Delivery, Hours, TPLH)
+    const hasDailyKpiHeaders = /Day & Date/i.test(flatContent) && (/Sales Net|Net Sales/i.test(flatContent) || /AGC/i.test(flatContent) || /Delivery TRX/i.test(flatContent));
+    if (hasDailyKpiHeaders) {
+      return 'DAILY_KPI_ACTUAL';
+    }
 
     // 1. Sprawdzenie formatu Grafiku Managerskiego
     const hasScheduleHeaders = /GRAFIK MANAGERSKI|MANAGER|Pozycja|Dni OFF|Godziny wypracowane|Bilans \(\+\/\- h\)/i.test(flatContent);
@@ -1229,6 +1284,366 @@ export class UniversalReportParser {
   }
 
   /**
+   * Parsowanie Raportu Dziennego KPI (Wykonanie Rzeczywiste Dzień po Dniu)
+   */
+  private static async parseDailyKpiForPreview(workbook: any): Promise<ParseReportPreviewResult> {
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+
+    let detectedYear = 2026;
+    let detectedMonthName = 'Wrzesień';
+    let detectedMonthNum = 9;
+    let detectedStoreName = '108120 SBX Warszawa Janki';
+
+    const monthMap: Record<string, { name: string; num: number }> = {
+      'jan': { name: 'Styczeń', num: 1 },
+      'feb': { name: 'Luty', num: 2 },
+      'mar': { name: 'Marzec', num: 3 },
+      'apr': { name: 'Kwiecień', num: 4 },
+      'may': { name: 'Maj', num: 5 },
+      'jun': { name: 'Czerwiec', num: 6 },
+      'jul': { name: 'Lipiec', num: 7 },
+      'aug': { name: 'Sierpień', num: 8 },
+      'sep': { name: 'Wrzesień', num: 9 },
+      'oct': { name: 'Październik', num: 10 },
+      'nov': { name: 'Listopad', num: 11 },
+      'dec': { name: 'Grudzień', num: 12 }
+    };
+
+    for (const row of rows.slice(0, 6)) {
+      if (Array.isArray(row)) {
+        for (const cell of row) {
+          if (typeof cell === 'string') {
+            const matchFilter = cell.match(/(?:Calendar Month \/ Year is|Month is)\s*([A-Za-z]{3})\s*(\d{4})/i);
+            if (matchFilter) {
+              const mKey = matchFilter[1].toLowerCase();
+              if (monthMap[mKey]) {
+                detectedMonthName = monthMap[mKey].name;
+                detectedMonthNum = monthMap[mKey].num;
+              }
+              detectedYear = parseInt(matchFilter[2], 10);
+            }
+            const matchStore = cell.match(/Restaurant is\s*(.+)/i);
+            if (matchStore) {
+              detectedStoreName = matchStore[1].trim();
+            }
+          }
+        }
+      }
+    }
+
+    let headerIdx = -1;
+    rows.forEach((r, idx) => {
+      if (Array.isArray(r) && r.some(c => typeof c === 'string' && /Day & Date|Sales Net/i.test(c))) {
+        headerIdx = idx;
+      }
+    });
+
+    if (headerIdx === -1) {
+      return {
+        success: false,
+        reportType: 'DAILY_KPI_ACTUAL',
+        reportTypeName: 'Raport Dzienny KPI (Actual)',
+        validation: {
+          isValid: false,
+          warnings: [],
+          errors: ['Nie znaleziono wiersza nagłówkowego z kolumnami Day & Date, Sales Net, TRX.']
+        },
+        message: 'Nieprawidłowa struktura nagłówków w pliku raportu dziennego KPI.'
+      };
+    }
+
+    const header = rows[headerIdx];
+    const dayCol = header.findIndex(c => typeof c === 'string' && /Day & Date|Date/i.test(c));
+    const salesCol = header.findIndex(c => typeof c === 'string' && /Sales Net|Net Sales|Sales/i.test(c));
+    const trxCol = header.findIndex(c => typeof c === 'string' && /^TRX$|Transactions/i.test(c));
+    const agcCol = header.findIndex(c => typeof c === 'string' && /^AGC$|Avg Check/i.test(c));
+    const delCol = header.findIndex(c => typeof c === 'string' && /Delivery/i.test(c));
+    const hoursCol = header.findIndex(c => typeof c === 'string' && /^Hours$|Godziny/i.test(c));
+    const tplhCol = header.findIndex(c => typeof c === 'string' && /^TPLH$/i.test(c));
+
+    const days: DailyKpiDayPreview[] = [];
+    const warnings: string[] = [];
+
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!Array.isArray(r) || !r[dayCol]) continue;
+
+      const dayStr = String(r[dayCol]).replace(/[★*]/g, '').trim();
+      const dayMatch = dayStr.match(/(\d{1,2})/);
+      if (!dayMatch) continue;
+
+      const dayNum = parseInt(dayMatch[1], 10);
+      const salesVal = r[salesCol];
+      if (salesVal === null || salesVal === undefined || salesVal === '') continue;
+      const sales = Number(salesVal);
+      if (isNaN(sales) || sales <= 0) continue; // dzień nieraportowany/przyszły
+
+      const trx = Math.round(Number(r[trxCol]) || 0);
+      const hours = Number(Number(r[hoursCol] || 0).toFixed(2));
+      const agc = Number(Number(r[agcCol] || (trx > 0 ? sales / trx : 0)).toFixed(2));
+      const del = Math.round(Number(r[delCol]) || 0);
+      const tplh = Number(Number(r[tplhCol] || (hours > 0 ? trx / hours : 0)).toFixed(2));
+
+      const iso = `${detectedYear}-${String(detectedMonthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+
+      // Wyznaczenie tygodnia W1..W5
+      let weekNum = 'W1';
+      if (dayNum > 28) weekNum = 'W5';
+      else if (dayNum > 21) weekNum = 'W4';
+      else if (dayNum > 14) weekNum = 'W3';
+      else if (dayNum > 7) weekNum = 'W2';
+
+      const weekKey = `${detectedYear}_${detectedMonthName}_${weekNum}`;
+
+      days.push({
+        date: iso,
+        dayOfMonth: dayNum,
+        dayLabel: dayStr,
+        salesNet: Number(sales.toFixed(2)),
+        trx,
+        agc,
+        hours,
+        tplh,
+        deliveryTrx: del,
+        weekNum,
+        weekKey
+      });
+    }
+
+    if (days.length === 0) {
+      return {
+        success: false,
+        reportType: 'DAILY_KPI_ACTUAL',
+        reportTypeName: 'Raport Dzienny KPI (Actual)',
+        validation: {
+          isValid: false,
+          warnings: [],
+          errors: ['Plik nie zawiera żadnych dni ze zrealizowaną sprzedażą (wszystkie wiersze są puste lub 0 zł).']
+        },
+        message: 'Nie znaleziono zaraportowanych dni sprzedaży w pliku.'
+      };
+    }
+
+    // Podsumowanie zbiorcze
+    const totalSalesNet = Number(days.reduce((acc, d) => acc + d.salesNet, 0).toFixed(2));
+    const totalTrx = days.reduce((acc, d) => acc + d.trx, 0);
+    const totalHours = Number(days.reduce((acc, d) => acc + d.hours, 0).toFixed(1));
+    const totalDeliveryTrx = days.reduce((acc, d) => acc + d.deliveryTrx, 0);
+    const avgAgc = totalTrx > 0 ? Number((totalSalesNet / totalTrx).toFixed(2)) : 0;
+    const avgTplh = totalHours > 0 ? Number((totalTrx / totalHours).toFixed(2)) : 0;
+
+    // Agregacja tygodniowa
+    const weekMap: Record<string, DailyKpiWeekPreview> = {};
+    for (const d of days) {
+      if (!weekMap[d.weekKey]) {
+        weekMap[d.weekKey] = {
+          weekKey: d.weekKey,
+          weekNum: d.weekNum,
+          daysCount: 0,
+          salesNet: 0,
+          trx: 0,
+          hours: 0,
+          deliveryTrx: 0,
+          agc: 0,
+          tplh: 0
+        };
+      }
+      const w = weekMap[d.weekKey];
+      w.daysCount++;
+      w.salesNet = Number((w.salesNet + d.salesNet).toFixed(2));
+      w.trx += d.trx;
+      w.hours = Number((w.hours + d.hours).toFixed(1));
+      w.deliveryTrx += d.deliveryTrx;
+    }
+
+    const weeklyBreakdown: DailyKpiWeekPreview[] = Object.values(weekMap).map(w => ({
+      ...w,
+      agc: w.trx > 0 ? Number((w.salesNet / w.trx).toFixed(2)) : 0,
+      tplh: w.hours > 0 ? Number((w.trx / w.hours).toFixed(2)) : 0
+    }));
+
+    const dailyKpiData: DailyKpiPreviewData = {
+      year: detectedYear,
+      month: detectedMonthNum,
+      monthName: detectedMonthName,
+      monthKey: `${detectedYear}_${detectedMonthName}`,
+      storeName: detectedStoreName,
+      days,
+      summary: {
+        reportedDaysCount: days.length,
+        totalSalesNet,
+        totalTrx,
+        totalHours,
+        totalDeliveryTrx,
+        avgAgc,
+        avgTplh
+      },
+      weeklyBreakdown
+    };
+
+    return {
+      success: true,
+      reportType: 'DAILY_KPI_ACTUAL',
+      reportTypeName: 'Raport Dzienny KPI (Actual)',
+      year: detectedYear,
+      dailyKpiData,
+      validation: {
+        isValid: true,
+        warnings,
+        errors: []
+      },
+      message: `Pomyślnie sparsowano ${days.length} dni raportu za ${detectedMonthName} ${detectedYear} (Sprzedaż: ${totalSalesNet.toLocaleString('pl-PL')} zł, TRX: ${totalTrx.toLocaleString('pl-PL')}, Średnie AGC: ${avgAgc.toFixed(2)} zł, Średni TPLH: ${avgTplh.toFixed(2)}).`
+    };
+  }
+
+  /**
+   * Zapis zatwierdzonych przez użytkownika danych Dziennego KPI do SQLite
+   */
+  public static async commitDailyKpiData(
+    dailyKpiData: DailyKpiPreviewData
+  ): Promise<UniversalImportResult> {
+    try {
+      const dbManager = DatabaseManager.getInstance();
+      await dbManager.init();
+      const db = dbManager.getDb();
+
+      try {
+        BackupManager.getInstance().createBackup('pre_import_daily_kpi');
+      } catch (_) {}
+
+      // Migracje kolumn dla weekly_actual_trx i aop_plans
+      try { db.run('ALTER TABLE weekly_actual_trx ADD COLUMN actual_sales REAL'); } catch (_) {}
+      try { db.run('ALTER TABLE weekly_actual_trx ADD COLUMN actual_hours REAL'); } catch (_) {}
+      try { db.run('ALTER TABLE weekly_actual_trx ADD COLUMN actual_agc REAL'); } catch (_) {}
+      try { db.run('ALTER TABLE weekly_actual_trx ADD COLUMN actual_tplh REAL'); } catch (_) {}
+      try { db.run('ALTER TABLE weekly_actual_trx ADD COLUMN delivery_trx INTEGER'); } catch (_) {}
+
+      try { db.run('ALTER TABLE aop_plans ADD COLUMN actual_sales REAL'); } catch (_) {}
+      try { db.run('ALTER TABLE aop_plans ADD COLUMN actual_trx INTEGER'); } catch (_) {}
+      try { db.run('ALTER TABLE aop_plans ADD COLUMN actual_tplh REAL'); } catch (_) {}
+      try { db.run('ALTER TABLE aop_plans ADD COLUMN actual_agc REAL'); } catch (_) {}
+
+      // Tabela logów dobowych KPI
+      db.run(`
+        CREATE TABLE IF NOT EXISTS daily_kpi_actuals_log (
+          date TEXT PRIMARY KEY,
+          year INTEGER NOT NULL,
+          month INTEGER NOT NULL,
+          month_name TEXT NOT NULL,
+          day_of_month INTEGER NOT NULL,
+          day_label TEXT,
+          week_key TEXT,
+          sales_net REAL NOT NULL,
+          trx INTEGER NOT NULL,
+          agc REAL NOT NULL,
+          hours REAL NOT NULL,
+          tplh REAL NOT NULL,
+          delivery_trx INTEGER DEFAULT 0,
+          imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 1. Zapis dni dobowych
+      const dayStmt = db.prepare(`
+        INSERT OR REPLACE INTO daily_kpi_actuals_log
+        (date, year, month, month_name, day_of_month, day_label, week_key, sales_net, trx, agc, hours, tplh, delivery_trx, imported_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `);
+
+      for (const d of dailyKpiData.days) {
+        dayStmt.run([
+          d.date,
+          dailyKpiData.year,
+          dailyKpiData.month,
+          dailyKpiData.monthName,
+          d.dayOfMonth,
+          d.dayLabel,
+          d.weekKey,
+          d.salesNet,
+          d.trx,
+          d.agc,
+          d.hours,
+          d.tplh,
+          d.deliveryTrx
+        ]);
+      }
+      dayStmt.free();
+
+      // 2. Zapis agregacji tygodniowych do weekly_actual_trx
+      const weekStmt = db.prepare(`
+        INSERT INTO weekly_actual_trx 
+        (week_key, actual_trx, actual_sales, actual_hours, actual_agc, actual_tplh, delivery_trx, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(week_key) DO UPDATE SET
+          actual_trx = excluded.actual_trx,
+          actual_sales = excluded.actual_sales,
+          actual_hours = excluded.actual_hours,
+          actual_agc = excluded.actual_agc,
+          actual_tplh = excluded.actual_tplh,
+          delivery_trx = excluded.delivery_trx,
+          updated_at = CURRENT_TIMESTAMP
+      `);
+
+      for (const w of dailyKpiData.weeklyBreakdown) {
+        weekStmt.run([
+          w.weekKey,
+          w.trx,
+          w.salesNet,
+          w.hours,
+          w.agc,
+          w.tplh,
+          w.deliveryTrx
+        ]);
+      }
+      weekStmt.free();
+
+      // 3. Aktualizacja wykonania MTD w aop_plans
+      const aopStmt = db.prepare(`
+        UPDATE aop_plans SET
+          actual_sales = ?,
+          actual_trx = ?,
+          actual_tplh = ?,
+          actual_agc = ?
+        WHERE key = ?
+      `);
+
+      aopStmt.run([
+        dailyKpiData.summary.totalSalesNet,
+        dailyKpiData.summary.totalTrx,
+        dailyKpiData.summary.avgTplh,
+        dailyKpiData.summary.avgAgc,
+        dailyKpiData.monthKey
+      ]);
+      aopStmt.free();
+
+      dbManager.persist();
+
+      try {
+        BackupManager.getInstance().createBackup('post_import_daily_kpi');
+      } catch (_) {}
+
+      return {
+        success: true,
+        reportType: 'DAILY_KPI_ACTUAL',
+        reportTypeName: 'Raport Dzienny KPI (Actual)',
+        importedCount: dailyKpiData.days.length,
+        message: `✨ Pomyślnie zaimportowano wykonanie za ${dailyKpiData.days.length} dni (${dailyKpiData.monthName} ${dailyKpiData.year}). Zaktualizowano tygodnie W1–W5 oraz podsumowanie MTD (Sprzedaż: ${dailyKpiData.summary.totalSalesNet.toLocaleString('pl-PL')} zł, TRX: ${dailyKpiData.summary.totalTrx.toLocaleString('pl-PL')}, AGC: ${dailyKpiData.summary.avgAgc.toFixed(2)} zł, TPLH: ${dailyKpiData.summary.avgTplh.toFixed(2)}).`
+      };
+    } catch (err: any) {
+      console.error('Błąd commitDailyKpiData:', err);
+      return {
+        success: false,
+        reportType: 'DAILY_KPI_ACTUAL',
+        reportTypeName: 'Raport Dzienny KPI (Actual)',
+        importedCount: 0,
+        message: `Błąd podczas zapisu danych dziennego KPI: ${err.message || String(err)}`
+      };
+    }
+  }
+
+  /**
    * Bezpośredni import (all-in-one dla skryptów lub CLI)
    */
   public static async parseAndImport(
@@ -1251,6 +1666,8 @@ export class UniversalReportParser {
       return await this.commitMapalData(preview.mapalData.records);
     } else if (preview.reportType === 'MANAGER_SCHEDULE' && preview.scheduleData) {
       return await this.commitScheduleData(preview.scheduleData);
+    } else if (preview.reportType === 'DAILY_KPI_ACTUAL' && preview.dailyKpiData) {
+      return await this.commitDailyKpiData(preview.dailyKpiData);
     } else {
       return {
         success: false,

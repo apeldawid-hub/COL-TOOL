@@ -1642,6 +1642,14 @@ function setupIpcHandlers() {
     return result;
   });
 
+  ipcMain.handle('import:commit-daily-kpi', async (_event, payload: { dailyKpiData: any }) => {
+    const result = await UniversalReportParser.commitDailyKpiData(payload.dailyKpiData);
+    if (result.success && mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return result;
+  });
+
   // Uniwersalny import jednokrokowy (legacy/fallback)
   const handleUniversalImportFile = async (filePath: string) => {
     const result = await UniversalReportParser.parseAndImport(filePath);
