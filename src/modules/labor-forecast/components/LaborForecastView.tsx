@@ -133,7 +133,7 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
           </div>
 
           {aopPlan && (
-            <div className="flex items-center gap-3 text-xs text-stone-600">
+            <div className="flex items-center gap-3 text-xs text-stone-600 flex-wrap">
               <span className="flex items-center gap-1">
                 <Target className="w-3.5 h-3.5 text-stone-400" />
                 <span>TRX AOP:</span>
@@ -143,6 +143,19 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
               <span>
                 Sprzedaż: <strong className="text-stone-900">{aopPlan.plan_sales ? `${aopPlan.plan_sales.toLocaleString('pl-PL')} zł` : '—'}</strong>
               </span>
+              <span className="text-stone-300">•</span>
+              <span>
+                AGC: <strong className="text-amber-800 font-bold">{aopPlan.plan_agc ? `${aopPlan.plan_agc.toFixed(2)} zł` : (aopPlan.plan_sales && aopPlan.plan_trx ? `${(aopPlan.plan_sales / aopPlan.plan_trx).toFixed(2)} zł` : '—')}</strong>
+              </span>
+              {aopPlan.plan_col_percent && (
+                <>
+                  <span className="text-stone-300">•</span>
+                  <span>
+                    COL: <strong className="text-emerald-800 font-bold">{aopPlan.plan_col_percent.toFixed(1)}%</strong>
+                    {aopPlan.plan_col_pln ? <span className="text-stone-400 font-normal text-[11px] ml-1">({aopPlan.plan_col_pln.toLocaleString('pl-PL')} zł)</span> : null}
+                  </span>
+                </>
+              )}
               <span className="text-stone-300">•</span>
               <span>
                 TPLH Cel: <strong className="text-[#006241] font-black">{aopPlan.target_tplh.toFixed(2)}</strong>

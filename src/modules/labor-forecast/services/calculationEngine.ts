@@ -1155,6 +1155,19 @@ export class CalculationEngine {
       variance: Number((totalManagerNcHoursMonth - ncBudgetTotal).toFixed(1))
     };
 
+    // Kalkulacja dwuwymiarowa P&L (Sales & COL %)
+    const effectiveAgc = aopPlan.plan_agc || (aopPlan.plan_sales && aopPlan.plan_trx ? Number((aopPlan.plan_sales / aopPlan.plan_trx).toFixed(2)) : 28.08);
+    const forecastSales = aopPlan.plan_sales ? Number((forecastTotalTrx * effectiveAgc).toFixed(2)) : undefined;
+    
+    // Średni koszt roboczogodziny z AOP lub domyślny
+    const avgHourlyLaborCost = aopPlan.plan_col_pln && aopPlan.labor_budget && aopPlan.labor_budget > 0 
+      ? aopPlan.plan_col_pln / aopPlan.labor_budget 
+      : 49.5;
+    const forecastColPln = forecastSales ? Number((earnedLaborBudget * avgHourlyLaborCost).toFixed(2)) : undefined;
+    const forecastColPercent = forecastSales && forecastColPln && forecastSales > 0 
+      ? Number(((forecastColPln / forecastSales) * 100).toFixed(2)) 
+      : (aopPlan.plan_col_percent || undefined);
+
     return {
       year: aopPlan.year,
       month: aopPlan.month,
@@ -1192,6 +1205,10 @@ export class CalculationEngine {
       ncPlannedVsBudget,
       coverageGapsMonthCount,
       ensembleForecast: ensembleResult,
+
+      forecastSales,
+      forecastColPln,
+      forecastColPercent,
 
       rows: rowsWithHanw,
     };

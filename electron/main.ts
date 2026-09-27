@@ -232,7 +232,14 @@ function setupIpcHandlers() {
         plan_sales: row.plan_sales !== null && row.plan_sales !== undefined ? Number(row.plan_sales) : null,
         actual_sales: row.actual_sales !== null && row.actual_sales !== undefined ? Number(row.actual_sales) : null,
         actual_trx: row.actual_trx !== null && row.actual_trx !== undefined ? Number(row.actual_trx) : null,
-        actual_tplh: row.actual_tplh !== null && row.actual_tplh !== undefined ? Number(row.actual_tplh) : null
+        actual_tplh: row.actual_tplh !== null && row.actual_tplh !== undefined ? Number(row.actual_tplh) : null,
+        plan_agc: row.plan_agc !== null && row.plan_agc !== undefined ? Number(row.plan_agc) : (row.plan_sales && row.plan_trx ? Number((Number(row.plan_sales) / Number(row.plan_trx)).toFixed(2)) : null),
+        actual_agc: row.actual_agc !== null && row.actual_agc !== undefined ? Number(row.actual_agc) : (row.actual_sales && row.actual_trx ? Number((Number(row.actual_sales) / Number(row.actual_trx)).toFixed(2)) : null),
+        plan_col_pln: row.plan_col_pln !== null && row.plan_col_pln !== undefined ? Number(row.plan_col_pln) : null,
+        plan_col_percent: row.plan_col_percent !== null && row.plan_col_percent !== undefined ? Number(row.plan_col_percent) : null,
+        plan_cos_pln: row.plan_cos_pln !== null && row.plan_cos_pln !== undefined ? Number(row.plan_cos_pln) : null,
+        plan_cos_percent: row.plan_cos_percent !== null && row.plan_cos_percent !== undefined ? Number(row.plan_cos_percent) : null,
+        plan_ops_profit: row.plan_ops_profit !== null && row.plan_ops_profit !== undefined ? Number(row.plan_ops_profit) : null,
       };
     }
     stmt.free();
@@ -244,8 +251,7 @@ function setupIpcHandlers() {
     dbManager.reloadFromDisk();
     const db = dbManager.getDb();
     const stmt = db.prepare(`
-      SELECT key, year, month, month_code, weeks_count, plan_trx, target_tplh, labor_budget, avg_weekly_hours,
-             plan_sales, actual_sales, actual_trx, actual_tplh
+      SELECT *
       FROM aop_plans
       WHERE year = ?
       ORDER BY month_code ASC
@@ -267,7 +273,14 @@ function setupIpcHandlers() {
         plan_sales: row.plan_sales !== null && row.plan_sales !== undefined ? Number(row.plan_sales) : null,
         actual_sales: row.actual_sales !== null && row.actual_sales !== undefined ? Number(row.actual_sales) : null,
         actual_trx: row.actual_trx !== null && row.actual_trx !== undefined ? Number(row.actual_trx) : null,
-        actual_tplh: row.actual_tplh !== null && row.actual_tplh !== undefined ? Number(row.actual_tplh) : null
+        actual_tplh: row.actual_tplh !== null && row.actual_tplh !== undefined ? Number(row.actual_tplh) : null,
+        plan_agc: row.plan_agc !== null && row.plan_agc !== undefined ? Number(row.plan_agc) : (row.plan_sales && row.plan_trx ? Number((Number(row.plan_sales) / Number(row.plan_trx)).toFixed(2)) : null),
+        actual_agc: row.actual_agc !== null && row.actual_agc !== undefined ? Number(row.actual_agc) : (row.actual_sales && row.actual_trx ? Number((Number(row.actual_sales) / Number(row.actual_trx)).toFixed(2)) : null),
+        plan_col_pln: row.plan_col_pln !== null && row.plan_col_pln !== undefined ? Number(row.plan_col_pln) : null,
+        plan_col_percent: row.plan_col_percent !== null && row.plan_col_percent !== undefined ? Number(row.plan_col_percent) : null,
+        plan_cos_pln: row.plan_cos_pln !== null && row.plan_cos_pln !== undefined ? Number(row.plan_cos_pln) : null,
+        plan_cos_percent: row.plan_cos_percent !== null && row.plan_cos_percent !== undefined ? Number(row.plan_cos_percent) : null,
+        plan_ops_profit: row.plan_ops_profit !== null && row.plan_ops_profit !== undefined ? Number(row.plan_ops_profit) : null,
       });
     }
     stmt.free();
@@ -279,8 +292,7 @@ function setupIpcHandlers() {
     dbManager.reloadFromDisk();
     const db = dbManager.getDb();
     const stmt = db.prepare(`
-      SELECT key, year, month, month_code, weeks_count, plan_trx, target_tplh, labor_budget, avg_weekly_hours,
-             plan_sales, actual_sales, actual_trx, actual_tplh
+      SELECT *
       FROM aop_plans
       WHERE (actual_trx IS NOT NULL AND actual_trx > 0) OR (actual_tplh IS NOT NULL AND actual_tplh > 0)
       ORDER BY year ASC, month_code ASC
@@ -301,7 +313,14 @@ function setupIpcHandlers() {
         plan_sales: row.plan_sales !== null && row.plan_sales !== undefined ? Number(row.plan_sales) : null,
         actual_sales: row.actual_sales !== null && row.actual_sales !== undefined ? Number(row.actual_sales) : null,
         actual_trx: row.actual_trx !== null && row.actual_trx !== undefined ? Number(row.actual_trx) : null,
-        actual_tplh: row.actual_tplh !== null && row.actual_tplh !== undefined ? Number(row.actual_tplh) : null
+        actual_tplh: row.actual_tplh !== null && row.actual_tplh !== undefined ? Number(row.actual_tplh) : null,
+        plan_agc: row.plan_agc !== null && row.plan_agc !== undefined ? Number(row.plan_agc) : (row.plan_sales && row.plan_trx ? Number((Number(row.plan_sales) / Number(row.plan_trx)).toFixed(2)) : null),
+        actual_agc: row.actual_agc !== null && row.actual_agc !== undefined ? Number(row.actual_agc) : (row.actual_sales && row.actual_trx ? Number((Number(row.actual_sales) / Number(row.actual_trx)).toFixed(2)) : null),
+        plan_col_pln: row.plan_col_pln !== null && row.plan_col_pln !== undefined ? Number(row.plan_col_pln) : null,
+        plan_col_percent: row.plan_col_percent !== null && row.plan_col_percent !== undefined ? Number(row.plan_col_percent) : null,
+        plan_cos_pln: row.plan_cos_pln !== null && row.plan_cos_pln !== undefined ? Number(row.plan_cos_pln) : null,
+        plan_cos_percent: row.plan_cos_percent !== null && row.plan_cos_percent !== undefined ? Number(row.plan_cos_percent) : null,
+        plan_ops_profit: row.plan_ops_profit !== null && row.plan_ops_profit !== undefined ? Number(row.plan_ops_profit) : null,
       });
     }
     stmt.free();
@@ -320,11 +339,20 @@ function setupIpcHandlers() {
     const actualSales = plan.actual_sales !== undefined ? plan.actual_sales : null;
     const actualTrx = plan.actual_trx !== undefined ? plan.actual_trx : null;
     const actualTplh = plan.actual_tplh !== undefined ? plan.actual_tplh : null;
+    const planAgc = plan.plan_agc !== undefined ? plan.plan_agc : (planSales && planTrx ? Number((planSales / planTrx).toFixed(2)) : null);
+    const actualAgc = plan.actual_agc !== undefined ? plan.actual_agc : (actualSales && actualTrx ? Number((actualSales / actualTrx).toFixed(2)) : null);
+    const planColPln = plan.plan_col_pln !== undefined ? plan.plan_col_pln : null;
+    const planColPercent = plan.plan_col_percent !== undefined ? plan.plan_col_percent : null;
+    const planCosPln = plan.plan_cos_pln !== undefined ? plan.plan_cos_pln : null;
+    const planCosPercent = plan.plan_cos_percent !== undefined ? plan.plan_cos_percent : null;
+    const planOpsProfit = plan.plan_ops_profit !== undefined ? plan.plan_ops_profit : null;
 
     db.run(`
       INSERT INTO aop_plans 
-      (key, year, month, month_code, weeks_count, plan_trx, target_tplh, labor_budget, avg_weekly_hours, plan_sales, actual_sales, actual_trx, actual_tplh)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (key, year, month, month_code, weeks_count, plan_trx, target_tplh, labor_budget, avg_weekly_hours,
+       plan_sales, actual_sales, actual_trx, actual_tplh, plan_agc, actual_agc, plan_col_pln, plan_col_percent,
+       plan_cos_pln, plan_cos_percent, plan_ops_profit)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(key) DO UPDATE SET
         year=excluded.year,
         month=excluded.month,
@@ -337,7 +365,14 @@ function setupIpcHandlers() {
         plan_sales=COALESCE(excluded.plan_sales, aop_plans.plan_sales),
         actual_sales=COALESCE(excluded.actual_sales, aop_plans.actual_sales),
         actual_trx=COALESCE(excluded.actual_trx, aop_plans.actual_trx),
-        actual_tplh=COALESCE(excluded.actual_tplh, aop_plans.actual_tplh)
+        actual_tplh=COALESCE(excluded.actual_tplh, aop_plans.actual_tplh),
+        plan_agc=COALESCE(excluded.plan_agc, aop_plans.plan_agc),
+        actual_agc=COALESCE(excluded.actual_agc, aop_plans.actual_agc),
+        plan_col_pln=COALESCE(excluded.plan_col_pln, aop_plans.plan_col_pln),
+        plan_col_percent=COALESCE(excluded.plan_col_percent, aop_plans.plan_col_percent),
+        plan_cos_pln=COALESCE(excluded.plan_cos_pln, aop_plans.plan_cos_pln),
+        plan_cos_percent=COALESCE(excluded.plan_cos_percent, aop_plans.plan_cos_percent),
+        plan_ops_profit=COALESCE(excluded.plan_ops_profit, aop_plans.plan_ops_profit)
     `, [
       plan.key,
       Number(plan.year),
@@ -351,7 +386,14 @@ function setupIpcHandlers() {
       planSales,
       actualSales,
       actualTrx,
-      actualTplh
+      actualTplh,
+      planAgc,
+      actualAgc,
+      planColPln,
+      planColPercent,
+      planCosPln,
+      planCosPercent,
+      planOpsProfit
     ]);
 
     dbManager.persist();

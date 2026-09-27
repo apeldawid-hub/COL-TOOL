@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.42](#v2.8.42--2026-09-27)** | 2026-09-27 | Integracja Finansowa AOP 2026: Sprzedaż (Sales), Średni Paragon (AGC) & Prognoza % COL | `patch` | 🚀 Opublikowana |
 | **[v2.8.41](#v2.8.41--2026-09-27)** | 2026-09-27 | Predykcja Zespołowa (Ensemble AI) & Dekompozycja Niedziel Handlowych | `patch` | 🚀 Opublikowana |
 | **[v2.8.40](#v2.8.40--2026-09-27)** | 2026-09-27 | Skalowanie Interfejsu (UI Zoom) & Autodiagnostyka Bazy SQLite | `patch` | 🚀 Opublikowana |
 | **[v2.8.39](#v2.8.39--2026-09-27)** | 2026-09-27 | Centrum Powiadomień, Szablony Resend & Samouczek Kawiarni | `patch` | 🚀 Opublikowana |
@@ -18,6 +19,24 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.42] — 2026-09-27
+**Tytuł:** Integracja Finansowa AOP 2026: Sprzedaż (Sales), Średni Paragon (AGC) & Prognoza % COL  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Zasilenie bazy SQLite aop_plans kompletnym oficjalnym rachunkiem P&L AOP 2026 (Sales, TRX, AGC, COL PLN, COL %)
+- Dwuwymiarowa analiza operacyjno-finansowa w Labor Forecast (TRX & TPLH obok Sprzedaży, AGC i % COL)
+- Dynamiczna kalkulacja estymowanego obrotu MTD (Sales) i prognozowanego udziału robocizny (% COL) dla kawiarni
+
+#### ✨ Nowe Funkcje:
+- Rozszerzenie bazy aop_plans oraz nasion o planowaną sprzedaż, średni paragon AGC (np. 28,01 zł we wrześniu) oraz budżet COL PLN i % COL
+- Wzbogacenie Hero Bara Modułu 1 o metryki finansowe AOP (Sprzedaż, AGC, COL %) oraz predykcję wyniku finansowego w oparciu o ułożony grafik
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Automatyczna migracja i synchronizacja SQLite dla kolumn plan_agc, actual_agc, plan_col_pln, plan_col_percent
+
+---
 
 ### [v2.8.41] — 2026-09-27
 **Tytuł:** Predykcja Zespołowa (Ensemble AI) & Dekompozycja Niedziel Handlowych  

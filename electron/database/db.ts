@@ -515,7 +515,14 @@ export class DatabaseManager {
         plan_sales REAL,
         actual_sales REAL,
         actual_trx INTEGER,
-        actual_tplh REAL
+        actual_tplh REAL,
+        plan_agc REAL,
+        actual_agc REAL,
+        plan_col_pln REAL,
+        plan_col_percent REAL,
+        plan_cos_pln REAL,
+        plan_cos_percent REAL,
+        plan_ops_profit REAL
       );
 
       CREATE TABLE IF NOT EXISTS calendar_weeks (
@@ -742,6 +749,49 @@ export class DatabaseManager {
     try { this.db.run('ALTER TABLE aop_plans ADD COLUMN actual_sales REAL'); } catch (_) {}
     try { this.db.run('ALTER TABLE aop_plans ADD COLUMN actual_trx INTEGER'); } catch (_) {}
     try { this.db.run('ALTER TABLE aop_plans ADD COLUMN actual_tplh REAL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE aop_plans ADD COLUMN plan_agc REAL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE aop_plans ADD COLUMN actual_agc REAL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE aop_plans ADD COLUMN plan_col_pln REAL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE aop_plans ADD COLUMN plan_col_percent REAL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE aop_plans ADD COLUMN plan_cos_pln REAL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE aop_plans ADD COLUMN plan_cos_percent REAL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE aop_plans ADD COLUMN plan_ops_profit REAL'); } catch (_) {}
+
+    // Synchronizacja danych AOP 2026 z nasion jeśli kolumny są puste
+    try {
+      const aopSeedPath = path.join(process.cwd(), 'desktop_app_blueprint', 'data_schemas_and_seeds', 'aop_plan_master_seed.json');
+      if (fs.existsSync(aopSeedPath)) {
+        const seedData = JSON.parse(fs.readFileSync(aopSeedPath, 'utf8'));
+        const updateStmt = this.db.prepare(`
+          UPDATE aop_plans SET
+            plan_sales = COALESCE(?, plan_sales),
+            plan_agc = COALESCE(?, plan_agc),
+            plan_col_pln = COALESCE(?, plan_col_pln),
+            plan_col_percent = COALESCE(?, plan_col_percent),
+            plan_cos_pln = COALESCE(?, plan_cos_pln),
+            plan_cos_percent = COALESCE(?, plan_cos_percent),
+            plan_ops_profit = COALESCE(?, plan_ops_profit)
+          WHERE key = ?
+        `);
+        for (const item of seedData) {
+          if (item.plan_sales || item.plan_agc || item.plan_col_pln) {
+            updateStmt.run([
+              item.plan_sales || null,
+              item.plan_agc || null,
+              item.plan_col_pln || null,
+              item.plan_col_percent || null,
+              item.plan_cos_pln || null,
+              item.plan_cos_percent || null,
+              item.plan_ops_profit || null,
+              item.key
+            ]);
+          }
+        }
+        updateStmt.free();
+      }
+    } catch (err) {
+      console.warn('⚠️ AOP 2026 financial migration notice:', err);
+    }
     try { this.db.run('ALTER TABLE weekly_actual_trx ADD COLUMN scheduled_hours REAL'); } catch (_) {}
     try { this.db.run('ALTER TABLE manager_employees ADD COLUMN hourly_rate REAL DEFAULT 0.0'); } catch (_) {}
     try { this.db.run('ALTER TABLE manager_employees ADD COLUMN monthly_salary REAL DEFAULT 0.0'); } catch (_) {}
@@ -1086,8 +1136,10 @@ export class DatabaseManager {
       const aopData = JSON.parse(fs.readFileSync(aopPath, 'utf8'));
       const stmt = this.db.prepare(`
         INSERT OR REPLACE INTO aop_plans 
-        (key, year, month, month_code, weeks_count, plan_trx, target_tplh, labor_budget, avg_weekly_hours)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (key, year, month, month_code, weeks_count, plan_trx, target_tplh, labor_budget, avg_weekly_hours,
+         plan_sales, actual_sales, actual_trx, actual_tplh, plan_agc, actual_agc, plan_col_pln, plan_col_percent,
+         plan_cos_pln, plan_cos_percent, plan_ops_profit)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const item of aopData) {
@@ -1106,7 +1158,18 @@ export class DatabaseManager {
           planTrx,
           targetTplh,
           laborBudget,
-          avgWeekly
+          avgWeekly,
+          item.plan_sales || null,
+          item.actual_sales || null,
+          item.actual_trx || null,
+          item.actual_tplh || null,
+          item.plan_agc || null,
+          item.actual_agc || null,
+          item.plan_col_pln || null,
+          item.plan_col_percent || null,
+          item.plan_cos_pln || null,
+          item.plan_cos_percent || null,
+          item.plan_ops_profit || null
         ]);
       }
       stmt.free();

@@ -12,6 +12,13 @@ export interface AopPlanRecord {
   actual_sales?: number | null;// Rzeczywista sprzedaż (PLN)
   actual_trx?: number | null;  // Rzeczywiste transakcje
   actual_tplh?: number | null; // Rzeczywisty TPLH
+  plan_agc?: number | null;    // Planowany średni paragon AGC (PLN)
+  actual_agc?: number | null;  // Rzeczywisty średni paragon AGC (PLN)
+  plan_col_pln?: number | null;// Planowany koszt pracy COL (PLN)
+  plan_col_percent?: number | null; // Planowany % COL w sprzedaży
+  plan_cos_pln?: number | null;
+  plan_cos_percent?: number | null;
+  plan_ops_profit?: number | null;
 }
 
 export interface FloorRuleDay {
@@ -208,6 +215,11 @@ export interface MonthlyCalculationSummary {
   };
   coverageGapsMonthCount?: number;
   ensembleForecast?: EnsembleForecastResult;
+
+  // Dwuwymiarowa analiza finansowa P&L (Sales & COL %)
+  forecastSales?: number;
+  forecastColPln?: number;
+  forecastColPercent?: number;
 
   rows: WeeklyCalculatedRow[];
 }
