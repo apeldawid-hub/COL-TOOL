@@ -24,6 +24,25 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.50',
+    date: '2026-09-28',
+    title: 'Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Korekta matematyczna prognozowanego końcowego TPLH (prognoza oparta o iloraz estymowanych transakcji i prognozowanych godzin robocizny zamiast sztywnego budżetu AOP 6.70)',
+      'Prezentacja prognozy faktycznego zużycia godzin na koniec miesiąca (Est. Zużycie h) oraz wypracowanego bezpiecznego TPLH (np. 7.33 przy dotychczasowym tempie)',
+      'Wyraźne rozróżnienie pomiędzy dopuszczalnym limitem AOP (Earned Labor Budget) a realnie prognozowanym wynikiem operacyjnym'
+    ],
+    items: [
+      {
+        type: 'fix',
+        module: 'labor_forecast',
+        description: 'Prognozowany TPLH w stopce podsumowania odzwierciedla realny wynik końcowy przy utrzymaniu bieżącego tempa (np. 7.33) zamiast tautologicznego celu AOP 6.70'
+      }
+    ]
+  },
+  {
     version: '2.8.49',
     date: '2026-09-28',
     title: 'Dwupoziomowe Podsumowanie Miesiąca w Tabeli Tygodniowej (MTD + Estymacja AI)',

@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.50](#v2.8.50--2026-09-28)** | 2026-09-28 | Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca | `patch` | 🚀 Opublikowana |
 | **[v2.8.49](#v2.8.49--2026-09-28)** | 2026-09-28 | Dwupoziomowe Podsumowanie Miesiąca w Tabeli Tygodniowej (MTD + Estymacja AI) | `patch` | 🚀 Opublikowana |
 | **[v2.8.48](#v2.8.48--2026-09-28)** | 2026-09-28 | Korekta Podsumowania Miesiąca w Tabeli Tygodniowej (Rozliczenie vs Plan MTD) | `patch` | 🚀 Opublikowana |
 | **[v2.8.45](#v2.8.45--2026-09-28)** | 2026-09-28 | Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia | `patch` | 🚀 Opublikowana |
@@ -24,6 +25,20 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.50] — 2026-09-28
+**Tytuł:** Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Korekta matematyczna prognozowanego końcowego TPLH (prognoza oparta o iloraz estymowanych transakcji i prognozowanych godzin robocizny zamiast sztywnego budżetu AOP 6.70)
+- Prezentacja prognozy faktycznego zużycia godzin na koniec miesiąca (Est. Zużycie h) oraz wypracowanego bezpiecznego TPLH (np. 7.33 przy dotychczasowym tempie)
+- Wyraźne rozróżnienie pomiędzy dopuszczalnym limitem AOP (Earned Labor Budget) a realnie prognozowanym wynikiem operacyjnym
+
+#### 🐛 Poprawki Błędów:
+- Prognozowany TPLH w stopce podsumowania odzwierciedla realny wynik końcowy przy utrzymaniu bieżącego tempa (np. 7.33) zamiast tautologicznego celu AOP 6.70
+
+---
 
 ### [v2.8.49] — 2026-09-28
 **Tytuł:** Dwupoziomowe Podsumowanie Miesiąca w Tabeli Tygodniowej (MTD + Estymacja AI)  

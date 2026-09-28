@@ -849,6 +849,33 @@ export class CalculationEngine {
         ? aopPlan.actual_trx
         : Math.round(actualTrxMtd + forecastOpenTrx);
 
+    // Prognoza faktycznych godzin na koniec miesiąca (Projected Actual Hours):
+    // Zamknięte tygodnie: rzeczywiste godziny actualHoursMtd
+    // Otwarte tygodnie: ułożony grafik (scheduledHours) LUB estymacja na bazie bieżącego MTD TPLH / Floor Hours
+    let forecastOpenHours = 0;
+    const currentMtdTplh = actualHoursMtd > 0 && actualTrxMtd > 0 ? actualTrxMtd / actualHoursMtd : targetTplh;
+
+    for (const r of openRows) {
+      if (r.scheduledHours !== null && r.scheduledHours > 0) {
+        forecastOpenHours += r.scheduledHours;
+      } else {
+        const estOpenTrx = r.planTrx * trendVelocityMtd;
+        const estHoursFromTplh = currentMtdTplh > 0 ? estOpenTrx / currentMtdTplh : r.planHours;
+        const floorBase = r.calculatedFloorHours || r.week.floor_hours || 32;
+        forecastOpenHours += Math.max(floorBase, Number(estHoursFromTplh.toFixed(1)));
+      }
+    }
+
+    const forecastTotalHours =
+      monthTemporalStatus === 'past'
+        ? (actualHoursMtd > 0 ? actualHoursMtd : (aopPlan.actual_hours || (aopPlan.actual_trx && aopPlan.actual_tplh ? Number((aopPlan.actual_trx / aopPlan.actual_tplh).toFixed(1)) : planHoursTotal)))
+        : Number((actualHoursMtd + forecastOpenHours).toFixed(1));
+
+    const forecastEndingTplh =
+      forecastTotalHours > 0
+        ? Number((forecastTotalTrx / forecastTotalHours).toFixed(2))
+        : targetTplh;
+
     // Krok 3: Wypracowany budżet godzin (Earned Labor Budget)
     const earnedLaborBudget = Number((forecastTotalTrx / targetTplh).toFixed(1));
     const deltaEarnedHours = Number((earnedLaborBudget - planHoursTotal).toFixed(1));
@@ -1180,6 +1207,8 @@ export class CalculationEngine {
       trendVelocityMtd,
       forecastTotalTrx,
       earnedLaborBudget,
+      forecastTotalHours,
+      forecastEndingTplh,
       deltaEarnedHours,
       remainingHoursBudget,
       nextWeekHanw,

@@ -11,6 +11,7 @@ export interface AopPlanRecord {
   plan_sales?: number | null;// Sprzedaż AOP (PLN)
   actual_sales?: number | null;// Rzeczywista sprzedaż (PLN)
   actual_trx?: number | null;  // Rzeczywiste transakcje
+  actual_hours?: number | null;// Rzeczywiste godziny
   actual_tplh?: number | null; // Rzeczywisty TPLH
   plan_agc?: number | null;    // Planowany średni paragon AGC (PLN)
   actual_agc?: number | null;  // Rzeczywisty średni paragon AGC (PLN)
@@ -182,6 +183,8 @@ export interface MonthlyCalculationSummary {
   trendVelocityMtd: number;        // Actual TRX MTD / Plan TRX MTD (np. 1.021 dla +2.1%)
   forecastTotalTrx: number;
   earnedLaborBudget: number;       // forecastTotalTrx / target_tplh
+  forecastTotalHours?: number;     // Prognozowane faktyczne zużycie godzin na koniec miesiąca
+  forecastEndingTplh?: number;     // Prognozowany końcowy wskaźnik TPLH na koniec miesiąca (forecastTotalTrx / forecastTotalHours)
   deltaEarnedHours: number;        // earnedLaborBudget - planHoursTotal
   remainingHoursBudget: number;    // earnedLaborBudget - actualHoursMtd
   nextWeekHanw: number | null;
