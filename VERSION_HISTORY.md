@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.48](#v2.8.48--2026-09-28)** | 2026-09-28 | Korekta Podsumowania Miesiąca w Tabeli Tygodniowej (Rozliczenie vs Plan MTD) | `patch` | 🚀 Opublikowana |
 | **[v2.8.45](#v2.8.45--2026-09-28)** | 2026-09-28 | Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia | `patch` | 🚀 Opublikowana |
 | **[v2.8.44](#v2.8.44--2026-09-28)** | 2026-09-28 | Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes | `patch` | 🚀 Opublikowana |
 | **[v2.8.43](#v2.8.43--2026-09-27)** | 2026-09-27 | Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny | `patch` | 🚀 Opublikowana |
@@ -22,6 +23,19 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.48] — 2026-09-28
+**Tytuł:** Korekta Podsumowania Miesiąca w Tabeli Tygodniowej (Rozliczenie vs Plan MTD)  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Eliminacja fałszywego odchylenia ujemnego w stopce tabeli (porównywanie rzeczywistych tygodni wyłącznie z planem tych samych zaraportowanych tygodni MTD zamiast całego miesiąca)
+- Precyzyjne etykiety rozliczenia: vs Plan MTD dla miesięcy w toku oraz vs AOP dla miesięcy w 100% zamkniętych
+
+#### 🐛 Poprawki Błędów:
+- Odchylenia ACT TRX, ACT RCP (H) i ACT TPLH w stopce tabeli porównują sumę rzeczywistą do planu zaraportowanych tygodni MTD
+
+---
 
 ### [v2.8.45] — 2026-09-28
 **Tytuł:** Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia  

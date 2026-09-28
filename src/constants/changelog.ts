@@ -24,6 +24,24 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.48',
+    date: '2026-09-28',
+    title: 'Korekta Podsumowania Miesiąca w Tabeli Tygodniowej (Rozliczenie vs Plan MTD)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Eliminacja fałszywego odchylenia ujemnego w stopce tabeli (porównywanie rzeczywistych tygodni wyłącznie z planem tych samych zaraportowanych tygodni MTD zamiast całego miesiąca)',
+      'Precyzyjne etykiety rozliczenia: vs Plan MTD dla miesięcy w toku oraz vs AOP dla miesięcy w 100% zamkniętych'
+    ],
+    items: [
+      {
+        type: 'fix',
+        module: 'labor_forecast',
+        description: 'Odchylenia ACT TRX, ACT RCP (H) i ACT TPLH w stopce tabeli porównują sumę rzeczywistą do planu zaraportowanych tygodni MTD'
+      }
+    ]
+  },
+  {
     version: '2.8.45',
     date: '2026-09-28',
     title: 'Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia',

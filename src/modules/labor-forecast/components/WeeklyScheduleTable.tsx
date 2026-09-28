@@ -1175,14 +1175,16 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
               <td className="py-3 px-4 text-right text-[#006241]">
                 {rows.some((r) => r.actualTrx) ? (
                   (() => {
-                    const totalActTrx = rows.reduce((s, r) => s + (r.actualTrx || 0), 0);
-                    const totalPlanTrx = rows.reduce((s, r) => s + r.planTrx, 0);
-                    const diff = totalActTrx - totalPlanTrx;
+                    const reportedTrxRows = rows.filter((r) => (r.actualTrx || 0) > 0);
+                    const totalActTrx = reportedTrxRows.reduce((s, r) => s + (r.actualTrx || 0), 0);
+                    const totalPlanTrxForReported = reportedTrxRows.reduce((s, r) => s + r.planTrx, 0);
+                    const isFullMonth = reportedTrxRows.length === rows.length;
+                    const diff = totalActTrx - totalPlanTrxForReported;
                     return (
                       <div className="flex flex-col items-end">
                         <span className="font-black">{totalActTrx.toLocaleString('pl-PL')}</span>
                         <span className={`text-[9px] font-bold ${diff >= 0 ? 'text-[#006241]' : 'text-rose-700'}`}>
-                          {diff >= 0 ? `+${diff.toLocaleString('pl-PL')}` : diff.toLocaleString('pl-PL')} vs AOP
+                          {diff >= 0 ? `+${diff.toLocaleString('pl-PL')}` : diff.toLocaleString('pl-PL')} {isFullMonth ? 'vs AOP' : 'vs Plan MTD'}
                         </span>
                       </div>
                     );
@@ -1197,14 +1199,16 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
               <td className="py-3 px-4 text-right text-[#0284C7]">
                 {rows.some((r) => r.actualHours) ? (
                   (() => {
-                    const totalActH = rows.reduce((s, r) => s + (r.actualHours || 0), 0);
-                    const totalPlanH = rows.reduce((s, r) => s + r.planHours, 0);
-                    const diff = Number((totalActH - totalPlanH).toFixed(1));
+                    const reportedHoursRows = rows.filter((r) => (r.actualHours || 0) > 0);
+                    const totalActH = reportedHoursRows.reduce((s, r) => s + (r.actualHours || 0), 0);
+                    const totalPlanHForReported = reportedHoursRows.reduce((s, r) => s + r.planHours, 0);
+                    const isFullMonth = reportedHoursRows.length === rows.length;
+                    const diff = Number((totalActH - totalPlanHForReported).toFixed(1));
                     return (
                       <div className="flex flex-col items-end">
                         <span className="font-black">{totalActH.toFixed(1)} h</span>
                         <span className={`text-[9px] font-bold ${diff > 0 ? 'text-amber-700' : diff < 0 ? 'text-emerald-700' : 'text-stone-500'}`}>
-                          {diff >= 0 ? `+${diff}h` : `${diff}h`} vs AOP
+                          {diff >= 0 ? `+${diff}h` : `${diff}h`} {isFullMonth ? 'vs AOP' : 'vs Plan MTD'}
                         </span>
                       </div>
                     );
@@ -1216,14 +1220,16 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
               <td className="py-3 px-4 text-right text-[#6366F1]">
                 {rows.some((r) => r.scheduledHours) ? (
                   (() => {
-                    const totalSchedH = rows.reduce((s, r) => s + (r.scheduledHours || 0), 0);
-                    const totalPlanH = rows.reduce((s, r) => s + r.planHours, 0);
-                    const diff = Number((totalSchedH - totalPlanH).toFixed(1));
+                    const schedRows = rows.filter((r) => (r.scheduledHours || 0) > 0);
+                    const totalSchedH = schedRows.reduce((s, r) => s + (r.scheduledHours || 0), 0);
+                    const totalPlanHForSched = schedRows.reduce((s, r) => s + r.planHours, 0);
+                    const isFullMonth = schedRows.length === rows.length;
+                    const diff = Number((totalSchedH - totalPlanHForSched).toFixed(1));
                     return (
                       <div className="flex flex-col items-end">
                         <span className="font-black">{totalSchedH.toFixed(1)} h</span>
                         <span className={`text-[9px] font-bold ${diff > 0 ? 'text-amber-700' : diff < 0 ? 'text-emerald-700' : 'text-stone-500'}`}>
-                          {diff >= 0 ? `+${diff}h` : `${diff}h`} vs AOP
+                          {diff >= 0 ? `+${diff}h` : `${diff}h`} {isFullMonth ? 'vs AOP' : 'vs Plan zapl.'}
                         </span>
                         {rows.some(r => (r.managerHours || 0) > 0) && (
                           <span className="text-[9px] text-[#006241] font-semibold">
@@ -1250,10 +1256,12 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
               </td>
               <td className="py-3 px-3 text-right text-[#006241]">
                 {(() => {
-                  const totalActTrx = rows.reduce((s, r) => s + (r.actualTrx || 0), 0);
-                  const totalActH = rows.reduce((s, r) => s + (r.actualHours || 0), 0);
-                  const totalPlanTrx = rows.reduce((s, r) => s + r.planTrx, 0);
-                  const totalPlanH = rows.reduce((s, r) => s + r.planHours, 0);
+                  const bothReportedRows = rows.filter((r) => (r.actualTrx || 0) > 0 && (r.actualHours || 0) > 0);
+                  const totalActTrx = bothReportedRows.reduce((s, r) => s + (r.actualTrx || 0), 0);
+                  const totalActH = bothReportedRows.reduce((s, r) => s + (r.actualHours || 0), 0);
+                  const totalPlanTrx = bothReportedRows.reduce((s, r) => s + r.planTrx, 0);
+                  const totalPlanH = bothReportedRows.reduce((s, r) => s + r.planHours, 0);
+                  const isFullMonth = bothReportedRows.length === rows.length;
                   const planTplh = totalPlanH > 0 ? totalPlanTrx / totalPlanH : 0;
                   const actTplh = totalActH > 0 ? totalActTrx / totalActH : 0;
                   const diff = Number((actTplh - planTplh).toFixed(2));
@@ -1261,7 +1269,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                     <div className="flex flex-col items-end">
                       <span className="font-black">{actTplh.toFixed(2)}</span>
                       <span className={`text-[9px] font-bold ${diff >= 0 ? 'text-[#006241]' : 'text-rose-700'}`}>
-                        {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} vs AOP
+                        {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} {isFullMonth ? 'vs AOP' : 'vs Plan MTD'}
                       </span>
                     </div>
                   ) : (
