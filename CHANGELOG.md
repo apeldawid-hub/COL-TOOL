@@ -5,6 +5,22 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.45] — 2026-09-28: Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Zastąpienie sztucznego szacowania wagami bezpośrednim odczytem rzeczywistych dobowych transakcji TRX z raportu dziennego KPI**
+- **Pobieranie prawdziwych dobowych godzin pracy (RCP) z bazy ewidencji MAPAL Fichajes per konkretny dzień**
+- **Wizualne rozróżnienie twardych danych z raportów vs estymacji wagowej z oznaczeniem [est.] dla dni przyszłych**
+
+### ✨ Nowe Funkcje (Features):
+- `[labor_forecast]` Nowe handlery IPC pobierające dobowe rekordy z daily_kpi_actuals_log i labor_actuals_log dla całego miesiąca
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[labor_forecast]` Tabela dobowego rozkładu tygodnia (W1-W5) prezentuje rzeczywiste TRX i rzeczywiste godziny RCP zamiast sztucznych proporcji wagowych
+
+---
+
 ## [v2.8.44] — 2026-09-28: Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes
 *Autor: Dawid Apel & Antigravity Agent*
 

@@ -24,6 +24,30 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.45',
+    date: '2026-09-28',
+    title: 'Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Zastąpienie sztucznego szacowania wagami bezpośrednim odczytem rzeczywistych dobowych transakcji TRX z raportu dziennego KPI',
+      'Pobieranie prawdziwych dobowych godzin pracy (RCP) z bazy ewidencji MAPAL Fichajes per konkretny dzień',
+      'Wizualne rozróżnienie twardych danych z raportów vs estymacji wagowej z oznaczeniem [est.] dla dni przyszłych'
+    ],
+    items: [
+      {
+        type: 'feature',
+        module: 'labor_forecast',
+        description: 'Nowe handlery IPC pobierające dobowe rekordy z daily_kpi_actuals_log i labor_actuals_log dla całego miesiąca'
+      },
+      {
+        type: 'enhancement',
+        module: 'labor_forecast',
+        description: 'Tabela dobowego rozkładu tygodnia (W1-W5) prezentuje rzeczywiste TRX i rzeczywiste godziny RCP zamiast sztucznych proporcji wagowych'
+      }
+    ]
+  },
+  {
     version: '2.8.44',
     date: '2026-09-28',
     title: 'Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes',

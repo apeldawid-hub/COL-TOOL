@@ -531,6 +531,59 @@ function setupIpcHandlers() {
     return trxMap;
   });
 
+  // Pobranie rzeczywistych danych dobowych z raportu dziennego KPI
+  ipcMain.handle('db:get-daily-kpi-actuals-map', (_event, year: number, monthNum: number) => {
+    const db = dbManager.getDb();
+    const monthPattern = `${year}-${String(monthNum).padStart(2, '0')}-%`;
+    let dailyMap: Record<string, { trx: number; salesNet: number; hours: number; tplh: number; agc: number; deliveryTrx: number }> = {};
+    try {
+      const stmt = db.prepare(`
+        SELECT date, trx, sales_net, hours, tplh, agc, delivery_trx
+        FROM daily_kpi_actuals_log
+        WHERE date LIKE ? OR (year = ? AND month = ?)
+      `);
+      stmt.bind([monthPattern, year, monthNum]);
+      while (stmt.step()) {
+        const row = stmt.getAsObject();
+        dailyMap[String(row.date)] = {
+          trx: Number(row.trx),
+          salesNet: Number(row.sales_net),
+          hours: Number(row.hours),
+          tplh: Number(row.tplh),
+          agc: Number(row.agc),
+          deliveryTrx: Number(row.delivery_trx || 0),
+        };
+      }
+      stmt.free();
+    } catch (_) {}
+    return dailyMap;
+  });
+
+  // Pobranie rzeczywistych godzin dobowych z logowań MAPAL Fichajes
+  ipcMain.handle('db:get-daily-actual-hours-map', (_event, year: number, monthNum: number) => {
+    const db = dbManager.getDb();
+    const monthPattern = `${year}-${String(monthNum).padStart(2, '0')}-%`;
+    const dotPattern = `%.${String(monthNum).padStart(2, '0')}.${year}%`;
+    const hoursMap: Record<string, number> = {};
+    try {
+      const stmt = db.prepare(`
+        SELECT date, SUM(computable_time) as total_hours
+        FROM labor_actuals_log
+        WHERE (date LIKE ? OR date LIKE ?)
+          AND computable_time > 0
+          AND (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%' OR unit_code IS NULL OR unit_code = '')
+        GROUP BY date
+      `);
+      stmt.bind([monthPattern, dotPattern]);
+      while (stmt.step()) {
+        const row = stmt.getAsObject();
+        hoursMap[String(row.date)] = Number(Number(row.total_hours).toFixed(1));
+      }
+      stmt.free();
+    } catch (_) {}
+    return hoursMap;
+  });
+
   // Pobranie wprowadzonych zaplanowanych godzin (Scheduled Hours) dla otwartych tygodni
   ipcMain.handle('db:get-weekly-scheduled-hours-map', (_event, year: number, month: string) => {
     dbManager.reloadFromDisk();

@@ -47,6 +47,8 @@ interface LaborForecastViewProps {
   managerShifts: ManagerScheduleShift[];
   shiftDefinitions: ShiftDefinition[];
   managerEmployees: ManagerEmployee[];
+  dailyKpiMap?: Record<string, any>;
+  dailyActualHoursMap?: Record<string, number>;
   onNavigateToManagerSchedule?: () => void;
 }
 
@@ -71,6 +73,8 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
   managerShifts: _managerShifts,
   shiftDefinitions: _shiftDefinitions,
   managerEmployees: _managerEmployees,
+  dailyKpiMap,
+  dailyActualHoursMap,
   onNavigateToManagerSchedule
 }) => {
   const { isTutorialMode, openModelTour } = useTutorial();
@@ -295,6 +299,8 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
             })
           }
           onViewManagerBridge={(row) => setActiveBridgeWeekRow(row)}
+          dailyKpiMap={dailyKpiMap}
+          dailyActualHoursMap={dailyActualHoursMap}
         />
       ) : (
         <div className="py-24 text-center">

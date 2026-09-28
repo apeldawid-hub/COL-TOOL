@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.45](#v2.8.45--2026-09-28)** | 2026-09-28 | Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia | `patch` | 🚀 Opublikowana |
 | **[v2.8.44](#v2.8.44--2026-09-28)** | 2026-09-28 | Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes | `patch` | 🚀 Opublikowana |
 | **[v2.8.43](#v2.8.43--2026-09-27)** | 2026-09-27 | Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny | `patch` | 🚀 Opublikowana |
 | **[v2.8.42](#v2.8.42--2026-09-27)** | 2026-09-27 | Integracja Finansowa AOP 2026: Sprzedaż (Sales), Średni Paragon (AGC) & Prognoza % COL | `patch` | 🚀 Opublikowana |
@@ -21,6 +22,23 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.45] — 2026-09-28
+**Tytuł:** Integracja Rzeczywistych Danych Dobowych (Daily KPI & Fichajes) w Dobowym Rozkładzie Tygodnia  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Zastąpienie sztucznego szacowania wagami bezpośrednim odczytem rzeczywistych dobowych transakcji TRX z raportu dziennego KPI
+- Pobieranie prawdziwych dobowych godzin pracy (RCP) z bazy ewidencji MAPAL Fichajes per konkretny dzień
+- Wizualne rozróżnienie twardych danych z raportów vs estymacji wagowej z oznaczeniem [est.] dla dni przyszłych
+
+#### ✨ Nowe Funkcje:
+- Nowe handlery IPC pobierające dobowe rekordy z daily_kpi_actuals_log i labor_actuals_log dla całego miesiąca
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Tabela dobowego rozkładu tygodnia (W1-W5) prezentuje rzeczywiste TRX i rzeczywiste godziny RCP zamiast sztucznych proporcji wagowych
+
+---
 
 ### [v2.8.44] — 2026-09-28
 **Tytuł:** Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes  

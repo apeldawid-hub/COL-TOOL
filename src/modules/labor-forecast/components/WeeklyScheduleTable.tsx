@@ -28,6 +28,8 @@ interface WeeklyScheduleTableProps {
   onViewLaborDetails: (weekKey: string, weekLabel: string) => void;
   onViewMonthLaborDetails?: () => void;
   onViewManagerBridge?: (row: WeeklyCalculatedRow) => void;
+  dailyKpiMap?: Record<string, any>;
+  dailyActualHoursMap?: Record<string, number>;
 }
 
 export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
@@ -40,6 +42,8 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
   onViewLaborDetails,
   onViewMonthLaborDetails,
   onViewManagerBridge,
+  dailyKpiMap,
+  dailyActualHoursMap,
 }) => {
   const [editingTrxKey, setEditingTrxKey] = useState<string | null>(null);
   const [editTrxValue, setEditTrxValue] = useState<string>('');
@@ -963,10 +967,29 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                     const dayTotalHours = Number(((d.coverageHours || 0) + customBarista).toFixed(1));
                                     const isBelowFloor = dayTotalHours < 32.0;
 
+                                    const MONTHS_ORDER = [
+                                      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+                                      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+                                    ];
+                                    const monthIdx = d.monthName
+                                      ? MONTHS_ORDER.indexOf(d.monthName) + 1
+                                      : r.week.month_name
+                                      ? MONTHS_ORDER.indexOf(r.week.month_name) + 1
+                                      : 9;
+                                    const dateStr = d.date || `${r.week.year}-${String(monthIdx).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+                                    const dotDateStr = `${String(d.day).padStart(2, '0')}.${String(monthIdx).padStart(2, '0')}.${r.week.year}`;
+
+                                    const actualDayKpi = dailyKpiMap ? (dailyKpiMap[dateStr] || dailyKpiMap[dotDateStr]) : null;
+                                    const actualDayHours = dailyActualHoursMap ? (dailyActualHoursMap[dateStr] ?? dailyActualHoursMap[dotDateStr] ?? actualDayKpi?.hours) : actualDayKpi?.hours;
+
+                                    const hasRealDayKpi = actualDayKpi && typeof actualDayKpi.trx === 'number';
                                     const dayWeight = d.dayWeightPercent ? d.dayWeightPercent / 100 : (1 / (displayDays.length || 7));
                                     const dayPlanTrx = Math.round(r.planTrx * dayWeight);
-                                    const dayActTrx = r.actualTrx ? Math.round(r.actualTrx * dayWeight) : null;
-                                    const dayActHours = r.actualHours ? Number((r.actualHours * dayWeight).toFixed(1)) : null;
+                                    const dayActTrx = hasRealDayKpi ? actualDayKpi.trx : (r.actualTrx ? Math.round(r.actualTrx * dayWeight) : null);
+                                    const isEstimatedDayTrx = !hasRealDayKpi && dayActTrx !== null;
+
+                                    const hasRealDayHours = actualDayHours !== undefined && actualDayHours !== null;
+                                    const dayActHours = hasRealDayHours ? Number(actualDayHours.toFixed(1)) : (r.actualHours ? Number((r.actualHours * dayWeight).toFixed(1)) : null);
 
                                     return (
                                       <tr key={`day-flex-${d.date || d.day}`} className="hover:bg-emerald-50/30 transition-colors">
@@ -1002,11 +1025,18 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                         <td className="py-2.5 px-3 text-center">
                                           <div className="flex flex-col items-center">
                                             <div className="flex items-center gap-1">
-                                              <span className="text-stone-700 font-bold">{dayPlanTrx}</span>
+                                              <span className="text-stone-700 font-bold" title="Plan AOP rozłożony wagą">{dayPlanTrx}</span>
                                               {dayActTrx !== null && (
                                                 <>
                                                   <span className="text-stone-400">/</span>
-                                                  <span className="text-[#006241] font-black">{dayActTrx}</span>
+                                                  <span className={`font-black ${hasRealDayKpi ? 'text-[#006241]' : 'text-purple-800'}`} title={hasRealDayKpi ? 'Rzeczywiste TRX z Raportu Dziennego KPI' : 'Estymacja rozłożona wagami'}>
+                                                    {dayActTrx}
+                                                  </span>
+                                                  {isEstimatedDayTrx && (
+                                                    <span className="text-[8px] px-1 py-0.2 bg-purple-100 text-purple-800 rounded font-bold border border-purple-200">
+                                                      est.
+                                                    </span>
+                                                  )}
                                                 </>
                                               )}
                                             </div>
@@ -1021,9 +1051,14 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                                         {/* RCP (Act h) */}
                                         <td className="py-2.5 px-3 text-center font-black">
                                           {dayActHours !== null ? (
-                                            <span className="text-[#0284C7] px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200">
-                                              {dayActHours.toFixed(1)} h
-                                            </span>
+                                            <div className="flex items-center justify-center gap-1">
+                                              <span className="text-[#0284C7] px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200" title={hasRealDayHours ? 'Rzeczywiste godziny z logowań MAPAL Fichajes' : 'Szacunek wagowy'}>
+                                                {dayActHours.toFixed(1)} h
+                                              </span>
+                                              {!hasRealDayHours && (
+                                                <span className="text-[8px] text-stone-400 font-normal">est.</span>
+                                              )}
+                                            </div>
                                           ) : (
                                             <span className="text-stone-300 font-normal">—</span>
                                           )}

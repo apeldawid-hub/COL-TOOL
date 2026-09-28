@@ -165,6 +165,9 @@ export const App: React.FC = () => {
     label: string;
   } | null>(null);
 
+  const [dailyKpiMap, setDailyKpiMap] = useState<Record<string, any>>({});
+  const [dailyActualHoursMap, setDailyActualHoursMap] = useState<Record<string, number>>({});
+
   // Inicjalizacja listy lat
   useEffect(() => {
     const initYears = async () => {
@@ -210,7 +213,7 @@ export const App: React.FC = () => {
     try {
       if ((window as any).api?.getAopPlan) {
         const monthNum = DEFAULT_MONTHS.indexOf(selectedMonth) + 1;
-        const [plan, loadedWeeks, hours, trx, sched, allPlans, loadedNcRules, loadedDayStats, mgrData] = await Promise.all([
+        const [plan, loadedWeeks, hours, trx, sched, allPlans, loadedNcRules, loadedDayStats, mgrData, loadedDailyKpi, loadedDailyHours] = await Promise.all([
           (window as any).api.getAopPlan(selectedYear, selectedMonth),
           (window as any).api.getWeeksForMonth(selectedYear, selectedMonth),
           (window as any).api.getActualHoursForMonth(selectedYear, selectedMonth),
@@ -232,6 +235,12 @@ export const App: React.FC = () => {
           (window as any).api.getManagerScheduleData
             ? (window as any).api.getManagerScheduleData(selectedYear, monthNum)
             : Promise.resolve(null),
+          (window as any).api.getDailyKpiActualsMap
+            ? (window as any).api.getDailyKpiActualsMap(selectedYear, monthNum)
+            : Promise.resolve({}),
+          (window as any).api.getDailyActualHoursMap
+            ? (window as any).api.getDailyActualHoursMap(selectedYear, monthNum)
+            : Promise.resolve({}),
         ]);
 
         if (plan) {
@@ -257,6 +266,8 @@ export const App: React.FC = () => {
         if (allPlans) setHistoricalPlans(allPlans);
         if (loadedNcRules && loadedNcRules.length > 0) setNcRules(loadedNcRules);
         if (loadedDayStats) setDayOfWeekStats(loadedDayStats);
+        if (loadedDailyKpi) setDailyKpiMap(loadedDailyKpi);
+        if (loadedDailyHours) setDailyActualHoursMap(loadedDailyHours);
         if (mgrData) {
           const allShifts: ManagerScheduleShift[] = [
             ...(mgrData.boundaryShifts?.prevMonthShifts || []),
@@ -604,6 +615,8 @@ export const App: React.FC = () => {
                 managerShifts={managerShifts}
                 shiftDefinitions={shiftDefinitions}
                 managerEmployees={managerEmployees}
+                dailyKpiMap={dailyKpiMap}
+                dailyActualHoursMap={dailyActualHoursMap}
               />
             </ErrorBoundary>
           )}

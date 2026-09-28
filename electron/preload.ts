@@ -7,6 +7,8 @@ export interface IElectronAPI {
   getWeeksForMonth: (year: number, month: string) => Promise<any[]>;
   getActualHoursForMonth: (year: number, month: string) => Promise<Record<string, number>>;
   getWeeklyActualTrxMap: (year: number, month: string) => Promise<Record<string, number | null>>;
+  getDailyKpiActualsMap?: (year: number, monthNum: number) => Promise<Record<string, { trx: number; salesNet: number; hours: number; tplh: number; agc: number; deliveryTrx: number }>>;
+  getDailyActualHoursMap?: (year: number, monthNum: number) => Promise<Record<string, number>>;
   saveWeeklyTrx: (weekKey: string, trx: number | null) => Promise<boolean>;
   getWeeklyScheduledHoursMap: (year: number, month: string) => Promise<Record<string, number>>;
   saveWeeklyScheduledHours: (weekKey: string, hours: number | null) => Promise<boolean>;
@@ -126,6 +128,8 @@ const api: IElectronAPI = {
   getWeeksForMonth: (year, month) => ipcRenderer.invoke('db:get-weeks-for-month', year, month),
   getActualHoursForMonth: (year, month) => ipcRenderer.invoke('db:get-actual-hours-for-month', year, month),
   getWeeklyActualTrxMap: (year, month) => ipcRenderer.invoke('db:get-weekly-actual-trx-map', year, month),
+  getDailyKpiActualsMap: (year, monthNum) => ipcRenderer.invoke('db:get-daily-kpi-actuals-map', year, monthNum),
+  getDailyActualHoursMap: (year, monthNum) => ipcRenderer.invoke('db:get-daily-actual-hours-map', year, monthNum),
   saveWeeklyTrx: (weekKey, trx) => ipcRenderer.invoke('db:save-weekly-trx', weekKey, trx),
   getWeeklyScheduledHoursMap: (year, month) => ipcRenderer.invoke('db:get-weekly-scheduled-hours-map', year, month),
   saveWeeklyScheduledHours: (weekKey, hours) => ipcRenderer.invoke('db:save-weekly-scheduled-hours', weekKey, hours),
