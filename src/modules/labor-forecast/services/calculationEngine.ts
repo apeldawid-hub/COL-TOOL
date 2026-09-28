@@ -750,9 +750,11 @@ export class CalculationEngine {
       // 1. Cały miesiąc jest już przeszły (monthTemporalStatus === 'past')
       // 2. LUB tydzień minął już w czasie (temporalStatus === 'past') i posiada zarejestrowane godziny RCP lub transakcje
       // 3. LUB trwa poniedziałek kończący tydzień bieżący z aktywną estymacją Flash Monday Forecast
+      const hasActualData = (actHours !== null && actHours > 0) || (actTrx !== null && actTrx > 0);
       const isClosed =
         monthTemporalStatus === 'past' ||
-        (temporalStatus === 'past' && ((actHours !== null && actHours > 0) || (actTrx !== null && actTrx > 0))) ||
+        hasActualData ||
+        temporalStatus === 'past' ||
         isMondayProjected;
 
       const actTplh =
@@ -838,7 +840,9 @@ export class CalculationEngine {
 
     // Prognoza TRX dla otwartych tygodni i łączna prognoza miesiąca
     let forecastOpenTrx = 0;
-    const openRows = baseRows.filter((r) => !r.isClosed);
+    const openRows = baseRows.filter(
+      (r) => !r.isClosed && (r.actualHours === null || r.actualHours === 0) && (r.week.days_count || 0) > 0
+    );
 
     for (const r of openRows) {
       forecastOpenTrx += r.planTrx * trendVelocityMtd;
@@ -852,18 +856,17 @@ export class CalculationEngine {
     // Prognoza faktycznych godzin na koniec miesiąca (Projected Actual Hours):
     // Zamknięte tygodnie: rzeczywiste godziny actualHoursMtd
     // Otwarte tygodnie: ułożony grafik (scheduledHours) LUB estymacja na bazie bieżącego MTD TPLH / Floor Hours
+    // Prognoza faktycznych godzin na koniec miesiąca (Projected Actual Hours oparta na Trendzie MTD & AI):
+    // Zamknięte tygodnie: rzeczywiste godziny actualHoursMtd
+    // Otwarte tygodnie: estymacja godzin przy utrzymaniu dotychczasowego tempa efektywności TPLH (currentMtdTplh)
     let forecastOpenHours = 0;
     const currentMtdTplh = actualHoursMtd > 0 && actualTrxMtd > 0 ? actualTrxMtd / actualHoursMtd : targetTplh;
 
     for (const r of openRows) {
-      if (r.scheduledHours !== null && r.scheduledHours > 0) {
-        forecastOpenHours += r.scheduledHours;
-      } else {
-        const estOpenTrx = r.planTrx * trendVelocityMtd;
-        const estHoursFromTplh = currentMtdTplh > 0 ? estOpenTrx / currentMtdTplh : r.planHours;
-        const floorBase = r.calculatedFloorHours || r.week.floor_hours || 32;
-        forecastOpenHours += Math.max(floorBase, Number(estHoursFromTplh.toFixed(1)));
-      }
+      const estOpenTrx = r.planTrx * trendVelocityMtd;
+      const estHoursFromTplh = currentMtdTplh > 0 ? estOpenTrx / currentMtdTplh : r.planHours;
+      const floorBase = r.calculatedFloorHours || r.week.floor_hours || (r.week.days_count ? r.week.days_count * 32 : 32);
+      forecastOpenHours += Math.max(floorBase, Number(estHoursFromTplh.toFixed(1)));
     }
 
     const forecastTotalHours =

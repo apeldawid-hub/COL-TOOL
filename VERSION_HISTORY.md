@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.51](#v2.8.51--2026-09-28)** | 2026-09-28 | Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33) | `patch` | 🚀 Opublikowana |
 | **[v2.8.50](#v2.8.50--2026-09-28)** | 2026-09-28 | Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca | `patch` | 🚀 Opublikowana |
 | **[v2.8.49](#v2.8.49--2026-09-28)** | 2026-09-28 | Dwupoziomowe Podsumowanie Miesiąca w Tabeli Tygodniowej (MTD + Estymacja AI) | `patch` | 🚀 Opublikowana |
 | **[v2.8.48](#v2.8.48--2026-09-28)** | 2026-09-28 | Korekta Podsumowania Miesiąca w Tabeli Tygodniowej (Rozliczenie vs Plan MTD) | `patch` | 🚀 Opublikowana |
@@ -25,6 +26,20 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.51] — 2026-09-28
+**Tytuł:** Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33)  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Eliminacja podwójnego doliczania godzin grafiku do otwartych tygodni (prognoza oparta w 100% na rzeczywistej wydajności MTD TPLH 7.33)
+- Precyzyjna estymacja faktycznego zużycia godzin na koniec miesiąca (~1456h zamiast zawyżonych 1699h) oraz końcowego wskaźnika TPLH (7.33 zamiast zaniżonych 6.28)
+- Ścisła klasyfikacja zamkniętych tygodni posiadających dane z raportów (wykluczenie ich z puli otwartych tygodni estymowanych)
+
+#### 🐛 Poprawki Błędów:
+- Prognoza robocizny dla pozostałych dni miesiąca bazuje na wypracowanej wydajności MTD TPLH (np. 7.33), zachowując spójność wyniku końcowego
+
+---
 
 ### [v2.8.50] — 2026-09-28
 **Tytuł:** Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca  

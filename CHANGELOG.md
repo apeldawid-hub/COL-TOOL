@@ -5,6 +5,19 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.51] — 2026-09-28: Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33)
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Eliminacja podwójnego doliczania godzin grafiku do otwartych tygodni (prognoza oparta w 100% na rzeczywistej wydajności MTD TPLH 7.33)**
+- **Precyzyjna estymacja faktycznego zużycia godzin na koniec miesiąca (~1456h zamiast zawyżonych 1699h) oraz końcowego wskaźnika TPLH (7.33 zamiast zaniżonych 6.28)**
+- **Ścisła klasyfikacja zamkniętych tygodni posiadających dane z raportów (wykluczenie ich z puli otwartych tygodni estymowanych)**
+
+### 🐛 Poprawki Błędów (Fixes):
+- Prognoza robocizny dla pozostałych dni miesiąca bazuje na wypracowanej wydajności MTD TPLH (np. 7.33), zachowując spójność wyniku końcowego
+
+---
+
 ## [v2.8.50] — 2026-09-28: Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca
 *Autor: Dawid Apel & Antigravity Agent*
 
