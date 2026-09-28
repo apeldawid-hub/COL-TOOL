@@ -5,6 +5,19 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.49] — 2026-09-28: Dwupoziomowe Podsumowanie Miesiąca w Tabeli Tygodniowej (MTD + Estymacja AI)
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Prezentacja obu kluczowych perspektyw w stopce tabeli tygodniowej: twarde dane zrealizowane MTD oraz estymacja na koniec miesiąca z uwzględnieniem trendu AI (Ensemble Forecast)**
+- **Estymacja pełnego miesiąca dla Transakcji (Est. MSC TRX vs AOP), Budżetu Robocizny (Est. Budżet Earned Labor vs AOP) oraz docelowego TPLH (Est. TPLH vs AOP)**
+- **Wyraźne oznaczenia wizualne ze statusem MTD (W1–W4) i fioletowymi plakietkami predykcji AI**
+
+### ✨ Nowe Funkcje (Features):
+- `[labor_forecast]` Stopka Podsumowania Miesiąca prezentuje równolegle zrealizowane MTD oraz prognozę całego miesiąca opartą na trendzie i AI
+
+---
+
 ## [v2.8.48] — 2026-09-28: Korekta Podsumowania Miesiąca w Tabeli Tygodniowej (Rozliczenie vs Plan MTD)
 *Autor: Dawid Apel & Antigravity Agent*
 

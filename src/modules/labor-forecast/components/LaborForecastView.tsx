@@ -286,6 +286,7 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
       {summary ? (
         <WeeklyScheduleTable
           rows={summary.rows}
+          summary={summary}
           crossMonthBridge={summary.crossMonthBridge}
           onNavigateMonth={(m, y) => onPeriodChange(y, m)}
           onSaveTrx={onSaveTrx}

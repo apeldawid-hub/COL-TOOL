@@ -13,13 +13,14 @@ import {
   Sparkles,
   CalendarRange
 } from 'lucide-react';
-import { WeeklyCalculatedRow, CrossMonthBridge } from '../../../types';
+import { WeeklyCalculatedRow, CrossMonthBridge, MonthlyCalculationSummary } from '../../../types';
 import { MondayProjectionModal } from './MondayProjectionModal';
 import { useSystemClock } from '../../../hooks/useSystemClock';
 import { CalculationEngine } from '../services/calculationEngine';
 
 interface WeeklyScheduleTableProps {
   rows: WeeklyCalculatedRow[];
+  summary?: MonthlyCalculationSummary;
   crossMonthBridge?: CrossMonthBridge | null;
   onNavigateMonth?: (monthName: string, year: number) => void;
   onSaveTrx: (weekKey: string, trx: number | null) => Promise<void>;
@@ -34,6 +35,7 @@ interface WeeklyScheduleTableProps {
 
 export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
   rows,
+  summary,
   crossMonthBridge,
   onNavigateMonth,
   onSaveTrx,
@@ -1166,11 +1168,22 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
           </tbody>
           <tfoot>
             <tr className="bg-[#F8FAF9] border-t-2 border-[#D0DCD6] font-black text-xs text-[#1E3932]">
-              <td className="py-3 px-4 uppercase text-[#006241]" colSpan={3}>
-                Podsumowanie Miesiąca
+              <td className="py-3 px-4 text-[#006241]" colSpan={3}>
+                <div className="flex flex-col">
+                  <span className="uppercase font-black">Podsumowanie Miesiąca</span>
+                  {summary && rows.some(r => (r.actualTrx || 0) > 0) && rows.filter(r => (r.actualTrx || 0) > 0).length < rows.length && (
+                    <span className="text-[10px] font-semibold text-stone-500 flex items-center gap-1 mt-0.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></span>
+                      MTD (W1–W{rows.filter(r => (r.actualTrx || 0) > 0).length}) + Estymacja AI
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="py-3 px-4 text-right">
-                {rows.reduce((s, r) => s + r.planTrx, 0).toLocaleString('pl-PL')}
+                <div className="flex flex-col items-end">
+                  <span className="font-black">{rows.reduce((s, r) => s + r.planTrx, 0).toLocaleString('pl-PL')}</span>
+                  <span className="text-[9px] text-stone-400 font-normal">Plan AOP</span>
+                </div>
               </td>
               <td className="py-3 px-4 text-right text-[#006241]">
                 {rows.some((r) => r.actualTrx) ? (
@@ -1186,6 +1199,23 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                         <span className={`text-[9px] font-bold ${diff >= 0 ? 'text-[#006241]' : 'text-rose-700'}`}>
                           {diff >= 0 ? `+${diff.toLocaleString('pl-PL')}` : diff.toLocaleString('pl-PL')} {isFullMonth ? 'vs AOP' : 'vs Plan MTD'}
                         </span>
+                        {!isFullMonth && summary?.forecastTotalTrx && (
+                          <div className="mt-1 pt-1 border-t border-purple-200/80 flex flex-col items-end text-[9.5px] font-semibold text-purple-900 bg-purple-50/90 px-1.5 py-0.5 rounded border border-purple-200 shadow-2xs" title="Prognoza całego miesiąca na podstawie trendu i AI (Ensemble Forecast)">
+                            <div className="flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-purple-600 shrink-0" />
+                              <span>Est. MSC: <strong>{summary.forecastTotalTrx.toLocaleString('pl-PL')}</strong></span>
+                            </div>
+                            {(() => {
+                              const planTotal = summary.monthPlan.plan_trx || rows.reduce((s, r) => s + r.planTrx, 0);
+                              const estDiff = summary.forecastTotalTrx - planTotal;
+                              return (
+                                <span className={`text-[8.5px] font-bold ${estDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                  {estDiff >= 0 ? `+${estDiff.toLocaleString('pl-PL')}` : estDiff.toLocaleString('pl-PL')} vs AOP
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     );
                   })()
@@ -1194,7 +1224,10 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                 )}
               </td>
               <td className="py-3 px-4 text-right">
-                {rows.reduce((s, r) => s + r.planHours, 0).toFixed(1)} h
+                <div className="flex flex-col items-end">
+                  <span className="font-black">{rows.reduce((s, r) => s + r.planHours, 0).toFixed(1)} h</span>
+                  <span className="text-[9px] text-stone-400 font-normal">Budżet AOP</span>
+                </div>
               </td>
               <td className="py-3 px-4 text-right text-[#0284C7]">
                 {rows.some((r) => r.actualHours) ? (
@@ -1210,6 +1243,24 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                         <span className={`text-[9px] font-bold ${diff > 0 ? 'text-amber-700' : diff < 0 ? 'text-emerald-700' : 'text-stone-500'}`}>
                           {diff >= 0 ? `+${diff}h` : `${diff}h`} {isFullMonth ? 'vs AOP' : 'vs Plan MTD'}
                         </span>
+                        {!isFullMonth && summary?.earnedLaborBudget && (
+                          <div className="mt-1 pt-1 border-t border-purple-200/80 flex flex-col items-end text-[9.5px] font-semibold text-purple-900 bg-purple-50/90 px-1.5 py-0.5 rounded border border-purple-200 shadow-2xs" title="Wypracowany budżet robocizny (Earned Labor) na cały miesiąc na podstawie trendu i AI">
+                            <div className="flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-purple-600 shrink-0" />
+                              <span>Est. Budżet: <strong>{summary.earnedLaborBudget.toFixed(1)} h</strong></span>
+                            </div>
+                            {(() => {
+                              const estDiff = summary.deltaEarnedHours !== undefined 
+                                ? summary.deltaEarnedHours 
+                                : Number((summary.earnedLaborBudget - summary.planHoursTotal).toFixed(1));
+                              return (
+                                <span className={`text-[8.5px] font-bold ${estDiff > 0 ? 'text-emerald-700' : estDiff < 0 ? 'text-rose-700' : 'text-stone-500'}`}>
+                                  {estDiff >= 0 ? `+${estDiff}h` : `${estDiff}h`} vs AOP
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     );
                   })()
@@ -1271,6 +1322,24 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                       <span className={`text-[9px] font-bold ${diff >= 0 ? 'text-[#006241]' : 'text-rose-700'}`}>
                         {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} {isFullMonth ? 'vs AOP' : 'vs Plan MTD'}
                       </span>
+                      {!isFullMonth && summary?.forecastTotalTrx && summary?.earnedLaborBudget && (
+                        <div className="mt-1 pt-1 border-t border-purple-200/80 flex flex-col items-end text-[9.5px] font-semibold text-purple-900 bg-purple-50/90 px-1.5 py-0.5 rounded border border-purple-200 shadow-2xs" title="Prognozowany docelowy wskaźnik TPLH na cały miesiąc">
+                          <div className="flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5 text-purple-600 shrink-0" />
+                            <span>Est. TPLH: <strong>{(summary.forecastTotalTrx / summary.earnedLaborBudget).toFixed(2)}</strong></span>
+                          </div>
+                          {(() => {
+                            const estTplh = Number((summary.forecastTotalTrx / summary.earnedLaborBudget).toFixed(2));
+                            const planTplhVal = summary.monthPlan.target_tplh;
+                            const estTplhDiff = Number((estTplh - planTplhVal).toFixed(2));
+                            return (
+                              <span className={`text-[8.5px] font-bold ${estTplhDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                {estTplhDiff >= 0 ? `+${estTplhDiff.toFixed(2)}` : estTplhDiff.toFixed(2)} vs AOP
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     '—'

@@ -24,6 +24,25 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.49',
+    date: '2026-09-28',
+    title: 'Dwupoziomowe Podsumowanie Miesiąca w Tabeli Tygodniowej (MTD + Estymacja AI)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Prezentacja obu kluczowych perspektyw w stopce tabeli tygodniowej: twarde dane zrealizowane MTD oraz estymacja na koniec miesiąca z uwzględnieniem trendu AI (Ensemble Forecast)',
+      'Estymacja pełnego miesiąca dla Transakcji (Est. MSC TRX vs AOP), Budżetu Robocizny (Est. Budżet Earned Labor vs AOP) oraz docelowego TPLH (Est. TPLH vs AOP)',
+      'Wyraźne oznaczenia wizualne ze statusem MTD (W1–W4) i fioletowymi plakietkami predykcji AI'
+    ],
+    items: [
+      {
+        type: 'feature',
+        module: 'labor_forecast',
+        description: 'Stopka Podsumowania Miesiąca prezentuje równolegle zrealizowane MTD oraz prognozę całego miesiąca opartą na trendzie i AI'
+      }
+    ]
+  },
+  {
     version: '2.8.48',
     date: '2026-09-28',
     title: 'Korekta Podsumowania Miesiąca w Tabeli Tygodniowej (Rozliczenie vs Plan MTD)',
