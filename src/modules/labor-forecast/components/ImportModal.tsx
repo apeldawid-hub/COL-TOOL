@@ -15,7 +15,16 @@ import {
   Trash2,
   Search,
   Check,
-  Edit3
+  Edit3,
+  Filter,
+  Calendar,
+  User,
+  Users,
+  MapPin,
+  RotateCcw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 interface ImportModalProps {
@@ -120,9 +129,17 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [aopYear, setAopYear] = useState<number>(2026);
   const [aopMonths, setAopMonths] = useState<AopMonthRow[]>([]);
 
-  // MAPAL Preview State
+  // MAPAL Preview State & Filters
   const [mapalRecords, setMapalRecords] = useState<MapalRecordRow[]>([]);
   const [searchEmployee, setSearchEmployee] = useState<string>('');
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('ALL');
+  const [filterRole, setFilterRole] = useState<'ALL' | 'MGR_ONLY' | 'BARISTA_ONLY'>('ALL');
+  const [filterSingleDate, setFilterSingleDate] = useState<string>('ALL');
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+  const [filterDateTo, setFilterDateTo] = useState<string>('');
+  const [filterUnit, setFilterUnit] = useState<'ALL' | 'JANKI_ONLY' | 'SUPPORT_ONLY'>('ALL');
+  const [sortField, setSortField] = useState<'date' | 'employee' | 'hours'>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Daily KPI Preview State
   const [dailyKpiData, setDailyKpiData] = useState<DailyKpiDataState | null>(null);
@@ -147,12 +164,144 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     return { totalSales, totalTrx, totalCol, totalBudgetHours, avgTplh, avgColPct };
   }, [aopMonths]);
 
-  // Filtrowane rekordy MAPAL
+  // Lista unikalnych pracowników do dropdownu z łącznymi godzinami
+  const uniqueEmployeesList = useMemo(() => {
+    const empMap = new Map<string, { count: number; hours: number; isManager: boolean }>();
+    mapalRecords.forEach((r) => {
+      const existing = empMap.get(r.employee) || { count: 0, hours: 0, isManager: !!r.is_manager };
+      existing.count += 1;
+      existing.hours += r.computable_time || 0;
+      if (r.is_manager) existing.isManager = true;
+      empMap.set(r.employee, existing);
+    });
+
+    return Array.from(empMap.entries())
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        hours: Number(data.hours.toFixed(2)),
+        isManager: data.isManager,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  }, [mapalRecords]);
+
+  // Lista unikalnych dat do dropdownu
+  const uniqueDatesList = useMemo(() => {
+    const dateMap = new Map<string, { dayOfWeek: string; count: number; hours: number }>();
+    mapalRecords.forEach((r) => {
+      const existing = dateMap.get(r.date) || { dayOfWeek: r.day_of_week, count: 0, hours: 0 };
+      existing.count += 1;
+      existing.hours += r.computable_time || 0;
+      dateMap.set(r.date, existing);
+    });
+
+    return Array.from(dateMap.entries())
+      .map(([date, data]) => ({
+        date,
+        dayOfWeek: data.dayOfWeek,
+        count: data.count,
+        hours: Number(data.hours.toFixed(2)),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [mapalRecords]);
+
+  // Liczba aktywnych filtrów
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (searchEmployee.trim()) count++;
+    if (selectedEmployee !== 'ALL') count++;
+    if (filterRole !== 'ALL') count++;
+    if (filterSingleDate !== 'ALL') count++;
+    if (filterDateFrom) count++;
+    if (filterDateTo) count++;
+    if (filterUnit !== 'ALL') count++;
+    return count;
+  }, [searchEmployee, selectedEmployee, filterRole, filterSingleDate, filterDateFrom, filterDateTo, filterUnit]);
+
+  // Filtrowane i posortowane rekordy MAPAL
   const filteredMapalRecords = useMemo(() => {
-    if (!searchEmployee.trim()) return mapalRecords;
     const q = searchEmployee.toLowerCase().trim();
-    return mapalRecords.filter((r) => r.employee.toLowerCase().includes(q));
-  }, [mapalRecords, searchEmployee]);
+
+    return mapalRecords
+      .filter((r) => {
+        // 1. Wyszukiwanie tekstowe po nazwisku/imieniu
+        if (q && !r.employee.toLowerCase().includes(q)) {
+          return false;
+        }
+
+        // 2. Wybór konkretnego pracownika
+        if (selectedEmployee !== 'ALL' && r.employee !== selectedEmployee) {
+          return false;
+        }
+
+        // 3. Rola (Menedżer vs Barista)
+        if (filterRole === 'MGR_ONLY' && !r.is_manager) {
+          return false;
+        }
+        if (filterRole === 'BARISTA_ONLY' && r.is_manager) {
+          return false;
+        }
+
+        // 4. Konkretny dzień
+        if (filterSingleDate !== 'ALL' && r.date !== filterSingleDate) {
+          return false;
+        }
+
+        // 5. Zakres dat (od - do)
+        if (filterDateFrom && r.date < filterDateFrom) {
+          return false;
+        }
+        if (filterDateTo && r.date > filterDateTo) {
+          return false;
+        }
+
+        // 6. Lokal (Janki vs Wsparcie w innym lokalu)
+        const isJanki = r.unit_code === '18120' || (r.unit_name && r.unit_name.includes('Janki'));
+        if (filterUnit === 'JANKI_ONLY' && !isJanki) {
+          return false;
+        }
+        if (filterUnit === 'SUPPORT_ONLY' && isJanki) {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortField === 'date') {
+          const comp = a.date.localeCompare(b.date);
+          return sortDirection === 'asc' ? comp : -comp;
+        }
+        if (sortField === 'employee') {
+          const comp = a.employee.localeCompare(b.employee, 'pl');
+          return sortDirection === 'asc' ? comp : -comp;
+        }
+        if (sortField === 'hours') {
+          const diff = (a.computable_time || 0) - (b.computable_time || 0);
+          return sortDirection === 'asc' ? diff : -diff;
+        }
+        return 0;
+      });
+  }, [
+    mapalRecords,
+    searchEmployee,
+    selectedEmployee,
+    filterRole,
+    filterSingleDate,
+    filterDateFrom,
+    filterDateTo,
+    filterUnit,
+    sortField,
+    sortDirection,
+  ]);
+
+  // Podsumowanie przefiltrowanych rekordów
+  const filteredMapalSummary = useMemo(() => {
+    const totalHours = Number(
+      filteredMapalRecords.reduce((acc, r) => acc + (r.computable_time || 0), 0).toFixed(2)
+    );
+    const uniqueEmployees = new Set(filteredMapalRecords.map((r) => r.employee)).size;
+    return { totalHours, count: filteredMapalRecords.length, uniqueEmployees };
+  }, [filteredMapalRecords]);
 
   const mapalSummary = useMemo(() => {
     const totalHours = Number(mapalRecords.reduce((acc, r) => acc + (r.computable_time || 0), 0).toFixed(2));
@@ -224,6 +373,14 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     setMapalRecords([]);
     setDailyKpiData(null);
     setSearchEmployee('');
+    setSelectedEmployee('ALL');
+    setFilterRole('ALL');
+    setFilterSingleDate('ALL');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    setFilterUnit('ALL');
+    setSortField('date');
+    setSortDirection('asc');
     setValidationWarnings([]);
     setValidationErrors([]);
     setErrorMessage(null);
@@ -267,7 +424,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         setValidationErrors(res.validation?.errors || []);
         setStage('PREVIEW_AOP');
       } else if (res.reportType === 'MAPAL_FICHAJES' && res.mapalData) {
-        setMapalRecords(res.mapalData.records || []);
+        const recordsWithIds = (res.mapalData.records || []).map((r: any, idx: number) => ({
+          ...r,
+          id: r.id || `mapal_${idx}_${r.date}_${r.employee}_${Math.random().toString(36).substring(2, 7)}`,
+        }));
+        setMapalRecords(recordsWithIds);
         setValidationWarnings(res.validation?.warnings || []);
         setValidationErrors(res.validation?.errors || []);
         setStage('PREVIEW_MAPAL');
@@ -310,7 +471,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           setValidationErrors(res.validation?.errors || []);
           setStage('PREVIEW_AOP');
         } else if (res.reportType === 'MAPAL_FICHAJES' && res.mapalData) {
-          setMapalRecords(res.mapalData.records || []);
+          const recordsWithIds = (res.mapalData.records || []).map((r: any, idx: number) => ({
+            ...r,
+            id: r.id || `mapal_${idx}_${r.date}_${r.employee}_${Math.random().toString(36).substring(2, 7)}`,
+          }));
+          setMapalRecords(recordsWithIds);
           setValidationWarnings(res.validation?.warnings || []);
           setValidationErrors(res.validation?.errors || []);
           setStage('PREVIEW_MAPAL');
@@ -381,20 +546,18 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     });
   };
 
-  // Edycja godzin MAPAL
-  const handleMapalHoursChange = (index: number, hours: number) => {
-    setMapalRecords((prev) => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        computable_time: Number(hours.toFixed(2)),
-      };
-      return updated;
-    });
+  // Edycja godzin MAPAL po unikalnym ID
+  const handleMapalHoursChange = (recordId: string, hours: number) => {
+    setMapalRecords((prev) =>
+      prev.map((r) =>
+        (r.id === recordId) ? { ...r, computable_time: Number(hours.toFixed(2)) } : r
+      )
+    );
   };
 
-  const handleRemoveMapalRecord = (index: number) => {
-    setMapalRecords((prev) => prev.filter((_, idx) => idx !== index));
+  // Usunięcie wpisu MAPAL po unikalnym ID
+  const handleRemoveMapalRecord = (recordId: string) => {
+    setMapalRecords((prev) => prev.filter((r) => r.id !== recordId));
   };
 
   // Edycja komórki Raportu Dziennego KPI
@@ -833,6 +996,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   <div className="text-sm font-black text-stone-900 mt-0.5">
                     {mapalSummary.count} wpisów
                   </div>
+                  {activeFiltersCount > 0 && (
+                    <div className="text-[10px] font-bold text-[#006241] mt-0.5">
+                      Widok: {filteredMapalSummary.count} wpisów
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200 text-center">
@@ -840,6 +1008,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   <div className="text-sm font-black text-emerald-900 mt-0.5">
                     {mapalSummary.totalHours} h
                   </div>
+                  {activeFiltersCount > 0 && (
+                    <div className="text-[10px] font-bold text-[#006241] mt-0.5">
+                      Widok: {filteredMapalSummary.totalHours} h
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 rounded-2xl bg-blue-50/60 border border-blue-200 text-center">
@@ -847,6 +1020,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   <div className="text-sm font-black text-blue-900 mt-0.5">
                     {mapalSummary.uniqueEmployees} osób
                   </div>
+                  {activeFiltersCount > 0 && (
+                    <div className="text-[10px] font-bold text-blue-800 mt-0.5">
+                      Widok: {filteredMapalSummary.uniqueEmployees} osób
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-200 text-center">
@@ -854,45 +1032,292 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   <div className="text-xs font-bold text-purple-900 mt-1">
                     {mapalSummary.minDate} – {mapalSummary.maxDate}
                   </div>
+                  {activeFiltersCount > 0 && (filterDateFrom || filterDateTo || filterSingleDate !== 'ALL') && (
+                    <div className="text-[10px] font-bold text-purple-800 mt-0.5">
+                      {filterSingleDate !== 'ALL' ? filterSingleDate : `${filterDateFrom || 'od startu'} – ${filterDateTo || 'do końca'}`}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Pasek Wyszukiwania */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-xs">
-                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Szukaj pracownika..."
-                    value={searchEmployee}
-                    onChange={(e) => setSearchEmployee(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 placeholder-stone-400 focus:border-[#006241] outline-hidden"
-                  />
+              {/* Panel Zaawansowanego Filtrowania */}
+              <div className="p-3.5 rounded-2xl bg-[#F7F9F8] border border-[#D0DCD6] space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between gap-2 border-b border-[#E2E8E5] pb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#1E3932]">
+                    <Filter className="w-3.5 h-3.5 text-[#006241]" />
+                    <span>Filtrowanie i wyszukiwanie logowań</span>
+                  </div>
+
+                  {activeFiltersCount > 0 && (
+                    <button
+                      onClick={() => {
+                        setSearchEmployee('');
+                        setSelectedEmployee('ALL');
+                        setFilterRole('ALL');
+                        setFilterSingleDate('ALL');
+                        setFilterDateFrom('');
+                        setFilterDateTo('');
+                        setFilterUnit('ALL');
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Wyczyść filtry ({activeFiltersCount})</span>
+                    </button>
+                  )}
                 </div>
-                <div className="text-xs text-stone-500 font-medium">
-                  Wyświetlono: <strong>{filteredMapalRecords.length}</strong> z {mapalRecords.length}
+
+                {/* Rząd 1: Filtry po osobach i rolach */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
+                  {/* Wyszukiwarka tekstowa */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Szukaj pracownika..."
+                      value={searchEmployee}
+                      onChange={(e) => setSearchEmployee(e.target.value)}
+                      className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 placeholder-stone-400 bg-white focus:border-[#006241] outline-hidden"
+                    />
+                    {searchEmployee && (
+                      <button
+                        onClick={() => setSearchEmployee('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown konkretnego pracownika */}
+                  <div className="relative">
+                    <select
+                      value={selectedEmployee}
+                      onChange={(e) => setSelectedEmployee(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden truncate"
+                    >
+                      <option value="ALL">👤 Wszyscy pracownicy ({uniqueEmployeesList.length})</option>
+                      {uniqueEmployeesList.map((emp) => (
+                        <option key={emp.name} value={emp.name}>
+                          {emp.isManager ? '⭐️ ' : ''}{emp.name} ({emp.count} wpisów • {emp.hours}h)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtr roli / kategorii */}
+                  <div>
+                    <select
+                      value={filterRole}
+                      onChange={(e) => setFilterRole(e.target.value as any)}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden"
+                    >
+                      <option value="ALL">👥 Wszystkie stanowiska</option>
+                      <option value="MGR_ONLY">⭐️ Tylko Menedżerowie (MGR)</option>
+                      <option value="BARISTA_ONLY">☕️ Tylko Barisci</option>
+                    </select>
+                  </div>
+
+                  {/* Filtr Lokalu */}
+                  <div>
+                    <select
+                      value={filterUnit}
+                      onChange={(e) => setFilterUnit(e.target.value as any)}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden"
+                    >
+                      <option value="ALL">📍 Wszystkie lokale</option>
+                      <option value="JANKI_ONLY">💚 Tylko 108120 Janki</option>
+                      <option value="SUPPORT_ONLY">🏢 Wsparcia / Inne lokale</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Rząd 2: Filtry po datach */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 border-t border-stone-200/60">
+                  {/* Szybki wybór konkretnego dnia */}
+                  <div>
+                    <select
+                      value={filterSingleDate}
+                      onChange={(e) => {
+                        setFilterSingleDate(e.target.value);
+                        if (e.target.value !== 'ALL') {
+                          setFilterDateFrom('');
+                          setFilterDateTo('');
+                        }
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden"
+                    >
+                      <option value="ALL">📅 Dowolny dzień ({uniqueDatesList.length} dni)</option>
+                      {uniqueDatesList.map((d) => (
+                        <option key={d.date} value={d.date}>
+                          {d.date} ({d.dayOfWeek}) • {d.count} wpisów • {d.hours}h
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Zakres dat: Od */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-stone-500 shrink-0">Od:</span>
+                    <input
+                      type="date"
+                      value={filterDateFrom}
+                      min={mapalSummary.minDate}
+                      max={mapalSummary.maxDate}
+                      onChange={(e) => {
+                        setFilterDateFrom(e.target.value);
+                        if (e.target.value) setFilterSingleDate('ALL');
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden"
+                    />
+                  </div>
+
+                  {/* Zakres dat: Do */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-stone-500 shrink-0">Do:</span>
+                    <input
+                      type="date"
+                      value={filterDateTo}
+                      min={mapalSummary.minDate}
+                      max={mapalSummary.maxDate}
+                      onChange={(e) => {
+                        setFilterDateTo(e.target.value);
+                        if (e.target.value) setFilterSingleDate('ALL');
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Pasek statusu pod filtrami */}
+                <div className="flex items-center justify-between text-[11px] font-medium text-stone-600 pt-0.5">
+                  <div>
+                    Wyświetlono: <strong className="text-stone-900">{filteredMapalRecords.length}</strong> z {mapalRecords.length} wpisów
+                    <span className="mx-2 text-stone-300">|</span>
+                    Suma w widoku: <strong className="text-[#006241]">{filteredMapalSummary.totalHours} h</strong>
+                    <span className="mx-2 text-stone-300">|</span>
+                    Pracowników: <strong className="text-blue-800">{filteredMapalSummary.uniqueEmployees}</strong>
+                  </div>
+
+                  <div className="text-stone-400 text-[10px]">
+                    Kliknij nagłówek kolumny (Data, Pracownik, Godziny), aby posortować listę
+                  </div>
                 </div>
               </div>
 
               {/* Tabela Logowań MAPAL */}
               <div className="border border-[#D0DCD6] rounded-2xl overflow-hidden shadow-2xs">
-                <div className="overflow-x-auto max-h-[46vh] custom-scrollbar">
+                <div className="overflow-x-auto max-h-[44vh] custom-scrollbar">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-[#F0F4F2] text-[#1E3932] font-black uppercase text-[10px] sticky top-0 z-10 border-b border-[#D0DCD6]">
                       <tr>
-                        <th className="p-2.5 pl-3">Data</th>
+                        <th
+                          onClick={() => {
+                            if (sortField === 'date') {
+                              setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                            } else {
+                              setSortField('date');
+                              setSortDirection('asc');
+                            }
+                          }}
+                          className="p-2.5 pl-3 cursor-pointer select-none hover:bg-stone-200/60 transition-colors"
+                          title="Kliknij, aby posortować po dacie"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Data</span>
+                            {sortField === 'date' ? (
+                              sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#006241]" /> : <ArrowDown className="w-3 h-3 text-[#006241]" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-stone-400 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
                         <th className="p-2.5">Dzień</th>
-                        <th className="p-2.5">Pracownik</th>
+
+                        <th
+                          onClick={() => {
+                            if (sortField === 'employee') {
+                              setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                            } else {
+                              setSortField('employee');
+                              setSortDirection('asc');
+                            }
+                          }}
+                          className="p-2.5 cursor-pointer select-none hover:bg-stone-200/60 transition-colors"
+                          title="Kliknij, aby posortować alfabetycznie po pracowniku"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Pracownik</span>
+                            {sortField === 'employee' ? (
+                              sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#006241]" /> : <ArrowDown className="w-3 h-3 text-[#006241]" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-stone-400 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
                         <th className="p-2.5">Kategoria</th>
-                        <th className="p-2.5">Godziny (Computable)</th>
+
+                        <th
+                          onClick={() => {
+                            if (sortField === 'hours') {
+                              setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                            } else {
+                              setSortField('hours');
+                              setSortDirection('desc');
+                            }
+                          }}
+                          className="p-2.5 cursor-pointer select-none hover:bg-stone-200/60 transition-colors"
+                          title="Kliknij, aby posortować po liczbie godzin"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Godziny (Computable)</span>
+                            {sortField === 'hours' ? (
+                              sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#006241]" /> : <ArrowDown className="w-3 h-3 text-[#006241]" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-stone-400 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
                         <th className="p-2.5">Lokal</th>
                         <th className="p-2.5 pr-3 text-center">Akcja</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 font-medium">
-                      {filteredMapalRecords.map((rec, idx) => {
-                        const originalIndex = mapalRecords.findIndex((r) => r === rec);
-                        return (
+                      {filteredMapalRecords.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-stone-500 bg-white">
+                            <div className="flex flex-col items-center justify-center space-y-2">
+                              <Search className="w-8 h-8 text-stone-300" />
+                              <div className="font-bold text-stone-700 text-sm">
+                                Brak wpisów spełniających wybrane kryteria filtrowania
+                              </div>
+                              <p className="text-xs text-stone-500 max-w-sm">
+                                Zmień wybranego pracownika, zakres dat lub zresetuj aktywne filtry.
+                              </p>
+                              {activeFiltersCount > 0 && (
+                                <button
+                                  onClick={() => {
+                                    setSearchEmployee('');
+                                    setSelectedEmployee('ALL');
+                                    setFilterRole('ALL');
+                                    setFilterSingleDate('ALL');
+                                    setFilterDateFrom('');
+                                    setFilterDateTo('');
+                                    setFilterUnit('ALL');
+                                  }}
+                                  className="mt-2 px-3.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Zresetuj filtry
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredMapalRecords.map((rec, idx) => (
                           <tr key={rec.id || idx} className="hover:bg-emerald-50/30 transition-colors">
                             <td className="p-2 pl-3 font-semibold text-stone-800 whitespace-nowrap">
                               {rec.date}
@@ -919,13 +1344,13 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                                 max="24"
                                 value={rec.computable_time}
                                 onChange={(e) =>
-                                  handleMapalHoursChange(originalIndex, parseFloat(e.target.value) || 0)
+                                  handleMapalHoursChange(rec.id!, parseFloat(e.target.value) || 0)
                                 }
                                 className="w-20 px-2 py-1 rounded-lg border border-stone-300 text-xs font-bold text-[#006241] bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden"
                               />
                             </td>
                             <td className="p-2 text-stone-600 text-[11px] truncate max-w-[160px]" title={rec.unit_name}>
-                              {rec.unit_code === '18120' || rec.unit_name.includes('Janki') ? (
+                              {rec.unit_code === '18120' || (rec.unit_name && rec.unit_name.includes('Janki')) ? (
                                 <span className="text-[#006241] font-semibold">108120 Janki</span>
                               ) : (
                                 <span className="text-blue-700 font-semibold">{rec.unit_name}</span>
@@ -933,7 +1358,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                             </td>
                             <td className="p-2 pr-3 text-center">
                               <button
-                                onClick={() => handleRemoveMapalRecord(originalIndex)}
+                                onClick={() => handleRemoveMapalRecord(rec.id!)}
                                 title="Usuń ten wpis"
                                 className="p-1 rounded-md text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                               >
@@ -941,8 +1366,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                               </button>
                             </td>
                           </tr>
-                        );
-                      })}
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

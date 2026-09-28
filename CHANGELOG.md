@@ -5,6 +5,24 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.44] — 2026-09-28: Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Wielowymiarowe filtrowanie pracowników (wyszukiwanie tekstowe, dropdown alfabetyczny z sumą godzin, podział na MGR/Barista)**
+- **Precyzyjne filtrowanie dat (szybki wybór konkretnego dnia tygodnia lub zakres dat od-do z natychmiastowym przeliczaniem sumy)**
+- **Filtr lokalu (108120 Janki vs wsparcia w innych kawiarniach) oraz interaktywne sortowanie tabeli (po dacie, pracowniku, godzinach)**
+- **Automatyczne podsumowanie na żywo dla widoku przefiltrowanego oraz bezpieczna edycja i usuwanie wpisów po unikalnych ID**
+
+### ✨ Nowe Funkcje (Features):
+- `[labor_forecast]` Nowy panel filtrów weryfikacji logowań MAPAL Fichajes: wyszukiwarka, wybór pracownika z licznikami wpisów/godzin, filtr ról i lokali
+- `[labor_forecast]` Filtrowanie dat z dedykowanymi polami Data od / Data do oraz szybkim wyborem pojedynczego dnia ze statystykami
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[labor_forecast]` Klikalne sortowanie kolumn (Data, Pracownik, Godziny) z wskaźnikami kierunku oraz podsumowanie godzin i pracowników w widoku przefiltrowanym
+
+---
+
 ## [v2.8.43] — 2026-09-27: Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny
 *Autor: Dawid Apel & Antigravity Agent*
 

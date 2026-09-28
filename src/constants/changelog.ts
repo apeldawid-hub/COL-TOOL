@@ -24,6 +24,36 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.44',
+    date: '2026-09-28',
+    title: 'Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Wielowymiarowe filtrowanie pracowników (wyszukiwanie tekstowe, dropdown alfabetyczny z sumą godzin, podział na MGR/Barista)',
+      'Precyzyjne filtrowanie dat (szybki wybór konkretnego dnia tygodnia lub zakres dat od-do z natychmiastowym przeliczaniem sumy)',
+      'Filtr lokalu (108120 Janki vs wsparcia w innych kawiarniach) oraz interaktywne sortowanie tabeli (po dacie, pracowniku, godzinach)',
+      'Automatyczne podsumowanie na żywo dla widoku przefiltrowanego oraz bezpieczna edycja i usuwanie wpisów po unikalnych ID'
+    ],
+    items: [
+      {
+        type: 'feature',
+        module: 'labor_forecast',
+        description: 'Nowy panel filtrów weryfikacji logowań MAPAL Fichajes: wyszukiwarka, wybór pracownika z licznikami wpisów/godzin, filtr ról i lokali'
+      },
+      {
+        type: 'feature',
+        module: 'labor_forecast',
+        description: 'Filtrowanie dat z dedykowanymi polami Data od / Data do oraz szybkim wyborem pojedynczego dnia ze statystykami'
+      },
+      {
+        type: 'enhancement',
+        module: 'labor_forecast',
+        description: 'Klikalne sortowanie kolumn (Data, Pracownik, Godziny) z wskaźnikami kierunku oraz podsumowanie godzin i pracowników w widoku przefiltrowanym'
+      }
+    ]
+  },
+  {
     version: '2.8.43',
     date: '2026-09-27',
     title: 'Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny',

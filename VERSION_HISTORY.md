@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.44](#v2.8.44--2026-09-28)** | 2026-09-28 | Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes | `patch` | 🚀 Opublikowana |
 | **[v2.8.43](#v2.8.43--2026-09-27)** | 2026-09-27 | Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny | `patch` | 🚀 Opublikowana |
 | **[v2.8.42](#v2.8.42--2026-09-27)** | 2026-09-27 | Integracja Finansowa AOP 2026: Sprzedaż (Sales), Średni Paragon (AGC) & Prognoza % COL | `patch` | 🚀 Opublikowana |
 | **[v2.8.41](#v2.8.41--2026-09-27)** | 2026-09-27 | Predykcja Zespołowa (Ensemble AI) & Dekompozycja Niedziel Handlowych | `patch` | 🚀 Opublikowana |
@@ -20,6 +21,25 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.44] — 2026-09-28
+**Tytuł:** Zaawansowane Filtrowanie & Sortowanie Logowań MAPAL Fichajes  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Wielowymiarowe filtrowanie pracowników (wyszukiwanie tekstowe, dropdown alfabetyczny z sumą godzin, podział na MGR/Barista)
+- Precyzyjne filtrowanie dat (szybki wybór konkretnego dnia tygodnia lub zakres dat od-do z natychmiastowym przeliczaniem sumy)
+- Filtr lokalu (108120 Janki vs wsparcia w innych kawiarniach) oraz interaktywne sortowanie tabeli (po dacie, pracowniku, godzinach)
+- Automatyczne podsumowanie na żywo dla widoku przefiltrowanego oraz bezpieczna edycja i usuwanie wpisów po unikalnych ID
+
+#### ✨ Nowe Funkcje:
+- Nowy panel filtrów weryfikacji logowań MAPAL Fichajes: wyszukiwarka, wybór pracownika z licznikami wpisów/godzin, filtr ról i lokali
+- Filtrowanie dat z dedykowanymi polami Data od / Data do oraz szybkim wyborem pojedynczego dnia ze statystykami
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Klikalne sortowanie kolumn (Data, Pracownik, Godziny) z wskaźnikami kierunku oraz podsumowanie godzin i pracowników w widoku przefiltrowanym
+
+---
 
 ### [v2.8.43] — 2026-09-27
 **Tytuł:** Inteligentny Parser Raportu Dziennego KPI Actual & Podgląd Weryfikacyjny  
