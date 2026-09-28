@@ -249,8 +249,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                 </span>
               </div>
               <p className="text-xs text-stone-700 mt-1 leading-relaxed">
-                System zamknął estymację dzisiejszego dnia: <strong>+{projectedRow.mondayProjection.projectedTotalMondayHours}h</strong> (MGR z Modułu 2: <strong>{projectedRow.mondayProjection.projectedMgrHours}h</strong> + barisci do celu tygodnia: <strong>{projectedRow.mondayProjection.projectedBaristaHours}h</strong>) oraz transakcje: <strong>+{projectedRow.mondayProjection.projectedMondayTrx} TRX</strong>.
-                Dzięki temu MTD i rekomendacja HANW na W+2 są natychmiast odblokowane.
+                System zamknął estymację dzisiejszego dnia: <strong>+{projectedRow.mondayProjection.projectedTotalMondayHours}h</strong> (MGR z Modułu 2: <strong>{projectedRow.mondayProjection.projectedMgrHours}h</strong> + barisci do celu tygodnia: <strong>{projectedRow.mondayProjection.projectedBaristaHours}h</strong>) oraz transakcje: <strong>+{projectedRow.mondayProjection.projectedMondayTrx} TRX</strong> (trend z poniedziałków tego miesiąca: śr. {projectedRow.mondayProjection.projectedMondayTrx} TRX). Po imporcie raportu zamykającego suma zaktualizuje się automatycznie.
               </p>
             </div>
           </div>

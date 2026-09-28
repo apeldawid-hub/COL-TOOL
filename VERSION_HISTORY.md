@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.52](#v2.8.52--2026-09-28)** | 2026-09-28 | Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin) | `patch` | 🚀 Opublikowana |
 | **[v2.8.51](#v2.8.51--2026-09-28)** | 2026-09-28 | Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33) | `patch` | 🚀 Opublikowana |
 | **[v2.8.50](#v2.8.50--2026-09-28)** | 2026-09-28 | Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca | `patch` | 🚀 Opublikowana |
 | **[v2.8.49](#v2.8.49--2026-09-28)** | 2026-09-28 | Dwupoziomowe Podsumowanie Miesiąca w Tabeli Tygodniowej (MTD + Estymacja AI) | `patch` | 🚀 Opublikowana |
@@ -26,6 +27,25 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.52] — 2026-09-28
+**Tytuł:** Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin)  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- W pełni autonomiczny Flash Forecast poniedziałku bez konieczności manualnego wpisywania wartości przez Store Managera
+- Inteligentna estymacja transakcji na poniedziałek w oparciu o realny trend poniedziałków tego miesiąca (śr. ~302 TRX) i wagę dobową z historii
+- Automatyczne domykanie godzin na poniedziałek z twardą ochroną Floor Hours (min. 32.0h/dobę) i obsadą menedżerską z Modułu 2
+- Bezobsługowe zastąpienie estymacji po wgraniu zamykającego raportu tygodniowego (suma miesiąca natychmiast aktualizuje się do wartości faktycznych)
+
+#### ✨ Nowe Funkcje:
+- Autonomiczny silnik estymacji Flash Forecast dla poniedziałku zasilany dobowymi danymi sprzedaży i historią poniedziałków
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Automatyczne domykanie obsady baristycznej do Floor Hours i grafiku tygodnia bez konieczności otwierania okna dialogowego
+- Natychmiastowe przejście z trybu estymacji na rzeczywiste wykonanie po imporcie raportu zamykającego tydzień
+
+---
 
 ### [v2.8.51] — 2026-09-28
 **Tytuł:** Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33)  

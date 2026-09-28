@@ -438,7 +438,9 @@ export const App: React.FC = () => {
       dayOfWeekStats,
       managerShifts,
       shiftDefinitions,
-      managerEmployees
+      managerEmployees,
+      dailyKpiMap,
+      dailyActualHoursMap
     );
 
     if (summary && summary.trendLearning) {

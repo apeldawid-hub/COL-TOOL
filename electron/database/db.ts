@@ -742,6 +742,28 @@ export class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_train_shifts_partner ON training_shifts(partner_id);
       CREATE INDEX IF NOT EXISTS idx_train_shifts_date ON training_shifts(scheduled_date);
       CREATE INDEX IF NOT EXISTS idx_train_checks_partner ON training_skill_checks(partner_id);
+
+      -- Tabela dobowych wyników sprzedaży i robocizny (Dzienny Raport KPI)
+      CREATE TABLE IF NOT EXISTS daily_kpi_actuals_log (
+        date TEXT PRIMARY KEY,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        month_name TEXT NOT NULL,
+        day_of_month INTEGER NOT NULL,
+        day_label TEXT,
+        week_key TEXT,
+        sales_net REAL NOT NULL,
+        trx INTEGER NOT NULL,
+        agc REAL NOT NULL,
+        hours REAL NOT NULL,
+        tplh REAL NOT NULL,
+        delivery_trx INTEGER DEFAULT 0,
+        imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_daily_kpi_date ON daily_kpi_actuals_log(date);
+      CREATE INDEX IF NOT EXISTS idx_daily_kpi_year_month ON daily_kpi_actuals_log(year, month);
+      CREATE INDEX IF NOT EXISTS idx_daily_kpi_week_key ON daily_kpi_actuals_log(week_key);
     `);
 
     // Migracja kolumn finansowych dla aop_plans

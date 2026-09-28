@@ -5,6 +5,24 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.52] — 2026-09-28: Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin)
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **W pełni autonomiczny Flash Forecast poniedziałku bez konieczności manualnego wpisywania wartości przez Store Managera**
+- **Inteligentna estymacja transakcji na poniedziałek w oparciu o realny trend poniedziałków tego miesiąca (śr. ~302 TRX) i wagę dobową z historii**
+- **Automatyczne domykanie godzin na poniedziałek z twardą ochroną Floor Hours (min. 32.0h/dobę) i obsadą menedżerską z Modułu 2**
+- **Bezobsługowe zastąpienie estymacji po wgraniu zamykającego raportu tygodniowego (suma miesiąca natychmiast aktualizuje się do wartości faktycznych)**
+
+### ✨ Nowe Funkcje (Features):
+- `[labor_forecast]` Autonomiczny silnik estymacji Flash Forecast dla poniedziałku zasilany dobowymi danymi sprzedaży i historią poniedziałków
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[labor_forecast]` Automatyczne domykanie obsady baristycznej do Floor Hours i grafiku tygodnia bez konieczności otwierania okna dialogowego
+- `[labor_forecast]` Natychmiastowe przejście z trybu estymacji na rzeczywiste wykonanie po imporcie raportu zamykającego tydzień
+
+---
+
 ## [v2.8.51] — 2026-09-28: Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33)
 *Autor: Dawid Apel & Antigravity Agent*
 

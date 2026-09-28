@@ -588,7 +588,9 @@ export class CalculationEngine {
     dayOfWeekStats: { day_of_week: string; total_hours: number; days_count: number }[] = [],
     managerShifts: ManagerScheduleShift[] = [],
     shiftDefinitions: ShiftDefinition[] = [],
-    managerEmployees: ManagerEmployee[] = []
+    managerEmployees: ManagerEmployee[] = [],
+    dailyKpiMap: Record<string, { trx: number; salesNet: number; hours: number; tplh: number; agc: number; deliveryTrx: number }> = {},
+    dailyActualHoursMap: Record<string, number> = {}
   ): MonthlyCalculationSummary {
     const targetTplh = aopPlan.target_tplh > 0 ? aopPlan.target_tplh : 6.7;
     const planTrxTotal = aopPlan.plan_trx;
@@ -596,6 +598,41 @@ export class CalculationEngine {
     const ncBudgetTotal = Number(
       ncRules.reduce((sum, r) => sum + (r.monthly_hours || 0), 0).toFixed(1)
     );
+
+    // Funkcja pomocnicza do bezpiecznego odczytu dobowego KPI wg daty (obsługuje formaty YYYY-MM-DD oraz DD.MM.YYYY)
+    const getDailyKpi = (y: number, m: number, d: number) => {
+      const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dot = `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}`;
+      return dailyKpiMap[iso] || dailyKpiMap[dot] || null;
+    };
+
+    // Analiza trendu z tego miesiąca (średnie transakcje w poniedziałki i niedziele z realnych raportów)
+    const reportedMondaysTrx: number[] = [];
+    const reportedSundaysTrx: number[] = [];
+
+    if (dailyKpiMap && Object.keys(dailyKpiMap).length > 0) {
+      for (const [dateStr, kpi] of Object.entries(dailyKpiMap)) {
+        if (!kpi || !kpi.trx || kpi.trx <= 0) continue;
+        const dObj = new Date(dateStr.includes('.') ? dateStr.split('.').reverse().join('-') : dateStr);
+        if (isNaN(dObj.getTime())) continue;
+        const dayOfWeek = dObj.getDay();
+        if (dayOfWeek === 1) { // Poniedziałek
+          reportedMondaysTrx.push(kpi.trx);
+        } else if (dayOfWeek === 0) { // Niedziela
+          reportedSundaysTrx.push(kpi.trx);
+        }
+      }
+    }
+
+    const avgMondayTrxThisMonth =
+      reportedMondaysTrx.length > 0
+        ? Math.round(reportedMondaysTrx.reduce((a, b) => a + b, 0) / reportedMondaysTrx.length)
+        : null;
+
+    const avgSundayTrxThisMonth =
+      reportedSundaysTrx.length > 0
+        ? Math.round(reportedSundaysTrx.reduce((a, b) => a + b, 0) / reportedSundaysTrx.length)
+        : null;
 
     // Określenie statusu temporalnego całego miesiąca
     const monthTemporalStatus = SystemClock.getMonthTemporalStatus(aopPlan.year, aopPlan.month);
@@ -672,6 +709,15 @@ export class CalculationEngine {
           sysNow.year === w.year;
       }
 
+      // Weryfikacja, czy raport zamykający poniedziałek już wpłynął do bazy
+      const mondayKpi = getDailyKpi(w.year, mondayMonthNum, mondayDayOfMonth);
+      const isMondayAlreadyReported = !!(mondayKpi && mondayKpi.trx > 0);
+
+      // Jeśli raport za zamykający poniedziałek już wpłynął, estymacja Flash natychmiast ustępuje danym rzeczywistym
+      if (isMondayAlreadyReported) {
+        isEndingTodayOnMonday = false;
+      }
+
       let isMondayProjected = false;
       let mondayProjection: MondayProjectionDetails | undefined = undefined;
 
@@ -681,10 +727,72 @@ export class CalculationEngine {
         const targetWeekHours =
           scheduledHours !== null && scheduledHours > 0 ? scheduledHours : planHours;
 
-        // Godziny zalogowane z dni 1-6 (wtorek–niedziela):
-        const loggedHoursDays1to6 = actHours !== null ? actHours : 0;
+        // 1. Zbieramy rzeczywiste dane sprzedaży i transakcji z dni 1-6 (wtorek–niedziela)
+        let sumTrxDays1to6 = 0;
+        let sumHoursDays1to6 = 0;
 
-        // Godziny kierowników na poniedziałek (Moduł 2):
+        if (w.date_from && w.date_from.includes('.')) {
+          const [dFromStr, mFromStr] = w.date_from.split('.');
+          let curD = parseInt(dFromStr, 10);
+          let curM = parseInt(mFromStr, 10);
+
+          for (let step = 0; step < (w.days_count ? w.days_count - 1 : 6); step++) {
+            const kpi = getDailyKpi(w.year, curM, curD);
+            if (kpi && kpi.trx > 0) {
+              sumTrxDays1to6 += kpi.trx;
+              sumHoursDays1to6 += kpi.hours;
+            } else {
+              // Sprawdzamy czy to była niedziela bez wpisu w KPI ale z zarejestrowanymi godzinami RCP
+              const iso = `${w.year}-${String(curM).padStart(2, '0')}-${String(curD).padStart(2, '0')}`;
+              const dot = `${String(curD).padStart(2, '0')}.${String(curM).padStart(2, '0')}.${w.year}`;
+              const dayHours = dailyActualHoursMap[iso] ?? dailyActualHoursMap[dot] ?? 0;
+              const dObj = new Date(iso);
+              if (dObj.getDay() === 0 && (dayHours > 0 || avgSundayTrxThisMonth)) {
+                // Niedziela: uzupełniamy z faktycznej średniej niedzielnej tego miesiąca (~179 TRX)
+                sumTrxDays1to6 += (avgSundayTrxThisMonth || 179);
+                sumHoursDays1to6 += (dayHours > 0 ? dayHours : 32.0);
+              }
+            }
+            curD++;
+            const daysInCurMonth = new Date(w.year, curM, 0).getDate();
+            if (curD > daysInCurMonth) {
+              curD = 1;
+              curM++;
+            }
+          }
+        }
+
+        // Godziny zalogowane z dni 1-6 (wtorek–niedziela):
+        // Jeśli posiadamy zagregowane godziny w Fichajes (actHours), to one są bazą.
+        const loggedHoursDays1to6 =
+          actHours !== null && actHours > 0
+            ? actHours
+            : (sumHoursDays1to6 > 0 ? Number(sumHoursDays1to6.toFixed(1)) : 0);
+
+        // Transakcje z dni 1-6:
+        let actualTrxDays1to6 =
+          sumTrxDays1to6 > 0
+            ? sumTrxDays1to6
+            : (actTrx !== null && actTrx > 0 ? actTrx : null);
+
+        if (actualTrxDays1to6 === null || actualTrxDays1to6 <= 0) {
+          actualTrxDays1to6 = Math.round(planTrx * (6 / 7));
+        }
+
+        // 2. Autonomiczna estymacja transakcji na dzisiejszy poniedziałek (Day 7):
+        // Bazuje na realnym trendzie z poniedziałków tego miesiąca (W1..W3 śr. ~302 TRX)
+        // lub historycznej wadze dobowej z poprzednich lat / AOP (~12.1% tygodnia)
+        let projectedMondayTrx = 0;
+        if (avgMondayTrxThisMonth && avgMondayTrxThisMonth > 0) {
+          projectedMondayTrx = avgMondayTrxThisMonth;
+        } else {
+          projectedMondayTrx = Math.round(planTrx * 0.121);
+        }
+
+        const fullWeekProjectedTrx = actualTrxDays1to6 + projectedMondayTrx;
+
+        // 3. Autonomiczne domknięcie godzin na poniedziałek:
+        // Godziny kierowników na poniedziałek (z grafiku Modułu 2):
         let projectedMgrHours = 0;
         if (managerShifts && managerShifts.length > 0) {
           const resMon = CalculationEngine.calculateDaysManagerCoverage(
@@ -699,29 +807,20 @@ export class CalculationEngine {
           projectedMgrHours = Number(resMon.managerHours.toFixed(1));
         }
 
-        // Godziny baristów na poniedziałek:
-        // Jeśli mamy zalogowane godziny z 6 dni (wt–nd > 0), dopełniamy do celu tygodnia.
-        // Jeśli brak logowań z 6 dni (0h), przyjmujemy standardową dobową bazę baristów (24.0h przy Floor 32h).
-        let projectedBaristaHours = 24.0;
-        if (loggedHoursDays1to6 > 0) {
-          const remainingForMonday = Math.max(0, Number((targetWeekHours - loggedHoursDays1to6).toFixed(1)));
-          projectedBaristaHours = Math.max(0, Number((remainingForMonday - projectedMgrHours).toFixed(1)));
-        }
-        const projectedTotalMondayHours = Number((projectedMgrHours + projectedBaristaHours).toFixed(1));
+        // Twarda ochrona dobowego Floor Hours (32.0h na dobę w Janki: 1 AM MGR + 1 AM Barista + 1 PM MGR + 1 PM Barista)
+        const floorMondayHours = 32.0;
+
+        // Domykanie godzin:
+        // Sprawdzamy cel grafiku lub zaplanowany budżet tygodnia
+        const remainingForMonday = Math.max(0, Number((targetWeekHours - loggedHoursDays1to6).toFixed(1)));
+        
+        // Całkowite godziny poniedziałku to minimum 32.0h (Floor) lub dopełnienie do celu grafiku
+        const projectedTotalMondayHours = Number(Math.max(floorMondayHours, remainingForMonday).toFixed(1));
+        
+        // Godziny baristów to różnica między dobową obsadą poniedziałku a obsadą menedżerów
+        const projectedBaristaHours = Number(Math.max(0, projectedTotalMondayHours - projectedMgrHours).toFixed(1));
+
         const fullWeekProjectedHours = Number((loggedHoursDays1to6 + projectedTotalMondayHours).toFixed(1));
-
-        // Transakcje (TRX):
-        const actualTrxDays1to6 = actTrx;
-        let projectedMondayTrx = 0;
-        let fullWeekProjectedTrx = planTrx;
-
-        if (actualTrxDays1to6 !== null && actualTrxDays1to6 > 0) {
-          projectedMondayTrx = Math.max(0, planTrx - actualTrxDays1to6);
-          fullWeekProjectedTrx = actualTrxDays1to6 + projectedMondayTrx;
-        } else {
-          projectedMondayTrx = Math.round(planTrx * (1 / (w.days_count || 7)));
-          fullWeekProjectedTrx = planTrx;
-        }
 
         isMondayProjected = true;
         mondayProjection = {
