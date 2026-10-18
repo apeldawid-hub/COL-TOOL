@@ -55,6 +55,7 @@ import {
   ZoomOut,
   History,
   ArrowRight,
+  Cloud,
 } from 'lucide-react';
 import { useTutorial } from '../context/TutorialContext';
 import { useStore } from '../context/StoreContext';
@@ -92,6 +93,7 @@ interface UnifiedSettingsModalProps {
   initialTab?: SettingsTabId;
   onRefreshData?: () => void;
   onOpenBackupModal?: () => void;
+  onOpenCloudDocsModal?: () => void;
   onOpenUpdateModal?: () => void;
   hasUpdateAvailable?: boolean;
   onOpenBugReporter?: () => void;
@@ -114,6 +116,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
   initialTab,
   onRefreshData,
   onOpenBackupModal,
+  onOpenCloudDocsModal,
   onOpenUpdateModal,
   hasUpdateAvailable,
   onOpenBugReporter,
@@ -2337,6 +2340,20 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                             >
                               <Database className="w-3.5 h-3.5 text-stone-300" />
                               <span>Menedżer Kopii</span>
+                            </button>
+                          )}
+
+                          {onOpenCloudDocsModal && (
+                            <button
+                              onClick={() => {
+                                onClose();
+                                onOpenCloudDocsModal();
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Dokumenty bez danych wrażliwych zsynchronizowane z chmurą Firebase"
+                            >
+                              <Cloud className="w-3.5 h-3.5 text-blue-200" />
+                              <span>Dokumenty Chmury (Firebase)</span>
                             </button>
                           )}
                         </div>

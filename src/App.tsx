@@ -20,6 +20,7 @@ import { ManagerScheduleView } from './modules/managers-schedule';
 import { TrainingsView } from './modules/trainings';
 import { ColCalculatorView } from './modules/col-calculator';
 import { UnifiedSettingsModal, SettingsTabId } from './components/UnifiedSettingsModal';
+import { CloudDocumentsModal } from './components/CloudDocumentsModal';
 import { ComingSoonOverlayWrapper } from './components/ComingSoonOverlayWrapper';
 import { InteractiveModelTutorial } from './components/InteractiveModelTutorial';
 import {
@@ -159,6 +160,7 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState<boolean>(false);
+  const [isCloudDocsModalOpen, setIsCloudDocsModalOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -735,6 +737,9 @@ export const App: React.FC = () => {
         onOpenBackupModal={() => {
           setIsBackupModalOpen(true);
         }}
+        onOpenCloudDocsModal={() => {
+          setIsCloudDocsModalOpen(true);
+        }}
         onOpenUpdateModal={() => {
           setIsUpdateModalOpen(true);
         }}
@@ -779,6 +784,12 @@ export const App: React.FC = () => {
         onStoreSwitched={() => {
           loadMonthData();
         }}
+      />
+
+      {/* Okno Modalne Dokumentów Operacyjnych w Chmurze Firebase (100% Bez PII) */}
+      <CloudDocumentsModal
+        isOpen={isCloudDocsModalOpen}
+        onClose={() => setIsCloudDocsModalOpen(false)}
       />
 
       {/* Okno Interaktywnego Animowanego Samouczka Modelowego */}

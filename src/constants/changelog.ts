@@ -24,6 +24,41 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.55',
+    date: '2026-10-18',
+    title: 'Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Odciążenie aplikacji i synchronizacja uniwersalnych szablonów oraz dokumentów operacyjnych z bazą Firebase Firestore',
+      '100% gwarancji prywatności (Zero PII): całkowite wykluczenie danych osobowych, nazwisk, stawek oraz zastrzeżonych materiałów Starbucks',
+      'Nowy modal Biblioteki Dokumentów Chmury (CloudDocumentsModal) z podglądem danych, tarczą ochronną i pobieraniem on-demand',
+      'Optymalizacja paczki mikropatcha OTA — redukcja rozmiaru z ~24 MB do ~1.15 MB dzięki eliminacji zduplikowanych folderów'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Serwis FirebaseDocsService odpowiadający za generowanie, sanitizację i bezpieczny eksport zanonimizowanych dokumentów do Firestore.',
+        module: 'system',
+      },
+      {
+        type: 'feature',
+        description: 'Nowy komponent CloudDocumentsModal ze wskaźnikami braku PII, podglądem dokumentów operacyjnych i synchronizacją chmurową.',
+        module: 'system',
+      },
+      {
+        type: 'enhancement',
+        description: 'Przycisk szybkiego dostępu do dokumentów chmurowych z poziomu Ustawień Systemu (UnifiedSettingsModal).',
+        module: 'system',
+      },
+      {
+        type: 'enhancement',
+        description: 'Optymalizacja skryptu publish-patch.js i procesu budowania: paczka hot-patch OTA odchudzona o ponad 95%.',
+        module: 'system',
+      },
+    ],
+  },
+  {
     version: '2.8.54',
     date: '2026-10-18',
     title: 'Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce',

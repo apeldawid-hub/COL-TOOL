@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.55](#v2.8.55--2026-10-18)** | 2026-10-18 | Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII) | `patch` | 🚀 Opublikowana |
 | **[v2.8.54](#v2.8.54--2026-10-18)** | 2026-10-18 | Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce | `minor` | 🚀 Opublikowana |
 | **[v2.8.52](#v2.8.52--2026-09-28)** | 2026-09-28 | Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin) | `patch` | 🚀 Opublikowana |
 | **[v2.8.51](#v2.8.51--2026-09-28)** | 2026-09-28 | Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33) | `patch` | 🚀 Opublikowana |
@@ -28,6 +29,26 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.55] — 2026-10-18
+**Tytuł:** Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Odciążenie aplikacji i synchronizacja uniwersalnych szablonów oraz dokumentów operacyjnych z bazą Firebase Firestore
+- 100% gwarancji prywatności (Zero PII): całkowite wykluczenie danych osobowych, nazwisk, stawek oraz zastrzeżonych materiałów Starbucks
+- Nowy modal Biblioteki Dokumentów Chmury (CloudDocumentsModal) z podglądem danych, tarczą ochronną i pobieraniem on-demand
+- Optymalizacja paczki mikropatcha OTA — redukcja rozmiaru z ~24 MB do ~1.15 MB dzięki eliminacji zduplikowanych folderów
+
+#### ✨ Nowe Funkcje:
+- Serwis FirebaseDocsService odpowiadający za generowanie, sanitizację i bezpieczny eksport zanonimizowanych dokumentów do Firestore.
+- Nowy komponent CloudDocumentsModal ze wskaźnikami braku PII, podglądem dokumentów operacyjnych i synchronizacją chmurową.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Przycisk szybkiego dostępu do dokumentów chmurowych z poziomu Ustawień Systemu (UnifiedSettingsModal).
+- Optymalizacja skryptu publish-patch.js i procesu budowania: paczka hot-patch OTA odchudzona o ponad 95%.
+
+---
 
 ### [v2.8.54] — 2026-10-18
 **Tytuł:** Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce  

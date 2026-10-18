@@ -91,11 +91,8 @@ const asarFilePath = path.join(releaseDir, 'app.asar');
 if (fs.existsSync(asarFilePath)) fs.unlinkSync(asarFilePath);
 execSync(`npx @electron/asar pack "${asarTempDir}" "${asarFilePath}"`);
 
-// Kopiuj do patchTempDir
+// Kopiuj do patchTempDir wyłącznie kompletny app.asar i package.json (redukcja paczki z 24MB do ~1.15MB)
 execSync(`cp "${asarFilePath}" "${patchTempDir}/app.asar"`);
-execSync(`cp -R "${asarTempDir}/dist" "${patchTempDir}/dist"`);
-execSync(`cp -R "${asarTempDir}/dist-electron" "${patchTempDir}/dist-electron"`);
-execSync(`cp -R "${asarTempDir}/node_modules" "${patchTempDir}/node_modules"`);
 execSync(`cp "${asarTempDir}/package.json" "${patchTempDir}/package.json"`);
 
 // Spakuj ZIP

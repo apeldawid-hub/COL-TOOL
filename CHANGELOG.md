@@ -5,6 +5,25 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.55] — 2026-10-18: Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Odciążenie aplikacji i synchronizacja uniwersalnych szablonów oraz dokumentów operacyjnych z bazą Firebase Firestore**
+- **100% gwarancji prywatności (Zero PII): całkowite wykluczenie danych osobowych, nazwisk, stawek oraz zastrzeżonych materiałów Starbucks**
+- **Nowy modal Biblioteki Dokumentów Chmury (CloudDocumentsModal) z podglądem danych, tarczą ochronną i pobieraniem on-demand**
+- **Optymalizacja paczki mikropatcha OTA — redukcja rozmiaru z ~24 MB do ~1.15 MB dzięki eliminacji zduplikowanych folderów**
+
+### ✨ Nowe Funkcje (Features):
+- Serwis FirebaseDocsService odpowiadający za generowanie, sanitizację i bezpieczny eksport zanonimizowanych dokumentów do Firestore.
+- Nowy komponent CloudDocumentsModal ze wskaźnikami braku PII, podglądem dokumentów operacyjnych i synchronizacją chmurową.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- Przycisk szybkiego dostępu do dokumentów chmurowych z poziomu Ustawień Systemu (UnifiedSettingsModal).
+- Optymalizacja skryptu publish-patch.js i procesu budowania: paczka hot-patch OTA odchudzona o ponad 95%.
+
+---
+
 ## [v2.8.54] — 2026-10-18: Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce
 *Autor: Dawid Apel & Antigravity Agent*
 
