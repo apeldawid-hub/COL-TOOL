@@ -12,6 +12,7 @@ import {
   Sliders,
   AlertCircle
 } from 'lucide-react';
+import { useStore } from '../../../context/StoreContext';
 
 interface ShiftConfigModalProps {
   shifts: ShiftDefinition[];
@@ -26,6 +27,7 @@ export const ShiftConfigModal: React.FC<ShiftConfigModalProps> = ({
   onDelete,
   onClose
 }) => {
+  const { currentStore } = useStore();
   const [shifts, setShifts] = useState<ShiftDefinition[]>(
     JSON.parse(JSON.stringify(initialShifts))
   );
@@ -421,7 +423,7 @@ export const ShiftConfigModal: React.FC<ShiftConfigModalProps> = ({
         {/* Stopka akcji */}
         <div className="bg-stone-50 px-6 py-4 border-t border-[#E2E8E5] flex justify-between items-center">
           <span className="text-xs text-stone-500">
-            Kawiarnia <strong>108120 SBX Janki</strong> • Katalog zmian operacyjnych
+            Kawiarnia <strong>{currentStore.shortName}</strong> • Katalog zmian operacyjnych
           </span>
           <div className="flex gap-2.5">
             <button

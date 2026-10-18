@@ -9,6 +9,8 @@ import { DatabaseBackupModal } from './components/DatabaseBackupModal';
 import { AppUpdateModal } from './components/AppUpdateModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BugReporterModal } from './components/BugReporterModal';
+import { StoreSwitcherModal } from './components/StoreSwitcherModal';
+import { useStore } from './context/StoreContext';
 import {
   LaborForecastView,
   ImportModal,
@@ -46,6 +48,8 @@ const DEFAULT_MONTHS = [
 ];
 
 export const App: React.FC = () => {
+  const { isStoreSwitcherOpen, closeStoreSwitcher } = useStore();
+
   // Stan pierwszego uruchomienia / Menu Startowego (Onboarding)
   // null = trwa weryfikacja z bazą SQLite / ustawieniami, true = ukończono, false = nowe uruchomienie
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(() => {
@@ -765,6 +769,15 @@ export const App: React.FC = () => {
                       activeModule === 'managers_schedule' ? 'Managers Schedule' :
                       activeModule === 'trainings' ? 'Trainings Suite' :
                       activeModule === 'col_calculator' ? 'COL Calculator' : 'System Core',
+        }}
+      />
+
+      {/* Okno Modalne Przełącznika Kawiarni Starbucks */}
+      <StoreSwitcherModal
+        isOpen={isStoreSwitcherOpen}
+        onClose={closeStoreSwitcher}
+        onStoreSwitched={() => {
+          loadMonthData();
         }}
       />
 

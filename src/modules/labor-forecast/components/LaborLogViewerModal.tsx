@@ -16,6 +16,7 @@ import {
   ListFilter,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useStore } from '../../../context/StoreContext';
 
 interface LaborLogViewerModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ export const LaborLogViewerModal: React.FC<LaborLogViewerModalProps> = ({
   weekKey,
   weekLabel,
 }) => {
+  const { currentStore } = useStore();
   const [records, setRecords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -1078,7 +1080,7 @@ export const LaborLogViewerModal: React.FC<LaborLogViewerModalProps> = ({
             </span>
             <span className="text-gray-300">•</span>
             <span>
-              Kawiarnia: <strong className="text-[#006241]">108120 SBX Warszawa Janki (18120)</strong>
+              Kawiarnia: <strong className="text-[#006241]">{currentStore.name} ({currentStore.unitCode})</strong>
             </span>
           </div>
 

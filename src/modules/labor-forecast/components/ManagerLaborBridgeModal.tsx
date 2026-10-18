@@ -22,6 +22,7 @@ import {
   ManagerDailyCoverageItem
 } from '../../../types';
 import { CalculationEngine } from '../services/calculationEngine';
+import { useStore } from '../../../context/StoreContext';
 
 interface ManagerLaborBridgeModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const ManagerLaborBridgeModal: React.FC<ManagerLaborBridgeModalProps> = (
   crossMonthBridge,
   onNavigateToManagerSchedule,
 }) => {
+  const { currentStore } = useStore();
   const [viewMode, setViewMode] = useState<'current_part' | 'full_7_days'>('current_part');
   const [tableTab, setTableTab] = useState<'flex_matrix' | 'floor_safety'>('flex_matrix');
 
@@ -115,7 +117,7 @@ export const ManagerLaborBridgeModal: React.FC<ManagerLaborBridgeModalProps> = (
                 <Calendar className="w-3.5 h-3.5 text-stone-400" />
                 <span>Zakres tygodnia: <strong>{week.date_from} – {week.date_to}</strong></span>
                 <span>•</span>
-                <span>Lokal: <strong>108120 SBX Warszawa Janki (18120)</strong></span>
+                <span>Lokal: <strong>{currentStore.name} ({currentStore.unitCode})</strong></span>
               </p>
             </div>
           </div>

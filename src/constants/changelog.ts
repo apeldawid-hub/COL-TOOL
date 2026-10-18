@@ -24,6 +24,51 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.54',
+    date: '2026-10-18',
+    title: 'Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce',
+    type: 'minor',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Błyskawiczne przełączanie aktywnej kawiarni w całym systemie z poziomu nagłówka, paska bocznego, ustawień i ekranu logowania',
+      'Bogaty katalog oficjalnych kawiarni Starbucks w Polsce (Warszawa, Kraków, Wrocław, Poznań, Trójmiasto, Katowice, Łódź, Szczecin) z kodami MPK, Unit Code i adresami',
+      'Możliwość dodawania własnych, spersonalizowanych kawiarni ze stałą persystencją w localStorage i bazie SQLite',
+      'Nowy modal StoreSwitcherModal z wyszukiwarką czasu rzeczywistego i filtrami miast'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Nowy komponent StoreSwitcherModal umożliwiający błyskawiczny wybór i przełączanie kawiarni Starbucks z podglądem kodów MPK i Unit Code.',
+        module: 'system',
+      },
+      {
+        type: 'feature',
+        description: 'Reaktywny kontekst StoreContext i serwis StoreService z obsługą synchronizacji z bazą SQLite i zdarzeń systemowych.',
+        module: 'system',
+      },
+      {
+        type: 'feature',
+        description: 'Katalog starbucksStores zawierający jednostki Starbucks w Polsce z podziałem na miasta, dystrykty i typy lokali.',
+        module: 'system',
+      },
+      {
+        type: 'enhancement',
+        description: 'Interaktywny przycisk kawiarni w nagłówku aplikacji (Header) oraz na pasku bocznym (Sidebar) w trybie rozwiniętym i zwiniętym.',
+        module: 'system',
+      },
+      {
+        type: 'enhancement',
+        description: 'Dedykowana sekcja zarządzania kawiarnią w Ustawieniach Systemowych (UnifiedSettingsModal) oraz wsparcie w Kreatorze Początkowym (Onboarding).',
+        module: 'system',
+      },
+      {
+        type: 'enhancement',
+        description: 'Dynamiczne przełączanie kawiarni bezpośrednio na ekranie logowania (LoginView) oraz w arkuszu DANE (ColDaneSheet).',
+        module: 'col_calculator',
+      },
+    ],
+  },
+  {
     version: '2.8.52',
     date: '2026-09-28',
     title: 'Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin)',

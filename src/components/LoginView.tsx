@@ -1,28 +1,16 @@
 import React, { useState } from 'react';
-import { Store, ArrowRight, Mail, User, Shield } from 'lucide-react';
+import { Store, ArrowRight, Mail, User, Shield, ChevronsUpDown } from 'lucide-react';
 import { APP_VERSION, APP_SHORT_NAME } from '../version';
+import { useStore } from '../context/StoreContext';
+import { StoreSwitcherModal } from './StoreSwitcherModal';
 
 interface LoginViewProps {
   onLogin: (userName?: string) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
-  // Odczyt skonfigurowanych danych lokalu i użytkownika z konfiguracji początkowej
-  const storeName = (() => {
-    try {
-      return localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki';
-    } catch {
-      return '108120 SBX Warszawa Janki';
-    }
-  })();
-
-  const unitCode = (() => {
-    try {
-      return localStorage.getItem('sbx_unit_code') || '18120';
-    } catch {
-      return '18120';
-    }
-  })();
+  const { currentStore } = useStore();
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
 
   const configuredUserName = (() => {
     try {
@@ -83,12 +71,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 bg-white/80 backdrop-blur-xs px-3.5 py-1.5 rounded-full border border-[#D0DCD6] text-xs shadow-2xs">
-          <Store className="w-3.5 h-3.5 text-[#CBA258]" />
-          <span className="font-bold text-[#1E3932]">{storeName}</span>
+        <button
+          type="button"
+          onClick={() => setIsStoreModalOpen(true)}
+          title="Kliknij, aby zmienić kawiarnię"
+          className="flex items-center space-x-2 bg-white/80 hover:bg-emerald-50 backdrop-blur-xs px-3.5 py-1.5 rounded-full border border-[#D0DCD6] hover:border-emerald-300 text-xs shadow-2xs cursor-pointer transition-all group"
+        >
+          <Store className="w-3.5 h-3.5 text-[#CBA258] group-hover:scale-105 transition-transform" />
+          <span className="font-bold text-[#1E3932] group-hover:text-[#006241]">{currentStore.shortName}</span>
           <span className="text-stone-300">•</span>
-          <span className="text-stone-500">Kod: <strong>{unitCode}</strong></span>
-        </div>
+          <span className="text-stone-500">Kod: <strong className="text-stone-800">{currentStore.unitCode}</strong></span>
+          <ChevronsUpDown className="w-3 h-3 text-stone-400 group-hover:text-[#006241] transition-colors" />
+        </button>
       </header>
 
       {/* Główny kontener logowania */}
@@ -116,10 +110,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             <div className="bg-[#F8FAF9] rounded-2xl p-5 border border-[#E2E8E5] space-y-3 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-stone-500 font-medium">Lokalizacja:</span>
-                <span className="font-bold text-[#1E3932] flex items-center gap-1.5">
-                  <Store className="w-3.5 h-3.5 text-[#006241]" />
-                  {storeName}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsStoreModalOpen(true)}
+                  title="Kliknij, aby zmienić kawiarnię"
+                  className="font-bold text-[#1E3932] hover:text-[#006241] flex items-center gap-1.5 bg-stone-100 hover:bg-emerald-50 px-2.5 py-1 rounded-xl border border-stone-200 hover:border-emerald-300 transition-all cursor-pointer group"
+                >
+                  <Store className="w-3.5 h-3.5 text-[#006241] group-hover:scale-105 transition-transform" />
+                  <span className="truncate max-w-[200px]">{currentStore.name}</span>
+                  <ChevronsUpDown className="w-3 h-3 text-stone-400 group-hover:text-[#006241] transition-colors ml-0.5" />
+                </button>
               </div>
 
               {configuredUserName && (
@@ -173,6 +173,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           {APP_SHORT_NAME} v{APP_VERSION}
         </p>
       </footer>
+
+      {/* Modal wyboru kawiarni na ekranie logowania */}
+      <StoreSwitcherModal
+        isOpen={isStoreModalOpen}
+        onClose={() => setIsStoreModalOpen(false)}
+      />
     </div>
   );
 };

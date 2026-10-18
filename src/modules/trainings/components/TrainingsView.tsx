@@ -29,6 +29,7 @@ import {
 
 import { ModuleDateBar, POLISH_MONTHS } from '../../../components/ModuleDateBar';
 import { SystemClock } from '../../../services/systemClock';
+import { useStore } from '../../../context/StoreContext';
 
 interface TrainingsViewProps {
   selectedYear?: number;
@@ -39,6 +40,7 @@ export const TrainingsView: React.FC<TrainingsViewProps> = ({
   selectedYear,
   selectedMonth
 }) => {
+  const { currentStore } = useStore();
   const currentNow = SystemClock.now();
   const [currentYear, setCurrentYear] = useState<number>(selectedYear || currentNow.year);
   const [currentMonth, setCurrentMonth] = useState<number>(selectedMonth || currentNow.monthIndex + 1);
@@ -189,7 +191,7 @@ export const TrainingsView: React.FC<TrainingsViewProps> = ({
                 Starbucks Training Suite — Moduł Szkoleniowy
               </h2>
               <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full border border-emerald-300">
-                108120 Janki
+                {currentStore.shortName}
               </span>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
@@ -409,7 +411,7 @@ export const TrainingsView: React.FC<TrainingsViewProps> = ({
                     Rejestr Egzaminów i Weryfikacji Praktycznych Skill Check
                   </h3>
                   <p className="text-xs text-stone-500 mt-1">
-                    Archiwum ocen, zdawalności i certyfikacji baristów kawiarni 108120 Janki.
+                    Archiwum ocen, zdawalności i certyfikacji baristów kawiarni {currentStore.shortName}.
                   </p>
                 </div>
                 <button

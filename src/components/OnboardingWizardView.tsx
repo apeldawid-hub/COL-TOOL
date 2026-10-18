@@ -29,6 +29,8 @@ import {
   Info,
 } from 'lucide-react';
 import { useTutorial } from '../context/TutorialContext';
+import { useStore } from '../context/StoreContext';
+import { StoreSwitcherModal } from './StoreSwitcherModal';
 
 interface OnboardingWizardViewProps {
   onComplete: (config: {
@@ -124,14 +126,17 @@ function detectMonthAndYear(filename: string): { month: string; year: number } {
 
 export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onComplete }) => {
   const { openModelTour } = useTutorial();
+  const { currentStore } = useStore();
+  const [isStoreSwitcherOpen, setIsStoreSwitcherOpen] = useState(false);
+
   // Kroki: 1: Powitanie, 2: Profil, 3: Wybór opcji (A/B/C), 4: Wgrywanie plików (A), 5: Weryfikacja w Tabeli (A), 6: Podsumowanie
   const [step, setStep] = useState<number>(1);
 
   // Krok 2: Kawiarnia i Profil
   const [selectedStore, setSelectedStore] = useState({
-    name: '108120 SBX Warszawa Janki',
-    unitCode: '18120',
-    district: 'Dystrykt Warszawa',
+    name: currentStore.name || '108120 SBX Warszawa Janki',
+    unitCode: currentStore.unitCode || '18120',
+    district: currentStore.district || 'Dystrykt Warszawa',
   });
   const [selectedRole, setSelectedRole] = useState<'SM' | 'ASM'>('SM');
   const [managerName, setManagerName] = useState<string>('');
@@ -680,7 +685,14 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
                       </div>
                     </div>
                   </div>
-                  <CheckCircle2 className="w-5 h-5 text-[#006241] shrink-0" />
+                  <button
+                    type="button"
+                    onClick={() => setIsStoreSwitcherOpen(true)}
+                    className="px-3.5 py-2 bg-white hover:bg-emerald-100 border border-emerald-300 hover:border-[#006241] text-[#006241] rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Zmień kawiarnię</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -1617,6 +1629,19 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
       <footer className="px-8 py-3 text-center text-xs text-stone-400 border-t border-stone-200 bg-white/80 backdrop-blur-md relative z-10">
         Starbucks Operations Suite © 2026
       </footer>
+
+      {/* Modal wyboru kawiarni w kreatorze */}
+      <StoreSwitcherModal
+        isOpen={isStoreSwitcherOpen}
+        onClose={() => setIsStoreSwitcherOpen(false)}
+        onStoreSwitched={(s) => {
+          setSelectedStore({
+            name: s.name,
+            unitCode: s.unitCode,
+            district: s.district,
+          });
+        }}
+      />
     </div>
   );
 };

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Database, Search, Building2, ShieldCheck, DollarSign } from 'lucide-react';
+import { Database, Search, Building2, ShieldCheck, DollarSign, Check } from 'lucide-react';
+import { useStore } from '../../../context/StoreContext';
 
 export const ColDaneSheet: React.FC = () => {
+  const { currentStore, availableStores, switchStore } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
 
   const monthsData = [
@@ -28,24 +30,8 @@ export const ColDaneSheet: React.FC = () => {
     { role: 'BARISTA / BT (Załoga)', etat: 1.0, equiv: '0.85 zł / h', pfron: '200 zł', compBen: '-', jpa: '-' }
   ];
 
-  const storesSample = [
-    { mpk: '108120', name: 'SBX Warszawa Janki' },
-    { mpk: '108001', name: 'SBX Warszawa Al. Jerozolimskie' },
-    { mpk: '108002', name: 'SBX Warszawa Zodiak' },
-    { mpk: '108004', name: 'SBX Warszawa Nowy Swiat' },
-    { mpk: '108026', name: 'SBX Warszawa Zebra Tower' },
-    { mpk: '108040', name: 'SBX Warszawa WFC' },
-    { mpk: '108046', name: 'SBX Warszawa Sadyba' },
-    { mpk: '108063', name: 'SBX Warszawa Arkadia' },
-    { mpk: '108098', name: 'SBX Warszawa Rzeczypospolitej' },
-    { mpk: '108111', name: 'SBX Warszawa Pulawska' },
-    { mpk: '108115', name: 'SBX Warszawa Galeria Polnocna' },
-    { mpk: '108153', name: 'SBX Warszawa Elektrownia Powisle' },
-    { mpk: '108161', name: 'SBX Piaseczno SanPark' }
-  ];
-
-  const filteredStores = storesSample.filter(
-    s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.mpk.includes(searchTerm)
+  const filteredStores = availableStores.filter(
+    s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.mpk.includes(searchTerm) || s.city.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -62,8 +48,10 @@ export const ColDaneSheet: React.FC = () => {
               </p>
             </div>
           </div>
-          <span className="bg-black/20 text-white font-mono px-3 py-1 rounded text-xs border border-white/10">
-            Jednostka: 108120 Janki
+          <span className="bg-black/20 text-white font-mono px-3 py-1 rounded text-xs border border-white/10 flex items-center gap-1.5">
+            <span>Jednostka:</span>
+            <strong className="text-amber-300 font-bold">{currentStore.shortName}</strong>
+            <span className="text-emerald-300">({currentStore.unitCode})</span>
           </span>
         </div>
 
@@ -177,19 +165,27 @@ export const ColDaneSheet: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-            {filteredStores.map(s => (
-              <div
-                key={s.mpk}
-                className={`p-2 rounded border text-[11px] flex justify-between items-center ${
-                  s.mpk === '108120'
-                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 font-bold text-emerald-900 dark:text-emerald-200'
-                    : 'border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-850'
-                }`}
-              >
-                <span>{s.name}</span>
-                <span className="font-mono text-slate-500 text-[10px]">{s.mpk}</span>
-              </div>
-            ))}
+            {filteredStores.map(s => {
+              const isActive = s.id === currentStore.id || s.mpk === currentStore.mpk;
+              return (
+                <div
+                  key={s.id || s.mpk}
+                  onClick={() => switchStore(s)}
+                  title={isActive ? 'Aktualnie wybrana kawiarnia' : `Kliknij, aby przełączyć na ${s.name}`}
+                  className={`p-2 rounded border text-[11px] flex justify-between items-center cursor-pointer transition-all ${
+                    isActive
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 font-bold text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-500/30'
+                      : 'border-slate-200 dark:border-zinc-800 bg-slate-50/50 hover:bg-emerald-50/30 dark:bg-zinc-850 hover:border-emerald-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 truncate pr-1">
+                    {isActive && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                    <span className="truncate">{s.name}</span>
+                  </div>
+                  <span className="font-mono text-slate-500 text-[10px] shrink-0">{s.mpk}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

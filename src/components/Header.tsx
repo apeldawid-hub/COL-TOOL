@@ -27,10 +27,12 @@ import {
   ChevronRight,
   Flame,
   Check,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { todoService, StoreTask } from '../services/todoService';
 import { databaseHealthService } from '../services/databaseHealthService';
 import { DatabaseHealthStatus } from '../types';
+import { useStore } from '../context/StoreContext';
 
 interface HeaderProps {
   activeModule: AppModule;
@@ -65,6 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const currentModuleInfo = MODULE_TITLES[activeModule] || MODULE_TITLES.dashboard;
   const ModuleIcon = currentModuleInfo.icon;
+
+  const { currentStore, openStoreSwitcher } = useStore();
 
   const [isTodoOpen, setIsTodoOpen] = useState<boolean>(false);
   const [tasks, setTasks] = useState<StoreTask[]>(() => todoService.getTasks());
@@ -151,12 +155,21 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-2 text-[11px] text-[#5C6F68]">
-            <Store className="w-3 h-3 text-[#CBA258]" />
-            <span className="font-bold text-[#1E3932]">108120 SBX Janki</span>
-            <span className="text-gray-300">•</span>
-            <span>Kod: <strong>18120</strong></span>
-          </div>
+          <button
+            onClick={openStoreSwitcher}
+            title={`Aktywna kawiarnia: ${currentStore.name} (Unit: ${currentStore.unitCode}, MPK: ${currentStore.mpk}). Kliknij, aby przełączyć kawiarnię.`}
+            className="flex items-center space-x-1.5 text-[11px] text-[#5C6F68] hover:text-[#006241] bg-stone-100/70 hover:bg-emerald-50 px-2 py-0.5 rounded-lg border border-transparent hover:border-emerald-200 transition-all cursor-pointer group/store"
+          >
+            <Store className="w-3.5 h-3.5 text-[#CBA258] group-hover/store:scale-110 transition-transform shrink-0" />
+            <span className="font-bold text-[#1E3932] group-hover/store:text-[#006241] truncate max-w-[130px] sm:max-w-[180px]">
+              {currentStore.shortName}
+            </span>
+            <span className="text-stone-300">•</span>
+            <span className="text-[10px] font-mono font-bold text-stone-600 bg-white px-1 py-0.2 rounded border border-stone-200">
+              {currentStore.unitCode}
+            </span>
+            <ChevronsUpDown className="w-3 h-3 text-stone-400 group-hover/store:text-[#006241] transition-colors ml-0.5 shrink-0" />
+          </button>
         </div>
       </div>
 
@@ -202,8 +215,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Imię i Rola */}
             <div className="flex flex-col text-left leading-tight">
               <span className="font-black truncate max-w-[140px] sm:max-w-[180px]">{userName}</span>
-              <span className={`text-[9px] font-bold ${isTodoOpen ? 'text-emerald-200' : 'text-emerald-800'}`}>
-                108120 Janki
+              <span className={`text-[9px] font-bold ${isTodoOpen ? 'text-emerald-200' : 'text-emerald-800'} truncate max-w-[140px]`}>
+                {currentStore.shortName}
               </span>
             </div>
 

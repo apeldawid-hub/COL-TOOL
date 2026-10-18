@@ -54,8 +54,10 @@ import {
   ZoomIn,
   ZoomOut,
   History,
+  ArrowRight,
 } from 'lucide-react';
 import { useTutorial } from '../context/TutorialContext';
+import { useStore } from '../context/StoreContext';
 import { POLISH_MONTHS, AVAILABLE_YEARS } from './ModuleDateBar';
 import { SystemClock } from '../services/systemClock';
 import { ManagerScheduleEngine } from '../modules/managers-schedule/services/managerScheduleEngine';
@@ -116,6 +118,8 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
   hasUpdateAvailable,
   onOpenBugReporter,
 }) => {
+  const { currentStore, openStoreSwitcher } = useStore();
+
   // Mapowanie aktywnego modułu na zakładkę ustawień (dynamiczne pozycjonowanie)
   const getInitialTab = (mod: AppModule): SettingsTabId => {
     switch (mod) {
@@ -2123,20 +2127,33 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Karta 1: Dane Kawiarni i Użytkownika */}
                     <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Store className="w-5 h-5 text-[#006241]" />
-                        <h4 className="text-sm font-bold text-stone-900">Jednostka & Profil Operacyjny</h4>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Store className="w-5 h-5 text-[#006241]" />
+                          <h4 className="text-sm font-bold text-stone-900">Jednostka & Profil Operacyjny</h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-[#006241] font-bold border border-emerald-300">
+                          Lokal Aktywny
+                        </span>
                       </div>
                       <div className="text-xs space-y-1.5 text-stone-600">
                         <div className="flex justify-between">
                           <span className="text-stone-500">Kawiarnia:</span>
-                          <strong className="text-stone-900">{currentStoreName}</strong>
+                          <strong className="text-stone-900">{currentStore.name}</strong>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-stone-500">Kod jednostki (Unit Code):</span>
-                          <strong className="text-stone-900">{currentUnitCode}</strong>
+                          <strong className="text-stone-900">{currentStore.unitCode}</strong>
                         </div>
                         <div className="flex justify-between">
+                          <span className="text-stone-500">Kod MPK:</span>
+                          <strong className="text-stone-900">{currentStore.mpk}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-stone-500">Miasto / Dystrykt:</span>
+                          <span className="text-stone-800">{currentStore.city} • {currentStore.district}</span>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-stone-200">
                           <span className="text-stone-500">Zalogowany Kierownik:</span>
                           <strong className="text-[#006241]">{currentUserName}</strong>
                         </div>
@@ -2149,6 +2166,15 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                           <span className="font-mono text-stone-700 text-[11px]">{currentUserEmail}</span>
                         </div>
                       </div>
+
+                      <button
+                        onClick={openStoreSwitcher}
+                        className="w-full mt-2.5 px-3 py-2 bg-white hover:bg-emerald-50 border border-stone-300 hover:border-[#006241] text-[#006241] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs group"
+                      >
+                        <Store className="w-3.5 h-3.5 text-[#CBA258]" />
+                        <span>Przełącz lub Dodaj Kawiarnię...</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
                     </div>
 
                     {/* Karta Skalowania Interfejsu & Gęstości Widoku (UI Zoom) */}

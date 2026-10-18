@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.54](#v2.8.54--2026-10-18)** | 2026-10-18 | Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce | `minor` | 🚀 Opublikowana |
 | **[v2.8.52](#v2.8.52--2026-09-28)** | 2026-09-28 | Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin) | `patch` | 🚀 Opublikowana |
 | **[v2.8.51](#v2.8.51--2026-09-28)** | 2026-09-28 | Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33) | `patch` | 🚀 Opublikowana |
 | **[v2.8.50](#v2.8.50--2026-09-28)** | 2026-09-28 | Korekta Formuły Prognozowanego TPLH i Zużycia Godzin na Koniec Miesiąca | `patch` | 🚀 Opublikowana |
@@ -27,6 +28,28 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.54] — 2026-10-18
+**Tytuł:** Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Błyskawiczne przełączanie aktywnej kawiarni w całym systemie z poziomu nagłówka, paska bocznego, ustawień i ekranu logowania
+- Bogaty katalog oficjalnych kawiarni Starbucks w Polsce (Warszawa, Kraków, Wrocław, Poznań, Trójmiasto, Katowice, Łódź, Szczecin) z kodami MPK, Unit Code i adresami
+- Możliwość dodawania własnych, spersonalizowanych kawiarni ze stałą persystencją w localStorage i bazie SQLite
+- Nowy modal StoreSwitcherModal z wyszukiwarką czasu rzeczywistego i filtrami miast
+
+#### ✨ Nowe Funkcje:
+- Nowy komponent StoreSwitcherModal umożliwiający błyskawiczny wybór i przełączanie kawiarni Starbucks z podglądem kodów MPK i Unit Code.
+- Reaktywny kontekst StoreContext i serwis StoreService z obsługą synchronizacji z bazą SQLite i zdarzeń systemowych.
+- Katalog starbucksStores zawierający jednostki Starbucks w Polsce z podziałem na miasta, dystrykty i typy lokali.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Interaktywny przycisk kawiarni w nagłówku aplikacji (Header) oraz na pasku bocznym (Sidebar) w trybie rozwiniętym i zwiniętym.
+- Dedykowana sekcja zarządzania kawiarnią w Ustawieniach Systemowych (UnifiedSettingsModal) oraz wsparcie w Kreatorze Początkowym (Onboarding).
+- Dynamiczne przełączanie kawiarni bezpośrednio na ekranie logowania (LoginView) oraz w arkuszu DANE (ColDaneSheet).
+
+---
 
 ### [v2.8.52] — 2026-09-28
 **Tytuł:** Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin)  

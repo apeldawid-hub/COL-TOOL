@@ -18,6 +18,7 @@ import {
   Info,
   ChevronRight
 } from 'lucide-react';
+import { useStore } from '../../../context/StoreContext';
 
 interface LaborLawComplianceModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const LaborLawComplianceModal: React.FC<LaborLawComplianceModalProps> = (
   monthName,
   year
 }) => {
+  const { currentStore } = useStore();
   const [selectedRule, setSelectedRule] = useState<string>('ALL');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
 
@@ -378,7 +380,7 @@ export const LaborLawComplianceModal: React.FC<LaborLawComplianceModalProps> = (
         {/* STOPKA */}
         <div className="p-4 border-t border-[#E2E8E5] bg-[#F7F9F8] flex items-center justify-between text-xs">
           <div className="text-stone-500">
-            Kawiarnia <strong className="text-stone-700">108120 SBX Warszawa Janki</strong> • Kod 18120
+            Kawiarnia <strong className="text-stone-700">{currentStore.name}</strong> • Kod {currentStore.unitCode}
           </div>
           <button
             onClick={onClose}
