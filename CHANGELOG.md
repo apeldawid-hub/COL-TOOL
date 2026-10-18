@@ -5,7 +5,7 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
-## [v2.8.55] — 2026-10-18: Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)
+## [v2.8.56] — 2026-10-18: Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)
 *Autor: Dawid Apel & Antigravity Agent*
 
 ### 🌟 Główne Atuty Wydania:

@@ -24,7 +24,7 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
-    version: '2.8.55',
+    version: '2.8.56',
     date: '2026-10-18',
     title: 'Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)',
     type: 'patch',

@@ -7,7 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **[v2.8.55](#v2.8.55--2026-10-18)** | 2026-10-18 | Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII) | `patch` | 🚀 Opublikowana |
+| **[v2.8.56](#v2.8.56--2026-10-18)** | 2026-10-18 | Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII) | `patch` | 🚀 Opublikowana |
 | **[v2.8.54](#v2.8.54--2026-10-18)** | 2026-10-18 | Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce | `minor` | 🚀 Opublikowana |
 | **[v2.8.52](#v2.8.52--2026-09-28)** | 2026-09-28 | Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin) | `patch` | 🚀 Opublikowana |
 | **[v2.8.51](#v2.8.51--2026-09-28)** | 2026-09-28 | Eliminacja Zawyżonych Godzin Otwartego Tygodnia i Utrzymanie Realnego Trendu TPLH (7.33) | `patch` | 🚀 Opublikowana |
@@ -30,7 +30,7 @@
 
 ## Szczegółowa Historia Wydań
 
-### [v2.8.55] — 2026-10-18
+### [v2.8.56] — 2026-10-18
 **Tytuł:** Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)  
 **Autorzy:** Dawid Apel & Antigravity Agent  
 
