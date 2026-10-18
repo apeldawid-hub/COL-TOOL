@@ -6,7 +6,7 @@ import { StoreService } from '../services/storeService';
 interface StoreContextType {
   currentStore: StarbucksStore;
   availableStores: StarbucksStore[];
-  switchStore: (storeOrId: StarbucksStore | string) => void;
+  switchStore: (storeOrId: StarbucksStore | string) => Promise<{ success: boolean; isNew?: boolean } | void>;
   addCustomStore: (store: StarbucksStore, activate?: boolean) => void;
   removeCustomStore: (storeId: string) => void;
   isStoreSwitcherOpen: boolean;
@@ -28,6 +28,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   useEffect(() => {
+    // Inicjalizacja bazy SQLite dla zapamiętanej kawiarni przy starcie
+    StoreService.initStore().catch((err) => console.warn('Store init error:', err));
+
     const handleStoreChange = (e: Event) => {
       const customEvent = e as CustomEvent<StarbucksStore>;
       if (customEvent.detail) {
@@ -46,7 +49,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, [refreshStores]);
 
-  const switchStore = useCallback((storeOrId: StarbucksStore | string) => {
+  const switchStore = useCallback(async (storeOrId: StarbucksStore | string) => {
     let targetStore: StarbucksStore | undefined;
     if (typeof storeOrId === 'string') {
       targetStore = StoreService.getAllStores().find(
@@ -57,8 +60,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     if (targetStore) {
-      StoreService.setCurrentStore(targetStore);
+      const res = await StoreService.setCurrentStore(targetStore);
       setCurrentStoreState(targetStore);
+      return res;
     }
   }, []);
 

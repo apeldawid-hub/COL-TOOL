@@ -75,6 +75,8 @@ export class DatabaseManager {
   private static instance: DatabaseManager;
   private db: Database | null = null;
   private dbFilePath: string;
+  private storageDir: string;
+  private currentStoreId: string = '108120_janki';
 
   private SQL: any = null;
 
@@ -90,7 +92,14 @@ export class DatabaseManager {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    this.dbFilePath = path.join(dir, 'tplh_forecast.db');
+    this.storageDir = dir;
+
+    // Odczytaj zapisaną aktywną kawiarnię (jeśli istnieje)
+    const meta = this.loadActiveStoreMeta();
+    if (meta?.storeId) {
+      this.currentStoreId = meta.storeId;
+    }
+    this.dbFilePath = this.computeDbFilePath(this.currentStoreId, meta?.storeInfo);
   }
 
   public static getInstance(storageDir?: string): DatabaseManager {
@@ -160,6 +169,149 @@ export class DatabaseManager {
 
   public getDbFilePath(): string {
     return this.dbFilePath;
+  }
+
+  public getCurrentStoreId(): string {
+    return this.currentStoreId;
+  }
+
+  private computeDbFilePath(storeId: string, storeInfo?: { unitCode?: string; mpk?: string }): string {
+    const isJanki = storeId === '108120_janki' || storeInfo?.mpk === '108120' || storeInfo?.unitCode === '18120';
+    if (isJanki) {
+      return path.join(this.storageDir, 'tplh_forecast.db');
+    }
+    const safeId = storeId.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    return path.join(this.storageDir, `store_${safeId}.db`);
+  }
+
+  private saveActiveStoreMeta(storeId: string, storeInfo?: any): void {
+    try {
+      const metaPath = path.join(this.storageDir, 'active_store.json');
+      fs.writeFileSync(metaPath, JSON.stringify({ storeId, storeInfo, updatedAt: new Date().toISOString() }, null, 2));
+    } catch (e) {
+      console.warn('Nie udało się zapisać active_store.json:', e);
+    }
+  }
+
+  private loadActiveStoreMeta(): { storeId: string; storeInfo?: any } | null {
+    try {
+      const metaPath = path.join(this.storageDir, 'active_store.json');
+      if (fs.existsSync(metaPath)) {
+        return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      }
+    } catch (e) {
+      console.warn('Nie udało się odczytać active_store.json:', e);
+    }
+    return null;
+  }
+
+  /**
+   * Błyskawiczne przełączenie bazy danych na wybraną kawiarnię.
+   * Dla nowo utworzonej kawiarni tworzy całkowicie nową, czystą bazę danych SQLite!
+   */
+  public async switchStoreDatabase(
+    storeId: string,
+    storeInfo?: { name: string; unitCode: string; mpk: string; city?: string; district?: string }
+  ): Promise<{ success: boolean; isNew: boolean; dbPath: string; storeId: string }> {
+    // 1. Zapisz dotychczasową bazę na dysk i zwolnij połączenie
+    if (this.db) {
+      try {
+        this.persist();
+        this.db.close();
+      } catch (err) {
+        console.warn('Błąd zamykania dotychczasowej bazy przed przełączeniem:', err);
+      }
+      this.db = null;
+    }
+
+    this.currentStoreId = storeId;
+    this.saveActiveStoreMeta(storeId, storeInfo);
+    this.dbFilePath = this.computeDbFilePath(storeId, storeInfo);
+
+    if (!this.SQL) {
+      this.SQL = await initSqlJs();
+    }
+
+    const exists = fs.existsSync(this.dbFilePath);
+    if (exists) {
+      const fileBuffer = fs.readFileSync(this.dbFilePath);
+      this.db = new this.SQL.Database(fileBuffer);
+      console.log(`📦 Załadowano istniejącą bazę SQLite dla kawiarni [${storeId}] z: ${this.dbFilePath}`);
+      this.createSchema();
+      return { success: true, isNew: false, dbPath: this.dbFilePath, storeId };
+    } else {
+      // NOWA KAWIARNIA = NOWA BAZA DANYCH!
+      this.db = new this.SQL.Database();
+      console.log(`🆕 Tworzenie nowej czystej bazy danych SQLite dla nowej kawiarni [${storeId}] (${storeInfo?.name || storeId})`);
+      this.createSchema();
+      this.seedNewStoreData(storeInfo);
+      this.persist();
+      return { success: true, isNew: true, dbPath: this.dbFilePath, storeId };
+    }
+  }
+
+  /**
+   * Inicjalizuje nową bazę danych dla nowo utworzonej kawiarni:
+   * uniwersalne normy KP, tygodnie kalendarza, standardowe zmiany, ale CZYSTY zespół i CZYSTE plany.
+   */
+  private seedNewStoreData(storeInfo?: { name?: string; unitCode?: string; mpk?: string; city?: string; district?: string }): void {
+    if (!this.db) return;
+
+    // 1. Zaseeduj tygodnie biznesowe kalendarza (uniwersalne dla Starbucks Polska)
+    const baseSeedPath = path.join(process.cwd(), 'desktop_app_blueprint', 'data_schemas_and_seeds');
+    const weeksPath = path.join(baseSeedPath, 'weeks_engine_seed.json');
+    if (fs.existsSync(weeksPath)) {
+      try {
+        const weeksRaw = JSON.parse(fs.readFileSync(weeksPath, 'utf8'));
+        const weeksData = (weeksRaw.length > 0 && weeksRaw[0].week_key === 'Klucz (Y_M_W)')
+          ? weeksRaw.slice(1)
+          : weeksRaw;
+
+        const stmt = this.db.prepare(`
+          INSERT OR REPLACE INTO calendar_weeks
+          (week_key, year, month_name, week_num_in_month, days_count, week_type, date_from, date_to, floor_hours, day_weight)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const w of weeksData) {
+          stmt.run([
+            w.week_key,
+            Number(w.year),
+            w.month_num,
+            w.month_name,
+            Number(w.days_count),
+            w.week_type,
+            w.date_from,
+            w.date_to,
+            Number(w.floor_hours),
+            Number(w.day_weight)
+          ]);
+        }
+        stmt.free();
+        console.log(`✅ [Nowa Kawiarnia] Zaseedowano ${weeksData.length} tygodni biznesowych.`);
+      } catch (err) {
+        console.error('Błąd seedowania calendar_weeks dla nowej kawiarni:', err);
+      }
+    }
+
+    // 2. Skonfiguruj app_settings dla tej kawiarni
+    const storeName = storeInfo?.name || 'Nowa Kawiarnia Starbucks';
+    const unitCode = storeInfo?.unitCode || '';
+    const storeMpk = storeInfo?.mpk || '';
+    const storeCity = storeInfo?.city || '';
+    const storeDistrict = storeInfo?.district || '';
+
+    this.setAppSettings({
+      store_name: storeName,
+      unit_code: unitCode,
+      store_mpk: storeMpk,
+      store_city: storeCity,
+      store_district: storeDistrict,
+      sbx_onboarding_completed: 'true',
+      onboarding_completed: 'true',
+    });
+
+    console.log(`✅ [Nowa Kawiarnia] Skonfigurowano app_settings dla: ${storeName} (Kod: ${unitCode})`);
   }
 
   public persist(): void {

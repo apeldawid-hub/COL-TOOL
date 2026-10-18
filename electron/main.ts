@@ -185,6 +185,25 @@ function setupIpcHandlers() {
     return true;
   });
 
+  // Przełączanie bazy danych na wybraną kawiarnię (z izolowaną, nową bazą SQLite dla nowej jednostki)
+  ipcMain.handle('store:switch-database', async (_event, payload: { storeId: string; storeInfo?: any }) => {
+    try {
+      const result = await dbManager.switchStoreDatabase(payload.storeId, payload.storeInfo);
+      console.log(`🏬 [Multi-Store] Przełączono bazę kawiarni: ${payload.storeId} -> ${result.dbPath} (nowa: ${result.isNew})`);
+      return result;
+    } catch (err: any) {
+      console.error('Błąd przełączania bazy kawiarni w IPC:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('store:get-current-db-info', () => {
+    return {
+      storeId: dbManager.getCurrentStoreId(),
+      dbFilePath: dbManager.getDbFilePath(),
+    };
+  });
+
   // Pobranie lat z bazy
   ipcMain.handle('db:get-available-years', () => {
     const db = dbManager.getDb();

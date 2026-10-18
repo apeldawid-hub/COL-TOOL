@@ -5,6 +5,27 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.57] — 2026-10-18: Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek)
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Pełna separacja fizycznych baz danych SQLite per kawiarnia (store_*.db) z bezpiecznym zachowaniem danych kawiarni Janki (tplh_forecast.db)**
+- **Automatyczna inicjalizacja czystej, nowej bazy danych przy pierwszym przełączeniu lub dodaniu nowej kawiarni Starbucks**
+- **Wyposażenie nowej kawiarni w uniwersalne normy Kodeksu Pracy RP (2016-2036), kalendarz tygodni biznesowych i standardowe szablony zmian przy całkowicie czystym zespole i grafiku**
+- **Błyskawiczne przełączanie w locie (Hot Database Switch) przez kanał IPC Electrona z zachowaniem integralności i natychmiastowym zapisem transakcyjnym na dysku**
+
+### ✨ Nowe Funkcje (Features):
+- Integracja z preload.ts i main.ts za pomocą kanałów IPC store:switch-database i store:get-current-db-info.
+- Reaktywna obsługa przełączania bazy danych w StoreService i StoreContext wraz ze wskaźnikami statusu bazy w StoreSwitcherModal.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[database]` Zachowanie stuprocentowej kompatybilności wstecznej dla kawiarni 108120 Janki (istniejące dane w tplh_forecast.db nienaruszone).
+
+### 🛡️ Tarcza Kodeksu Pracy & Baza SQLite:
+- Silnik switchStoreDatabase w DatabaseManagerze przełączający pliki baz danych w locie i tworzący nową bazę dla nowo dodanych kawiarni.
+
+---
+
 ## [v2.8.56] — 2026-10-18: Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)
 *Autor: Dawid Apel & Antigravity Agent*
 

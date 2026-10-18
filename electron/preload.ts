@@ -37,6 +37,8 @@ export interface IElectronAPI {
   getSystemTime: () => Promise<{ iso: string; timestamp: string; hours: number; minutes: number; seconds: number; day: number; month: number; year: number }>;
   getAppSettings: () => Promise<{ settings: Record<string, string>; hasCompletedOnboarding: boolean; hasExistingData: boolean }>;
   saveAppSettings: (settings: Record<string, string>) => Promise<boolean>;
+  switchStoreDatabase?: (payload: { storeId: string; storeInfo?: any }) => Promise<{ success: boolean; isNew: boolean; dbPath: string; storeId: string }>;
+  getCurrentStoreDbInfo?: () => Promise<{ storeId: string; dbFilePath: string }>;
   onRefreshData: (callback: () => void) => void;
   // Moduł 2: Managers Schedule
   getManagerScheduleData: (year: number, month: number) => Promise<{
@@ -191,6 +193,9 @@ const api: IElectronAPI = {
   exportHistoricalPackage: (customTargetDir?: string) => ipcRenderer.invoke('db:export-historical-package', customTargetDir),
   importHistoricalPackage: (customSourceDir?: string) => ipcRenderer.invoke('db:import-historical-package', customSourceDir),
   resetToCleanSlate: () => ipcRenderer.invoke('db:reset-to-clean-slate'),
+  // Zarządzanie Wielolokalowością i Bazami Danych Kawiarni
+  switchStoreDatabase: (payload: { storeId: string; storeInfo?: any }) => ipcRenderer.invoke('store:switch-database', payload),
+  getCurrentStoreDbInfo: () => ipcRenderer.invoke('store:get-current-db-info'),
   // Moduł 3: Szkolenia (Starbucks Training Suite)
   getTrainingPartners: () => ipcRenderer.invoke('db:get-training-partners'),
   saveTrainingPartner: (partner) => ipcRenderer.invoke('db:save-training-partner', partner),

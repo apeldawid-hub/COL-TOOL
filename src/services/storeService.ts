@@ -89,9 +89,10 @@ export class StoreService {
   }
 
   /**
-   * Zmienia aktywną kawiarnię, zapisując wybór w localStorage i bazie SQLite
+   * Zmienia aktywną kawiarnię, przełączając dedykowaną bazę SQLite w Electronie
+   * oraz zapisując wybór w localStorage i emitując zdarzenie systemowe.
    */
-  public static setCurrentStore(store: StarbucksStore): void {
+  public static async setCurrentStore(store: StarbucksStore): Promise<{ success: boolean; isNew?: boolean }> {
     try {
       localStorage.setItem(STORAGE_STORE_NAME_KEY, store.name);
       localStorage.setItem(STORAGE_UNIT_CODE_KEY, store.unitCode);
@@ -99,8 +100,27 @@ export class StoreService {
       localStorage.setItem(STORAGE_STORE_DISTRICT_KEY, store.district);
       localStorage.setItem(STORAGE_STORE_CITY_KEY, store.city);
 
-      // Zapis w SQLite przez IPC Electrona (jeśli dostępne)
+      // Przełączenie pliku bazy SQLite w Electronie na bazę tej kawiarni
       const apiObj = (window as any).api || (window as any).electronAPI;
+      let switchResult: any = { success: true };
+      if (apiObj?.switchStoreDatabase) {
+        try {
+          switchResult = await apiObj.switchStoreDatabase({
+            storeId: store.id,
+            storeInfo: {
+              name: store.name,
+              unitCode: store.unitCode,
+              mpk: store.mpk,
+              city: store.city,
+              district: store.district,
+            },
+          });
+          console.log(`🏬 [StoreService] Przełączono bazę kawiarni: ${switchResult.dbPath} (nowa: ${switchResult.isNew})`);
+        } catch (err) {
+          console.error('Błąd przełączania bazy kawiarni w SQLite:', err);
+        }
+      }
+
       if (apiObj?.saveAppSettings) {
         apiObj.saveAppSettings({
           store_name: store.name,
@@ -115,6 +135,7 @@ export class StoreService {
         storeId: store.id,
         unitCode: store.unitCode,
         mpk: store.mpk,
+        isNewDb: switchResult?.isNew,
       });
 
       // Wyemituj zdarzenie w oknie dla natychmiastowej reakcji innych części aplikacji
@@ -123,8 +144,35 @@ export class StoreService {
           detail: store,
         })
       );
+
+      return switchResult;
     } catch (e) {
       console.error('Błąd zmiany kawiarni w StoreService:', e);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Inicjalizuje synchronizację aktywnej kawiarni z bazą SQLite przy starcie aplikacji
+   */
+  public static async initStore(): Promise<void> {
+    const current = this.getCurrentStore();
+    const apiObj = (window as any).api || (window as any).electronAPI;
+    if (apiObj?.switchStoreDatabase) {
+      try {
+        await apiObj.switchStoreDatabase({
+          storeId: current.id,
+          storeInfo: {
+            name: current.name,
+            unitCode: current.unitCode,
+            mpk: current.mpk,
+            city: current.city,
+            district: current.district,
+          },
+        });
+      } catch (err) {
+        console.warn('Błąd synchronizacji bazy kawiarni przy starcie:', err);
+      }
     }
   }
 

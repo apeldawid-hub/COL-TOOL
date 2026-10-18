@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.57](#v2.8.57--2026-10-18)** | 2026-10-18 | Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek) | `patch` | 🚀 Opublikowana |
 | **[v2.8.56](#v2.8.56--2026-10-18)** | 2026-10-18 | Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII) | `patch` | 🚀 Opublikowana |
 | **[v2.8.54](#v2.8.54--2026-10-18)** | 2026-10-18 | Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce | `minor` | 🚀 Opublikowana |
 | **[v2.8.52](#v2.8.52--2026-09-28)** | 2026-09-28 | Autonomiczny Flash Forecast Poniedziałku (Trend MTD, Historia Poniedziałków i Auto-Domknięcie Godzin) | `patch` | 🚀 Opublikowana |
@@ -29,6 +30,28 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.57] — 2026-10-18
+**Tytuł:** Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek)  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Pełna separacja fizycznych baz danych SQLite per kawiarnia (store_*.db) z bezpiecznym zachowaniem danych kawiarni Janki (tplh_forecast.db)
+- Automatyczna inicjalizacja czystej, nowej bazy danych przy pierwszym przełączeniu lub dodaniu nowej kawiarni Starbucks
+- Wyposażenie nowej kawiarni w uniwersalne normy Kodeksu Pracy RP (2016-2036), kalendarz tygodni biznesowych i standardowe szablony zmian przy całkowicie czystym zespole i grafiku
+- Błyskawiczne przełączanie w locie (Hot Database Switch) przez kanał IPC Electrona z zachowaniem integralności i natychmiastowym zapisem transakcyjnym na dysku
+
+#### ✨ Nowe Funkcje:
+- Integracja z preload.ts i main.ts za pomocą kanałów IPC store:switch-database i store:get-current-db-info.
+- Reaktywna obsługa przełączania bazy danych w StoreService i StoreContext wraz ze wskaźnikami statusu bazy w StoreSwitcherModal.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Zachowanie stuprocentowej kompatybilności wstecznej dla kawiarni 108120 Janki (istniejące dane w tplh_forecast.db nienaruszone).
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Silnik switchStoreDatabase w DatabaseManagerze przełączający pliki baz danych w locie i tworzący nową bazę dla nowo dodanych kawiarni.
+
+---
 
 ### [v2.8.56] — 2026-10-18
 **Tytuł:** Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII)  

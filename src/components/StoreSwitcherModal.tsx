@@ -13,6 +13,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Check,
+  Database,
+  Loader2,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { StarbucksStore } from '../constants/starbucksStores';
@@ -44,8 +46,10 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
   const [newStoreType, setNewStoreType] = useState<'Mall' | 'Street' | 'Drive-Thru' | 'Office'>('Mall');
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Informacja o sukcesie przełączenia
+  // Informacja o sukcesie przełączenia i stanie bazy danych SQLite
   const [switchedStoreId, setSwitchedStoreId] = useState<string | null>(null);
+  const [isSwitchingDb, setIsSwitchingDb] = useState<boolean>(false);
+  const [dbSwitchStatus, setDbSwitchStatus] = useState<{ isNew?: boolean; storeName?: string } | null>(null);
 
   // Lista unikalnych miast do filtrów
   const cityFilters = useMemo(() => {
@@ -86,16 +90,28 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSelectStore = (store: StarbucksStore) => {
-    switchStore(store);
+  const handleSelectStore = async (store: StarbucksStore) => {
+    setIsSwitchingDb(true);
     setSwitchedStoreId(store.id);
-    if (onStoreSwitched) {
-      onStoreSwitched(store);
+    setDbSwitchStatus(null);
+    try {
+      const result: any = await switchStore(store);
+      if (result && typeof result.isNew === 'boolean') {
+        setDbSwitchStatus({ isNew: result.isNew, storeName: store.name });
+      }
+      if (onStoreSwitched) {
+        onStoreSwitched(store);
+      }
+    } catch (e) {
+      console.error('Błąd przełączania kawiarni i bazy danych:', e);
+    } finally {
+      setIsSwitchingDb(false);
+      setTimeout(() => {
+        setSwitchedStoreId(null);
+        setDbSwitchStatus(null);
+        onClose();
+      }, 550);
     }
-    setTimeout(() => {
-      setSwitchedStoreId(null);
-      onClose();
-    }, 350);
   };
 
   const handleAddNewStoreSubmit = (e: React.FormEvent) => {
@@ -164,10 +180,22 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
                   {availableStores.length} lokali
                 </span>
               </h2>
-              <p className="text-xs text-emerald-100/80 mt-0.5 flex items-center gap-1.5">
-                <span>Aktualnie aktywna:</span>
+              <p className="text-xs text-emerald-100/80 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span>Aktualna kawiarnia:</span>
                 <strong className="text-white font-bold">{currentStore.name}</strong>
                 <span className="text-emerald-300">({currentStore.unitCode})</span>
+                {isSwitchingDb && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/40 text-[10px] animate-pulse">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Przełączanie bazy SQLite...</span>
+                  </span>
+                )}
+                {dbSwitchStatus && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 text-[10px]">
+                    <Database className="w-3 h-3 text-[#CBA258]" />
+                    <span>{dbSwitchStatus.isNew ? '✨ Nowa baza danych utworzona!' : '📦 Baza danych załadowana'}</span>
+                  </span>
+                )}
               </p>
             </div>
           </div>
