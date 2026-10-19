@@ -24,7 +24,7 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
-    version: '2.8.60',
+    version: '2.8.61',
     date: '2026-10-19',
     title: 'AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training)',
     type: 'patch',

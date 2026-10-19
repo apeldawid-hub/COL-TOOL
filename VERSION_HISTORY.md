@@ -7,7 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **[v2.8.60](#v2.8.60--2026-10-19)** | 2026-10-19 | AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training) | `patch` | 🚀 Opublikowana |
+| **[v2.8.61](#v2.8.61--2026-10-19)** | 2026-10-19 | AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training) | `patch` | 🚀 Opublikowana |
 | **[v2.8.59](#v2.8.59--2026-10-19)** | 2026-10-19 | Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite | `patch` | 🚀 Opublikowana |
 | **[v2.8.58](#v2.8.58--2026-10-19)** | 2026-10-19 | Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal | `patch` | 🚀 Opublikowana |
 | **[v2.8.57](#v2.8.57--2026-10-18)** | 2026-10-18 | Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek) | `patch` | 🚀 Opublikowana |
@@ -34,7 +34,7 @@
 
 ## Szczegółowa Historia Wydań
 
-### [v2.8.60] — 2026-10-19
+### [v2.8.61] — 2026-10-19
 **Tytuł:** AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training)  
 **Autorzy:** Dawid Apel & Antigravity Agent  
 

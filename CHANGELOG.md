@@ -5,7 +5,7 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
-## [v2.8.60] — 2026-10-19: AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training)
+## [v2.8.61] — 2026-10-19: AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training)
 *Autor: Dawid Apel & Antigravity Agent*
 
 ### 🌟 Główne Atuty Wydania:
