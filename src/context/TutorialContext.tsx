@@ -24,9 +24,10 @@ export const TutorialProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [isTutorialMode, setIsTutorialModeState] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored !== null ? stored === 'true' : true; // Domyślnie włączony dla fazy testów
+      // Domyślnie WYŁĄCZONY; aktywny wyłącznie, gdy użytkownik jawnie go włączył ('true')
+      return stored === 'true';
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -38,12 +39,36 @@ export const TutorialProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [activeTourStep, setActiveTourStep] = useState<number>(1);
   const [activeTourModule, setActiveTourModule] = useState<'schedule' | 'tplh' | 'settings'>('schedule');
 
+  // Trwała synchronizacja preferencji samouczka z bazą SQLite
+  useEffect(() => {
+    const apiObj = (window as any).api || (window as any).electronAPI;
+    if (apiObj?.getAppSettings) {
+      apiObj.getAppSettings().then((res: any) => {
+        if (res?.settings && res.settings[STORAGE_KEY] !== undefined) {
+          const enabled = res.settings[STORAGE_KEY] === 'true';
+          setIsTutorialModeState(enabled);
+          try {
+            localStorage.setItem(STORAGE_KEY, String(enabled));
+          } catch {}
+        }
+      }).catch((err: any) => console.warn('Błąd odczytu preferencji samouczka z SQLite:', err));
+    }
+  }, []);
+
   const setTutorialMode = (enabled: boolean) => {
     setIsTutorialModeState(enabled);
     try {
       localStorage.setItem(STORAGE_KEY, String(enabled));
     } catch (e) {
       console.warn('Nie udało się zapisać preferencji samouczka w localStorage:', e);
+    }
+
+    // Trwały zapis w bazie danych SQLite, aby preferencja przetrwała aktualizacje aplikacji
+    const apiObj = (window as any).api || (window as any).electronAPI;
+    if (apiObj?.saveAppSettings) {
+      apiObj.saveAppSettings({ [STORAGE_KEY]: String(enabled) }).catch((err: any) =>
+        console.warn('Błąd zapisu preferencji samouczka w SQLite:', err)
+      );
     }
   };
 

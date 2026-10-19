@@ -114,7 +114,7 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
     }
   };
 
-  const handleAddNewStoreSubmit = (e: React.FormEvent) => {
+  const handleAddNewStoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStoreName.trim()) {
       setFormError('Podaj nazwę kawiarni.');
@@ -145,19 +145,37 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
       isCustom: true,
     };
 
-    addCustomStore(newStore, true);
-    if (onStoreSwitched) {
-      onStoreSwitched(newStore);
-    }
-
-    // Reset formularza
-    setNewStoreName('');
-    setNewStoreMpk('');
-    setNewStoreUnitCode('');
-    setNewStoreAddress('');
+    setIsSwitchingDb(true);
+    setSwitchedStoreId(newStore.id);
+    setDbSwitchStatus(null);
     setFormError(null);
-    setActiveTab('LIST');
-    onClose();
+
+    try {
+      const switchResult: any = await addCustomStore(newStore, true);
+      if (switchResult && typeof switchResult.isNew === 'boolean') {
+        setDbSwitchStatus({ isNew: switchResult.isNew, storeName: newStore.name });
+      }
+      if (onStoreSwitched) {
+        onStoreSwitched(newStore);
+      }
+
+      // Reset formularza
+      setNewStoreName('');
+      setNewStoreMpk('');
+      setNewStoreUnitCode('');
+      setNewStoreAddress('');
+      setActiveTab('LIST');
+    } catch (err) {
+      console.error('Błąd dodawania i aktywowania nowej kawiarni:', err);
+      setFormError('Wystąpił błąd podczas tworzenia bazy kawiarni.');
+    } finally {
+      setIsSwitchingDb(false);
+      setTimeout(() => {
+        setSwitchedStoreId(null);
+        setDbSwitchStatus(null);
+        onClose();
+      }, 550);
+    }
   };
 
   return (

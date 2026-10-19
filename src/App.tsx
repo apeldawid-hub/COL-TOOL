@@ -81,6 +81,7 @@ export const App: React.FC = () => {
                 if (settings?.user_name) localStorage.setItem('sbx_user_name', settings.user_name);
                 if (settings?.user_role) localStorage.setItem('sbx_user_role', settings.user_role);
                 if (settings?.user_email) localStorage.setItem('sbx_user_email', settings.user_email);
+                if (settings?.sbx_tutorial_mode !== undefined) localStorage.setItem('sbx_tutorial_mode', settings.sbx_tutorial_mode);
               } catch {}
 
               if (settings?.user_name && settings?.user_role) {

@@ -204,6 +204,15 @@ function setupIpcHandlers() {
     };
   });
 
+  // Trwałe przechowywanie kawiarni dodanych przez użytkownika (custom_stores.json)
+  ipcMain.handle('store:get-custom-stores', () => {
+    return dbManager.getCustomStores();
+  });
+
+  ipcMain.handle('store:save-custom-stores', (_event, stores: any[]) => {
+    return dbManager.saveCustomStores(stores);
+  });
+
   // Pobranie lat z bazy
   ipcMain.handle('db:get-available-years', () => {
     const db = dbManager.getDb();

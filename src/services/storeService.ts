@@ -153,11 +153,49 @@ export class StoreService {
   }
 
   /**
-   * Inicjalizuje synchronizację aktywnej kawiarni z bazą SQLite przy starcie aplikacji
+   * Inicjalizuje synchronizację aktywnej kawiarni z bazą SQLite oraz wczytuje
+   * listę własnych kawiarni z trwałego pliku na dysku (custom_stores.json).
    */
   public static async initStore(): Promise<void> {
-    const current = this.getCurrentStore();
     const apiObj = (window as any).api || (window as any).electronAPI;
+
+    // 1. Wczytanie własnych kawiarni z trwałego pliku na dysku w Electronie
+    if (apiObj?.getCustomStores) {
+      try {
+        const diskStores: StarbucksStore[] = await apiObj.getCustomStores();
+        if (Array.isArray(diskStores) && diskStores.length > 0) {
+          const localStores = this.getCustomStores();
+          const localMap = new Map(localStores.map(s => [s.id, s]));
+          
+          // Scal kawiarnie z dysku i z localStorage (dysk ma pierwszeństwo jako trwałe źródło prawdy)
+          for (const ds of diskStores) {
+            localMap.set(ds.id, { ...ds, isCustom: true });
+          }
+
+          const merged = Array.from(localMap.values());
+          localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(merged));
+          
+          // Zapewnij, że plik na dysku zawiera pełny zbiór
+          if (apiObj.saveCustomStores) {
+            await apiObj.saveCustomStores(merged);
+          }
+
+          // Powiadom komponenty o zaktualizowaniu listy kawiarni
+          window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+        } else {
+          // Jeśli na dysku pusto, ale w localStorage są zapisane kawiarnie — zrzuć je na dysk!
+          const localStores = this.getCustomStores();
+          if (localStores.length > 0 && apiObj.saveCustomStores) {
+            await apiObj.saveCustomStores(localStores);
+          }
+        }
+      } catch (err) {
+        console.warn('Błąd wczytywania custom_stores z dysku:', err);
+      }
+    }
+
+    // 2. Synchronizacja aktywnej bazy kawiarni przy starcie
+    const current = this.getCurrentStore();
     if (apiObj?.switchStoreDatabase) {
       try {
         await apiObj.switchStoreDatabase({
@@ -177,9 +215,10 @@ export class StoreService {
   }
 
   /**
-   * Dodaje nową, spersonalizowaną kawiarnię i opcjonalnie od razu ją aktywuje
+   * Dodaje nową, spersonalizowaną kawiarnię do pamięci, localStorage oraz trwałego pliku
+   * custom_stores.json na dysku komputera, a następnie opcjonalnie ją aktywuje.
    */
-  public static addCustomStore(store: StarbucksStore, activate = true): void {
+  public static async addCustomStore(store: StarbucksStore, activate = true): Promise<{ success: boolean; isNew?: boolean }> {
     try {
       const customStores = this.getCustomStores();
       const existingIdx = customStores.findIndex((s) => s.id === store.id || s.mpk === store.mpk);
@@ -192,23 +231,51 @@ export class StoreService {
         customStores.push(storeToSave);
       }
 
+      // 1. Zapis w localStorage
       localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(customStores));
 
-      if (activate) {
-        this.setCurrentStore(storeToSave);
+      // 2. Trwały zapis na dysku w Electronie
+      const apiObj = (window as any).api || (window as any).electronAPI;
+      if (apiObj?.saveCustomStores) {
+        try {
+          await apiObj.saveCustomStores(customStores);
+        } catch (diskErr) {
+          console.warn('Błąd zapisu kawiarni na dysk:', diskErr);
+        }
       }
+
+      window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+
+      // 3. Aktywacja nowej kawiarni
+      if (activate) {
+        return await this.setCurrentStore(storeToSave);
+      }
+
+      return { success: true };
     } catch (e) {
       console.error('Błąd dodawania kawiarni w StoreService:', e);
+      return { success: false };
     }
   }
 
   /**
-   * Usuwa własną kawiarnię z listy
+   * Usuwa własną kawiarnię z listy w localStorage oraz na dysku
    */
-  public static removeCustomStore(storeId: string): void {
+  public static async removeCustomStore(storeId: string): Promise<void> {
     try {
       const customStores = this.getCustomStores().filter((s) => s.id !== storeId);
       localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(customStores));
+
+      const apiObj = (window as any).api || (window as any).electronAPI;
+      if (apiObj?.saveCustomStores) {
+        try {
+          await apiObj.saveCustomStores(customStores);
+        } catch (diskErr) {
+          console.warn('Błąd usuwania kawiarni z dysku:', diskErr);
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
     } catch (e) {
       console.error('Błąd usuwania kawiarni w StoreService:', e);
     }

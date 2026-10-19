@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.59](#v2.8.59--2026-10-19)** | 2026-10-19 | Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite | `patch` | 🚀 Opublikowana |
 | **[v2.8.58](#v2.8.58--2026-10-19)** | 2026-10-19 | Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal | `patch` | 🚀 Opublikowana |
 | **[v2.8.57](#v2.8.57--2026-10-18)** | 2026-10-18 | Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek) | `patch` | 🚀 Opublikowana |
 | **[v2.8.56](#v2.8.56--2026-10-18)** | 2026-10-18 | Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII) | `patch` | 🚀 Opublikowana |
@@ -31,6 +32,26 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.59] — 2026-10-19
+**Tytuł:** Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Trwały zapis dodawanych ręcznie kawiarni Starbucks w dedykowanym pliku custom_stores.json na dysku komputera w bezpiecznym katalogu danych
+- Dwukierunkowa synchronizacja kawiarni z dysku do pamięci i localStorage przy każdym uruchomieniu aplikacji
+- Asynchroniczna obsługa tworzenia nowej kawiarni z poprawnym oczekiwaniem na utworzenie bazy SQLite i wizualnym potwierdzeniem sukcesu
+- Trwała persystencja preferencji trybu samouczka/pilotażu (sbx_tutorial_mode) w bazie SQLite w tabeli app_settings
+- Domyślne wyłączenie samouczka po onboardingu — koniec z samoczynnym włączaniem się banera samouczka po aktualizacjach
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Asynchroniczna obsługa tworzenia i aktywacji nowej kawiarni w StoreSwitcherModal z oczekiwaniem na przełączenie bazy danych.
+
+#### 🐛 Poprawki Błędów:
+- Usunięcie problemu znikania kawiarni dodanych "z palca" poprzez wprowadzenie pliku custom_stores.json i kanałów IPC store:get-custom-stores oraz store:save-custom-stores.
+- Zabezpieczenie preferencji wyłączenia trybu samouczka w bazie SQLite (app_settings), zapobiegając jego samoczynnemu włączaniu po aktualizacji.
+
+---
 
 ### [v2.8.58] — 2026-10-19
 **Tytuł:** Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal  

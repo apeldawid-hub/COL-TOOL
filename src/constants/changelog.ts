@@ -24,6 +24,37 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.59',
+    date: '2026-10-19',
+    title: 'Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Trwały zapis dodawanych ręcznie kawiarni Starbucks w dedykowanym pliku custom_stores.json na dysku komputera w bezpiecznym katalogu danych',
+      'Dwukierunkowa synchronizacja kawiarni z dysku do pamięci i localStorage przy każdym uruchomieniu aplikacji',
+      'Asynchroniczna obsługa tworzenia nowej kawiarni z poprawnym oczekiwaniem na utworzenie bazy SQLite i wizualnym potwierdzeniem sukcesu',
+      'Trwała persystencja preferencji trybu samouczka/pilotażu (sbx_tutorial_mode) w bazie SQLite w tabeli app_settings',
+      'Domyślne wyłączenie samouczka po onboardingu — koniec z samoczynnym włączaniem się banera samouczka po aktualizacjach'
+    ],
+    items: [
+      {
+        type: 'fix',
+        description: 'Usunięcie problemu znikania kawiarni dodanych "z palca" poprzez wprowadzenie pliku custom_stores.json i kanałów IPC store:get-custom-stores oraz store:save-custom-stores.',
+        module: 'system',
+      },
+      {
+        type: 'fix',
+        description: 'Zabezpieczenie preferencji wyłączenia trybu samouczka w bazie SQLite (app_settings), zapobiegając jego samoczynnemu włączaniu po aktualizacji.',
+        module: 'system',
+      },
+      {
+        type: 'enhancement',
+        description: 'Asynchroniczna obsługa tworzenia i aktywacji nowej kawiarni w StoreSwitcherModal z oczekiwaniem na przełączenie bazy danych.',
+        module: 'system',
+      },
+    ],
+  },
+  {
     version: '2.8.58',
     date: '2026-10-19',
     title: 'Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal',

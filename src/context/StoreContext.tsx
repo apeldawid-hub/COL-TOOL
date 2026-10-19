@@ -7,8 +7,8 @@ interface StoreContextType {
   currentStore: StarbucksStore;
   availableStores: StarbucksStore[];
   switchStore: (storeOrId: StarbucksStore | string) => Promise<{ success: boolean; isNew?: boolean } | void>;
-  addCustomStore: (store: StarbucksStore, activate?: boolean) => void;
-  removeCustomStore: (storeId: string) => void;
+  addCustomStore: (store: StarbucksStore, activate?: boolean) => Promise<{ success: boolean; isNew?: boolean } | void>;
+  removeCustomStore: (storeId: string) => Promise<void>;
   isStoreSwitcherOpen: boolean;
   openStoreSwitcher: () => void;
   closeStoreSwitcher: () => void;
@@ -28,7 +28,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   useEffect(() => {
-    // Inicjalizacja bazy SQLite dla zapamiętanej kawiarni przy starcie
+    // Inicjalizacja bazy SQLite oraz synchronizacja kawiarni z dysku przy starcie
     StoreService.initStore().catch((err) => console.warn('Store init error:', err));
 
     const handleStoreChange = (e: Event) => {
@@ -41,10 +41,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     window.addEventListener('sbx-store-changed', handleStoreChange);
+    window.addEventListener('sbx-stores-list-updated', refreshStores);
     window.addEventListener('storage', refreshStores);
 
     return () => {
       window.removeEventListener('sbx-store-changed', handleStoreChange);
+      window.removeEventListener('sbx-stores-list-updated', refreshStores);
       window.removeEventListener('storage', refreshStores);
     };
   }, [refreshStores]);
@@ -66,16 +68,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
-  const addCustomStore = useCallback((store: StarbucksStore, activate = true) => {
-    StoreService.addCustomStore(store, activate);
+  const addCustomStore = useCallback(async (store: StarbucksStore, activate = true) => {
+    const res = await StoreService.addCustomStore(store, activate);
     setAvailableStores(StoreService.getAllStores());
     if (activate) {
       setCurrentStoreState(store);
     }
+    return res;
   }, []);
 
-  const removeCustomStore = useCallback((storeId: string) => {
-    StoreService.removeCustomStore(storeId);
+  const removeCustomStore = useCallback(async (storeId: string) => {
+    await StoreService.removeCustomStore(storeId);
     setAvailableStores(StoreService.getAllStores());
     // Jeśli usunięto aktualnie wybraną, przełącz na domyślną
     if (currentStore.id === storeId) {

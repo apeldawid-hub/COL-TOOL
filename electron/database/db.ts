@@ -206,6 +206,37 @@ export class DatabaseManager {
   }
 
   /**
+   * Pobiera listę własnych kawiarni zapisanych na dysku w custom_stores.json
+   */
+  public getCustomStores(): any[] {
+    try {
+      const storesPath = path.join(this.storageDir, 'custom_stores.json');
+      if (fs.existsSync(storesPath)) {
+        const raw = fs.readFileSync(storesPath, 'utf8');
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('Nie udało się odczytać custom_stores.json:', e);
+    }
+    return [];
+  }
+
+  /**
+   * Zapisuje listę własnych kawiarni w trwałym pliku custom_stores.json na dysku
+   */
+  public saveCustomStores(stores: any[]): boolean {
+    try {
+      const storesPath = path.join(this.storageDir, 'custom_stores.json');
+      fs.writeFileSync(storesPath, JSON.stringify(stores || [], null, 2), 'utf8');
+      console.log(`✅ [DatabaseManager] Zapisano ${stores?.length || 0} własnych kawiarni w custom_stores.json`);
+      return true;
+    } catch (e) {
+      console.error('Błąd zapisu custom_stores.json:', e);
+      return false;
+    }
+  }
+
+  /**
    * Błyskawiczne przełączenie bazy danych na wybraną kawiarnię.
    * Dla nowo utworzonej kawiarni tworzy całkowicie nową, czystą bazę danych SQLite!
    */

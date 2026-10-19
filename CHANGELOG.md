@@ -5,6 +5,25 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.59] — 2026-10-19: Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Trwały zapis dodawanych ręcznie kawiarni Starbucks w dedykowanym pliku custom_stores.json na dysku komputera w bezpiecznym katalogu danych**
+- **Dwukierunkowa synchronizacja kawiarni z dysku do pamięci i localStorage przy każdym uruchomieniu aplikacji**
+- **Asynchroniczna obsługa tworzenia nowej kawiarni z poprawnym oczekiwaniem na utworzenie bazy SQLite i wizualnym potwierdzeniem sukcesu**
+- **Trwała persystencja preferencji trybu samouczka/pilotażu (sbx_tutorial_mode) w bazie SQLite w tabeli app_settings**
+- **Domyślne wyłączenie samouczka po onboardingu — koniec z samoczynnym włączaniem się banera samouczka po aktualizacjach**
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- Asynchroniczna obsługa tworzenia i aktywacji nowej kawiarni w StoreSwitcherModal z oczekiwaniem na przełączenie bazy danych.
+
+### 🐛 Poprawki Błędów (Fixes):
+- Usunięcie problemu znikania kawiarni dodanych "z palca" poprzez wprowadzenie pliku custom_stores.json i kanałów IPC store:get-custom-stores oraz store:save-custom-stores.
+- Zabezpieczenie preferencji wyłączenia trybu samouczka w bazie SQLite (app_settings), zapobiegając jego samoczynnemu włączaniu po aktualizacji.
+
+---
+
 ## [v2.8.58] — 2026-10-19: Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal
 *Autor: Dawid Apel & Antigravity Agent*
 
