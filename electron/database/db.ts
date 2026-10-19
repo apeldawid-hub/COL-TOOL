@@ -546,14 +546,27 @@ export class DatabaseManager {
 
     // 1. Upewnij się, że każdy pracownik ma swoje employee_id w manager_employees (master registry)
     for (const emp of employees) {
-      if (!emp.id || emp.id === 0) {
+      const empId = Number(emp.id) || 0;
+      let exists = false;
+      if (empId > 0) {
+        try {
+          const checkRes = this.db.exec(`SELECT id FROM manager_employees WHERE id = ${empId}`);
+          if (checkRes.length > 0 && checkRes[0].values && checkRes[0].values.length > 0) {
+            exists = true;
+          }
+        } catch (_) {
+          exists = false;
+        }
+      }
+
+      if (!exists) {
         this.db.run(`
           INSERT INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
           VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         `, [
-          emp.name,
-          emp.role,
-          emp.contract_type,
+          emp.name || 'Nowy Menedżer',
+          emp.role || 'SSV',
+          emp.contract_type || 'FULL',
           Number(emp.contract_hours_ratio) || 1.0,
           Number(emp.hourly_rate) || 0.0,
           Number(emp.monthly_salary) || 0.0,
@@ -574,8 +587,9 @@ export class DatabaseManager {
           Number(emp.contract_hours_ratio) || 1.0,
           Number(emp.hourly_rate) || 0.0,
           Number(emp.monthly_salary) || 0.0,
-          emp.id
+          empId
         ]);
+        emp.id = empId;
       }
     }
 
@@ -615,11 +629,17 @@ export class DatabaseManager {
         WHERE (year > ${year}) OR (year = ${year} AND month > ${month})
       `);
 
-      if (futureMonthsRes.length > 0 && futureMonthsRes[0].values) {
+      if (futureMonthsRes.length > 0 && futureMonthsRes[0].values && futureMonthsRes[0].values.length > 0) {
         for (const row of futureMonthsRes[0].values) {
           const fYear = Number(row[0]);
           const fMonth = Number(row[1]);
           this.saveMonthlyRoster(fYear, fMonth, employees, false);
+        }
+      } else {
+        // Dla nowo utworzonej kawiarni bez istniejących przyszłych rekordów:
+        // automatycznie propaguj skład na pozostałe miesiące bieżącego roku (do miesiąca 12)
+        for (let m = month + 1; m <= 12; m++) {
+          this.saveMonthlyRoster(year, m, employees, false);
         }
       }
     }

@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.58](#v2.8.58--2026-10-19)** | 2026-10-19 | Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal | `patch` | 🚀 Opublikowana |
 | **[v2.8.57](#v2.8.57--2026-10-18)** | 2026-10-18 | Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek) | `patch` | 🚀 Opublikowana |
 | **[v2.8.56](#v2.8.56--2026-10-18)** | 2026-10-18 | Odciążenie Aplikacji & Biblioteka Dokumentów Operacyjnych w Firebase (100% Bez PII) | `patch` | 🚀 Opublikowana |
 | **[v2.8.54](#v2.8.54--2026-10-18)** | 2026-10-18 | Wielolokalowość: Przełącznik Kawiarni Starbucks (Store Switcher) & Katalog Jednostek w Polsce | `minor` | 🚀 Opublikowana |
@@ -30,6 +31,30 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.58] — 2026-10-19
+**Tytuł:** Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Naprawa zapisu składu zespołu kierowniczego w Ustawieniach oraz dedykowanym modalu składu (ManagerTeamModal)
+- Brakujący alias IPC saveManagerEmployees w preload.ts oraz obsługa obu nazw kanałów zapisu w UI
+- Weryfikacja istnienia pracownika w tabeli manager_employees i automatyczne generowanie unikalnych ID przy braku rekordu w nowo utworzonej kawiarni
+- Bezpośredni dostęp do zarządzania składem zespołu z poziomu siatki grafiku (ManagerScheduleGrid) oraz pływającego widgetu bocznego (AutoScheduleWidget)
+- Automatyczna propagacja składu zespołu na cały bieżący rok kalendarzowy w nowo utworzonych kawiarniach
+
+#### ✨ Nowe Funkcje:
+- Podpięcie ManagerTeamModal z przyciskiem Skład w nagłówku kolumny Menedżerowie i pustym stanie tabeli w ManagerScheduleGrid.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Szybki dostęp do składu zespołu z poziomu pływającego menu Starbucks Schedule Hub (AutoScheduleWidget).
+- Automatyczna propagacja nowo zdefiniowanego składu na pozostałe miesiące roku przy pierwszym zapisie w czystej kawiarni.
+
+#### 🐛 Poprawki Błędów:
+- Usunięcie błędu uniemożliwiającego zapis nowego zespołu przez brak aliasu saveManagerEmployees w preload.ts.
+- Zabezpieczenie operacji INSERT vs UPDATE w DatabaseManager.saveMonthlyRoster dla nowo dodanych pracowników w nowej bazie SQLite.
+
+---
 
 ### [v2.8.57] — 2026-10-18
 **Tytuł:** Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek)  

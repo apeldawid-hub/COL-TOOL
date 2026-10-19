@@ -1568,20 +1568,25 @@ function setupIpcHandlers() {
 
   // Aktualizacja zespołu menedżerów (obsługa dedykowanego składu per miesiąc lub globalnego)
   ipcMain.handle('db:manage-employees', (_event, payload: any) => {
-    if (payload && !Array.isArray(payload) && payload.year && payload.month && Array.isArray(payload.employees)) {
-      const propagate = payload.propagateToFuture !== undefined ? Boolean(payload.propagateToFuture) : true;
-      dbManager.saveMonthlyRoster(Number(payload.year), Number(payload.month), payload.employees, propagate);
-    } else {
-      // Wsteczna kompatybilność: bezpośrednia tablica pracowników
-      const employees = Array.isArray(payload) ? payload : (payload?.employees || []);
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-      dbManager.saveMonthlyRoster(currentYear, currentMonth, employees, true);
+    try {
+      if (payload && !Array.isArray(payload) && payload.year && payload.month && Array.isArray(payload.employees)) {
+        const propagate = payload.propagateToFuture !== undefined ? Boolean(payload.propagateToFuture) : true;
+        dbManager.saveMonthlyRoster(Number(payload.year), Number(payload.month), payload.employees, propagate);
+      } else {
+        // Wsteczna kompatybilność: bezpośrednia tablica pracowników
+        const employees = Array.isArray(payload) ? payload : (payload?.employees || []);
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        dbManager.saveMonthlyRoster(currentYear, currentMonth, employees, true);
+      }
+      if (mainWindow) {
+        mainWindow.webContents.send('data:refreshed');
+      }
+      return true;
+    } catch (err: any) {
+      console.error('❌ Błąd w db:manage-employees:', err);
+      throw err;
     }
-    if (mainWindow) {
-      mainWindow.webContents.send('data:refreshed');
-    }
-    return true;
   });
 
   // Kopiowanie i nadpisanie składu z poprzedniego miesiąca

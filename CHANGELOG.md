@@ -5,6 +5,29 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.58] — 2026-10-19: Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Naprawa zapisu składu zespołu kierowniczego w Ustawieniach oraz dedykowanym modalu składu (ManagerTeamModal)**
+- **Brakujący alias IPC saveManagerEmployees w preload.ts oraz obsługa obu nazw kanałów zapisu w UI**
+- **Weryfikacja istnienia pracownika w tabeli manager_employees i automatyczne generowanie unikalnych ID przy braku rekordu w nowo utworzonej kawiarni**
+- **Bezpośredni dostęp do zarządzania składem zespołu z poziomu siatki grafiku (ManagerScheduleGrid) oraz pływającego widgetu bocznego (AutoScheduleWidget)**
+- **Automatyczna propagacja składu zespołu na cały bieżący rok kalendarzowy w nowo utworzonych kawiarniach**
+
+### ✨ Nowe Funkcje (Features):
+- `[managers_schedule]` Podpięcie ManagerTeamModal z przyciskiem Skład w nagłówku kolumny Menedżerowie i pustym stanie tabeli w ManagerScheduleGrid.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[managers_schedule]` Szybki dostęp do składu zespołu z poziomu pływającego menu Starbucks Schedule Hub (AutoScheduleWidget).
+- `[managers_schedule]` Automatyczna propagacja nowo zdefiniowanego składu na pozostałe miesiące roku przy pierwszym zapisie w czystej kawiarni.
+
+### 🐛 Poprawki Błędów (Fixes):
+- Usunięcie błędu uniemożliwiającego zapis nowego zespołu przez brak aliasu saveManagerEmployees w preload.ts.
+- Zabezpieczenie operacji INSERT vs UPDATE w DatabaseManager.saveMonthlyRoster dla nowo dodanych pracowników w nowej bazie SQLite.
+
+---
+
 ## [v2.8.57] — 2026-10-18: Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek)
 *Autor: Dawid Apel & Antigravity Agent*
 

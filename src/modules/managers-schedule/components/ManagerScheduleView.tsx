@@ -20,6 +20,7 @@ import { RcpAbsenceConflictDialog } from './RcpAbsenceConflictDialog';
 import { AutoScheduleModal } from './AutoScheduleModal';
 import { AutoScheduleWidget } from './AutoScheduleWidget';
 import { InterStoreSupportModal } from './InterStoreSupportModal';
+import { ManagerTeamModal } from './ManagerTeamModal';
 import { AutoScheduleResult } from '../services/autoSchedulerEngine';
 import { DEFAULT_SHIFT_DEFINITIONS } from '../constants/defaultShifts';
 import { SystemClock } from '../../../services/systemClock';
@@ -84,6 +85,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   const [showRcpConflictModal, setShowRcpConflictModal] = useState(false);
   const [showAutoScheduleModal, setShowAutoScheduleModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
   const [autoScheduleProposal, setAutoScheduleProposal] = useState<AutoScheduleResult | null>(null);
 
   // Załadowanie danych z bazy SQLite
@@ -251,6 +253,44 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
       }
     }
     await loadScheduleData();
+  };
+
+  // Zapis składu menedżerów
+  const handleSaveTeam = async (payload: { employees: ManagerEmployee[]; propagateToFuture: boolean }) => {
+    try {
+      const api = (window as any).api || (window as any).electronAPI;
+      if (api?.saveManagerEmployees) {
+        await api.saveManagerEmployees({
+          year: selectedYear,
+          month: selectedMonth,
+          employees: payload.employees,
+          propagateToFuture: payload.propagateToFuture
+        });
+      } else if (api?.manageEmployees) {
+        await api.manageEmployees({
+          year: selectedYear,
+          month: selectedMonth,
+          employees: payload.employees,
+          propagateToFuture: payload.propagateToFuture
+        });
+      }
+      await loadScheduleData();
+    } catch (err) {
+      console.error('Błąd zapisu składu zespołu:', err);
+    }
+  };
+
+  // Kopiowanie składu z poprzedniego miesiąca
+  const handleCopyPreviousMonthRoster = async () => {
+    try {
+      const api = (window as any).api || (window as any).electronAPI;
+      if (api?.copyRosterFromPreviousMonth) {
+        await api.copyRosterFromPreviousMonth(selectedYear, selectedMonth);
+        await loadScheduleData();
+      }
+    } catch (err) {
+      console.error('Błąd kopiowania składu z poprzedniego miesiąca:', err);
+    }
   };
 
   // Zastosowanie wybranego wariantu wsparcia międzykawiarnianego
@@ -501,6 +541,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
               onUpdateEvent={handleUpdateEvent}
               onOpenComplianceModal={() => setShowComplianceModal(true)}
               onOpenConflictModal={() => setShowRcpConflictModal(true)}
+              onOpenTeamModal={() => setShowTeamModal(true)}
               boundaryShifts={boundaryShifts}
               isReadOnly={isClosed}
             />
@@ -694,6 +735,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
           onOpenDispositionsModal={() => setShowDispositionsModal(true)}
           onOpenSupportModal={() => setShowSupportModal(true)}
           onOpenVersionModal={() => setShowVersionModal(true)}
+          onOpenTeamModal={() => setShowTeamModal(true)}
           onExportExcel={handleExportExcel}
           onToggleTorView={() => setActiveTab(prev => (prev === 'schedule' ? 'tor' : 'schedule'))}
           isTorActive={activeTab === 'tor'}
@@ -729,6 +771,19 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
           data={scheduleData}
           prevMonthShifts={boundaryShifts?.prevMonthShifts}
           onApplySupportShifts={handleApplySupportShifts}
+        />
+      )}
+
+      {/* MODAL ZARZĄDZANIA SKŁADEM ZESPOŁU MENEDŻERÓW W TYM MIESIĄCU */}
+      {showTeamModal && scheduleData && (
+        <ManagerTeamModal
+          employees={scheduleData.employees}
+          year={selectedYear}
+          month={selectedMonth}
+          monthName={scheduleData.monthName}
+          onSave={handleSaveTeam}
+          onCopyPreviousMonth={handleCopyPreviousMonthRoster}
+          onClose={() => setShowTeamModal(false)}
         />
       )}
     </div>

@@ -24,6 +24,47 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.58',
+    date: '2026-10-19',
+    title: 'Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Naprawa zapisu składu zespołu kierowniczego w Ustawieniach oraz dedykowanym modalu składu (ManagerTeamModal)',
+      'Brakujący alias IPC saveManagerEmployees w preload.ts oraz obsługa obu nazw kanałów zapisu w UI',
+      'Weryfikacja istnienia pracownika w tabeli manager_employees i automatyczne generowanie unikalnych ID przy braku rekordu w nowo utworzonej kawiarni',
+      'Bezpośredni dostęp do zarządzania składem zespołu z poziomu siatki grafiku (ManagerScheduleGrid) oraz pływającego widgetu bocznego (AutoScheduleWidget)',
+      'Automatyczna propagacja składu zespołu na cały bieżący rok kalendarzowy w nowo utworzonych kawiarniach'
+    ],
+    items: [
+      {
+        type: 'fix',
+        description: 'Usunięcie błędu uniemożliwiającego zapis nowego zespołu przez brak aliasu saveManagerEmployees w preload.ts.',
+        module: 'managers_schedule',
+      },
+      {
+        type: 'fix',
+        description: 'Zabezpieczenie operacji INSERT vs UPDATE w DatabaseManager.saveMonthlyRoster dla nowo dodanych pracowników w nowej bazie SQLite.',
+        module: 'database',
+      },
+      {
+        type: 'feature',
+        description: 'Podpięcie ManagerTeamModal z przyciskiem Skład w nagłówku kolumny Menedżerowie i pustym stanie tabeli w ManagerScheduleGrid.',
+        module: 'managers_schedule',
+      },
+      {
+        type: 'enhancement',
+        description: 'Szybki dostęp do składu zespołu z poziomu pływającego menu Starbucks Schedule Hub (AutoScheduleWidget).',
+        module: 'managers_schedule',
+      },
+      {
+        type: 'enhancement',
+        description: 'Automatyczna propagacja nowo zdefiniowanego składu na pozostałe miesiące roku przy pierwszym zapisie w czystej kawiarni.',
+        module: 'managers_schedule',
+      },
+    ],
+  },
+  {
     version: '2.8.57',
     date: '2026-10-18',
     title: 'Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek)',

@@ -18,7 +18,8 @@ import {
   ChevronRight,
   ChevronLeft,
   CalendarDays,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Users,
 } from 'lucide-react';
 import {
   ManagerScheduleMonthData,
@@ -41,6 +42,7 @@ interface AutoScheduleWidgetProps {
   onOpenSupportModal?: () => void;
   onOpenVersionModal?: () => void;
   onExportExcel?: () => void;
+  onOpenTeamModal?: () => void;
   onToggleTorView?: () => void;
   isTorActive?: boolean;
   isPublished?: boolean;
@@ -60,6 +62,7 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
   onOpenSupportModal,
   onOpenVersionModal,
   onExportExcel,
+  onOpenTeamModal,
   onToggleTorView,
   isTorActive = false,
   isPublished = false,
@@ -395,7 +398,7 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
           )}
 
           {/* RZĄD GŁÓWNYCH MINI-IKONEK SZYBKIEJ AKCJI (SPEED DIAL) */}
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-6 gap-1">
             
             {/* 1. AUTOSCHEDULING AI */}
             <button
@@ -447,6 +450,24 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
                   <ArrowRightLeft className="w-3.5 h-3.5 text-teal-700" />
                 </div>
                 <span className="text-[9.5px] font-bold tracking-tight">Wsparcie</span>
+              </button>
+            )}
+
+            {/* 4. SKŁAD ZESPOŁU */}
+            {onOpenTeamModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onOpenTeamModal();
+                }}
+                title="Skład Zespołu Menedżerów (Dodawanie, edycja etatów i ról)"
+                className="p-2 rounded-2xl bg-white hover:bg-emerald-50/70 border border-stone-200 text-stone-700 hover:text-[#006241] flex flex-col items-center justify-center gap-1 transition cursor-pointer shadow-2xs group"
+              >
+                <div className="w-7 h-7 rounded-xl bg-emerald-100 text-[#006241] flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Users className="w-3.5 h-3.5 text-[#006241]" />
+                </div>
+                <span className="text-[9.5px] font-bold tracking-tight">Zespół</span>
               </button>
             )}
 

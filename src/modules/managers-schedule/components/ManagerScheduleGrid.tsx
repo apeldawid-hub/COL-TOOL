@@ -30,6 +30,7 @@ interface ManagerScheduleGridProps {
     nextMonthShifts?: ManagerScheduleShift[];
   };
   isReadOnly?: boolean;
+  onOpenTeamModal?: () => void;
 }
 
 export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
@@ -40,7 +41,8 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
   onOpenComplianceModal,
   onOpenConflictModal,
   boundaryShifts,
-  isReadOnly: customIsReadOnly
+  isReadOnly: customIsReadOnly,
+  onOpenTeamModal
 }) => {
   const isReadOnly = Boolean(customIsReadOnly ?? data.isMonthClosed);
   const [activePicker, setActivePicker] = useState<{
@@ -526,10 +528,26 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                       <Users className="w-4 h-4 text-[#006241] shrink-0" />
                       <span className="font-extrabold text-stone-900 truncate">Menedżerowie</span>
                     </div>
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9.5px] font-bold text-stone-600 bg-white hover:bg-stone-100 rounded border border-stone-300 shadow-2xs group-hover:bg-emerald-50 group-hover:text-[#006241] group-hover:border-emerald-300 transition-colors shrink-0">
-                      <ChevronLeft className="w-3 h-3 text-stone-500 group-hover:text-[#006241]" />
-                      Zwiń
-                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {onOpenTeamModal && !isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenTeamModal();
+                          }}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9.5px] font-bold text-[#006241] bg-white hover:bg-emerald-50 rounded border border-emerald-300 shadow-2xs transition-colors shrink-0"
+                          title="Zarządzaj składem zespołu menedżerskiego w tym miesiącu"
+                        >
+                          <Edit3 className="w-2.5 h-2.5 text-[#006241]" />
+                          <span>Skład</span>
+                        </button>
+                      )}
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9.5px] font-bold text-stone-600 bg-white hover:bg-stone-100 rounded border border-stone-300 shadow-2xs group-hover:bg-emerald-50 group-hover:text-[#006241] group-hover:border-emerald-300 transition-colors shrink-0">
+                        <ChevronLeft className="w-3 h-3 text-stone-500 group-hover:text-[#006241]" />
+                        Zwiń
+                      </span>
+                    </div>
                   </div>
                 </th>
               ) : (
@@ -748,6 +766,37 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
 
           {/* CIAŁO TABELI — WIERSZE MENEDŻERÓW */}
           <tbody className="divide-y divide-[#E2E8E5]">
+            {data.rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={1 + data.daySummaries.length + (isRightExpanded ? 5 : 1)}
+                  className="py-12 px-4 text-center bg-stone-50/70 border-b border-[#E2E8E5]"
+                >
+                  <div className="max-w-md mx-auto flex flex-col items-center justify-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-100/80 flex items-center justify-center text-[#006241] shadow-inner">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-stone-900">Brak menedżerów w składzie na ten miesiąc</h4>
+                      <p className="text-xs text-stone-500">
+                        W nowo utworzonej kawiarni zdefiniuj skład zespołu kierowniczego, aby rozpocząć planowanie grafiku.
+                      </p>
+                    </div>
+                    {onOpenTeamModal && !isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={onOpenTeamModal}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95"
+                      >
+                        <Users className="w-4 h-4" />
+                        <span>Zdefiniuj Skład Zespołu</span>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+
             {data.rows.map((row, idx) => {
               const isEven = idx % 2 === 0;
               const isFullTime = row.employee.contract_type === 'FULL';

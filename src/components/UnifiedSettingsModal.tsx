@@ -436,8 +436,16 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
   // Zapis Zespołu Menedżerskiego
   const handleSaveTeam = async () => {
     try {
-      if ((window as any).api?.saveManagerEmployees) {
-        await (window as any).api.saveManagerEmployees({
+      const api = (window as any).api || (window as any).electronAPI;
+      if (api?.saveManagerEmployees) {
+        await api.saveManagerEmployees({
+          year: mgrYear,
+          month: mgrMonth,
+          employees,
+          propagateToFuture
+        });
+      } else if (api?.manageEmployees) {
+        await api.manageEmployees({
           year: mgrYear,
           month: mgrMonth,
           employees,
@@ -445,6 +453,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
         });
       }
       showFeedback(`Zapisano skład menedżerów na ${POLISH_MONTHS[mgrMonth - 1]} ${mgrYear}`);
+      await loadManagerData(mgrYear, mgrMonth);
       if (onRefreshData) onRefreshData();
     } catch (err) {
       console.error('Błąd zapisu zespołu menedżerów:', err);
