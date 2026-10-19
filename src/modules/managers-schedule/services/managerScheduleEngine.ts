@@ -157,12 +157,53 @@ export function formatHoursToTimeString(decimalHours: number): string {
  * Normalizuje i formatuje oficjalne stanowisko Starbucks do zwięzłego kodu / etykiety:
  * - CUSTOMER AND SALES MANAGER -> SM (Store Manager)
  * - PEOPLE MANAGER / ASSISTANT STORE MANAGER -> ASM (Assistant Store Manager)
+/**
+ * Sprawdza czy menedżer jest na stanowisku szkoleniowym (in Training)
+ */
+export function isManagerInTraining(role?: string): boolean {
+  if (!role) return false;
+  const r = role.trim().toUpperCase();
+  return (
+    r.includes('IN TR') ||
+    r.includes('TRAINING') ||
+    r === 'SMIT' ||
+    r === 'ASMIT' ||
+    r === 'SSVIT' ||
+    r === 'SM IN TR.' ||
+    r === 'ASM IN TR.' ||
+    r === 'SSV IN TR.'
+  );
+}
+
+/**
+ * Normalizuje rolę menedżera do standardowych kodów Starbucks:
+ * - STORE MANAGER / CUSTOMER AND SALES -> SM
+ * - ASSISTANT STORE MANAGER / PEOPLE MANAGER -> ASM
  * - SHIFT SUPERVISOR -> SSV
+ * - Pozycje szkoleniowe -> SM in Tr. / ASM in Tr. / SSV in Tr.
  */
 export function formatManagerRole(role?: string): string {
   if (!role) return '';
   const trimmed = role.trim();
   const upper = trimmed.toUpperCase();
+
+  // Sprawdzamy najpierw role szkoleniowe, zanim ogólne includes zredukują je do bazowej roli
+  if (
+    upper.includes('IN TRAINING') ||
+    upper.includes('IN TR') ||
+    upper.includes('TRAINING') ||
+    upper === 'SMIT' ||
+    upper === 'ASMIT' ||
+    upper === 'SSVIT'
+  ) {
+    if (upper.includes('ASM') || upper.includes('PEOPLE') || upper.includes('ASSISTANT') || upper === 'ASMIT') {
+      return 'ASM in Tr.';
+    }
+    if (upper.includes('SSV') || upper.includes('SUPERVISOR') || upper === 'SSVIT') {
+      return 'SSV in Tr.';
+    }
+    return 'SM in Tr.';
+  }
 
   if (
     upper === 'SM' ||
@@ -188,10 +229,6 @@ export function formatManagerRole(role?: string): string {
   if (upper === 'SSV' || upper === 'SHIFT SUPERVISOR' || upper.includes('SHIFT SUPERVISOR')) {
     return 'SSV';
   }
-
-  if (upper.includes('SM IN TRAINING')) return 'SM in Tr.';
-  if (upper.includes('ASM IN TRAINING')) return 'ASM in Tr.';
-  if (upper.includes('SSV IN TRAINING')) return 'SSV in Tr.';
 
   return trimmed;
 }

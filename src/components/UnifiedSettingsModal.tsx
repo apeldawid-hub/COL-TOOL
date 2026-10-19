@@ -1375,6 +1375,9 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                               <option value="SM">SM (Customer & Sales Manager)</option>
                               <option value="ASM">ASM (People Manager)</option>
                               <option value="SSV">SSV (Shift Supervisor)</option>
+                              <option value="SM in Tr.">SM in Training</option>
+                              <option value="ASM in Tr.">ASM in Training</option>
+                              <option value="SSV in Tr.">SSV in Training</option>
                             </select>
                           </div>
 

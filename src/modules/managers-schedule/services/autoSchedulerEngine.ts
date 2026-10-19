@@ -11,7 +11,9 @@ import {
   resolveEffectiveShiftTimes,
   formatHoursToTimeString,
   FLEXIBLE_ADMIN_SHIFT_CODES,
-  parseTimeToHours
+  parseTimeToHours,
+  isManagerInTraining,
+  formatManagerRole
 } from './managerScheduleEngine';
 
 function formatDateIso(d: Date): string {
@@ -253,6 +255,52 @@ export class AutoSchedulerEngine {
     const shiftMap = new Map<string, ShiftDefinition>();
     shiftDefinitions.forEach(def => shiftMap.set(def.code, def));
 
+    // Domyślne szablony zmian szkoleniowych (TAM, TPM, T) jeśli nie zdefiniowano w bazie
+    const defaultTrainingShifts: Record<string, Partial<ShiftDefinition>> = {
+      TAM: {
+        code: 'TAM',
+        name: 'Szkolenie AM',
+        start_time: '07:00',
+        end_time: '15:00',
+        hours: 8.0,
+        is_nc: 1,
+        is_absence: 0,
+        color_bg: 'bg-violet-100 text-violet-800 border-violet-300',
+        category: 'nc',
+        is_sunday_only: 0
+      },
+      TPM: {
+        code: 'TPM',
+        name: 'Szkolenie PM',
+        start_time: '14:30',
+        end_time: '22:30',
+        hours: 8.0,
+        is_nc: 1,
+        is_absence: 0,
+        color_bg: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300',
+        category: 'nc',
+        is_sunday_only: 0
+      },
+      T: {
+        code: 'T',
+        name: 'Training (Szkolenie)',
+        start_time: '08:00',
+        end_time: '16:00',
+        hours: 8.0,
+        is_nc: 1,
+        is_absence: 0,
+        color_bg: 'bg-sky-100 text-sky-800 border-sky-300',
+        category: 'nc',
+        is_sunday_only: 0
+      }
+    };
+
+    Object.entries(defaultTrainingShifts).forEach(([code, def]) => {
+      if (!shiftMap.has(code)) {
+        shiftMap.set(code, def as ShiftDefinition);
+      }
+    });
+
     const originalShiftsMap = new Map<string, ManagerScheduleShift>();
     existingShifts.forEach(s => {
       originalShiftsMap.set(`${s.employee_id}_${s.day}`, s);
@@ -414,13 +462,27 @@ export class AutoSchedulerEngine {
       });
     }
 
+    const regularEmployees = employees.filter(e => !isManagerInTraining(e.role));
+    const activeCoverageEmployees = regularEmployees.length > 0 ? regularEmployees : employees;
+
+    let regularTargetNominalHours = 0;
+    let regularAssignedHours = 0;
+    activeCoverageEmployees.forEach(emp => {
+      const nom = empNominals.get(emp.id) || (fullTimeNorm * (emp.contract_hours_ratio || 1.0));
+      regularTargetNominalHours += nom;
+      for (let day = 1; day <= totalDays; day++) {
+        const s = baseScheduleMap.get(`${emp.id}_${day}`);
+        if (s) regularAssignedHours += s.hours;
+      }
+    });
+
     let baseHoursNeeded = 0;
     daySlotTemplates.forEach(d => {
       if (d.neededOpening) baseHoursNeeded += d.isSunday ? 6.0 : 8.0;
       if (d.neededClosing) baseHoursNeeded += d.isSunday ? 7.0 : 8.0;
     });
 
-    const surplusHours = teamTargetNominalHours - (totalAssignedHours + baseHoursNeeded);
+    const surplusHours = regularTargetNominalHours - (regularAssignedHours + baseHoursNeeded);
     if (options.allocateMidInPeaks && surplusHours >= 8.0) {
       let remainingSurplus = surplusHours;
       const peakCandidates = daySlotTemplates.filter(d => !isHoliday[d.day]);
@@ -475,6 +537,190 @@ export class AutoSchedulerEngine {
   }
 
   /**
+   * Alokacja zmian szkoleniowych (TAM / TPM / T) dla menedżerów będących w trakcie szkolenia (in Training).
+   * Zmiany szkoleniowe są dodawane do już ułożonej propozycji grafiku menedżerów regularnych,
+   * priorytetyzując dni, w których w kawiarni dyżur rano (AM) lub popołudniu (PM) ma Store Manager (SM)
+   * lub Assistant Store Manager (ASM) jako mentor.
+   */
+  private static assignTraineeShifts(
+    ctx: PrecomputedContext,
+    workingSchedule: Map<string, ManagerScheduleShift>,
+    regularEmployees: ManagerEmployee[],
+    traineeEmployees: ManagerEmployee[],
+    dispositionsByEmployee: Record<number, Record<number, string>>,
+    isShiftLaborLawCompliant: (emp: ManagerEmployee, day: number, shiftCode: string, shiftHours: number) => boolean,
+    getEmployeeAssignedHours: (empId: number) => number,
+    getEmployeeHoursInWeek: (empId: number, targetWeekIdx: number) => number,
+    jitterSeed: number = 0
+  ): void {
+    const {
+      totalDays,
+      shiftMap,
+      lockedCells,
+      dayOfWeek,
+      isSunday,
+      isHoliday,
+      weekIdx,
+      empNominals
+    } = ctx;
+
+    for (const trainee of traineeEmployees) {
+      const nominal = empNominals.get(trainee.id) || 160;
+      let currentHours = getEmployeeAssignedHours(trainee.id);
+      if (currentHours >= nominal - 2.0) continue;
+
+      interface TraineeCandidateDay {
+        day: number;
+        hasSmAsmAm: boolean;
+        hasSmAsmPm: boolean;
+        hasSsvAm: boolean;
+        hasSsvPm: boolean;
+        preferredCode: string;
+        score: number;
+      }
+
+      const candidateDays: TraineeCandidateDay[] = [];
+
+      for (let day = 1; day <= totalDays; day++) {
+        const key = `${trainee.id}_${day}`;
+        if (lockedCells.has(key)) continue;
+
+        const currentShift = workingSchedule.get(key);
+        if (currentShift && currentShift.hours > 0 && currentShift.shift_code !== 'OFF') continue;
+
+        const dispo = currentShift?.disposition || dispositionsByEmployee[trainee.id]?.[day] || '';
+        if (dispo === 'OFF') continue; // Bezwzględny szacunek dla prośby o OFF
+
+        let hasSmAsmAm = false;
+        let hasSmAsmPm = false;
+        let hasSsvAm = false;
+        let hasSsvPm = false;
+
+        for (const regEmp of regularEmployees) {
+          const s = workingSchedule.get(`${regEmp.id}_${day}`);
+          if (s && s.hours > 0 && s.shift_code !== 'OFF') {
+            const code = s.shift_code;
+            const isAm = code === 'AM' || code === 'AMN' || code === 'AMB';
+            const isPm = code === 'PM' || code === 'PMN' || code === 'PMB';
+            const role = formatManagerRole(regEmp.role);
+
+            if (role === 'SM' || role === 'ASM') {
+              if (isAm) hasSmAsmAm = true;
+              if (isPm) hasSmAsmPm = true;
+            } else if (role === 'SSV') {
+              if (isAm) hasSsvAm = true;
+              if (isPm) hasSsvPm = true;
+            }
+          }
+        }
+
+        // Ustalenie preferowanego kodu zmiany:
+        let preferredCode = 'TAM';
+        if (hasSmAsmAm && hasSmAsmPm) {
+          if (dispo === 'PM' || dispo === 'Z') preferredCode = 'TPM';
+          else preferredCode = 'TAM';
+        } else if (hasSmAsmAm) {
+          preferredCode = 'TAM';
+        } else if (hasSmAsmPm) {
+          preferredCode = 'TPM';
+        } else if (hasSsvAm) {
+          preferredCode = 'TAM';
+        } else if (hasSsvPm) {
+          preferredCode = 'TPM';
+        } else {
+          preferredCode = 'T';
+        }
+
+        let score = 0;
+        const dow = dayOfWeek[day];
+        const isSun = isSunday[day];
+        const isHol = isHoliday[day];
+
+        // 1. Obecność mentora SM / ASM - kluczowy warunek użytkownika
+        if (hasSmAsmAm || hasSmAsmPm) {
+          score += 2000;
+        } else if (hasSsvAm || hasSsvPm) {
+          score += 600;
+        } else {
+          score += 100;
+        }
+
+        // 2. Respektowanie preferencji dyspozycji trainee
+        if (dispo === 'AM' || dispo === 'M') {
+          if (preferredCode === 'TAM' || preferredCode === 'T') score += 500;
+          else score -= 400;
+        } else if (dispo === 'PM' || dispo === 'Z') {
+          if (preferredCode === 'TPM') score += 500;
+          else score -= 400;
+        } else {
+          score += 150;
+        }
+
+        // 3. Dni robocze są optymalne dla szkoleń (kawiarnie unikają szkoleń menedżerskich w weekendy i niedziele)
+        if (dow >= 1 && dow <= 5 && !isHol) {
+          score += 400;
+        } else if (isSun || isHol) {
+          score -= 500;
+        }
+
+        // 4. Wygładzanie obciążenia tygodniowego (max 40h/tydz)
+        const wIdx = weekIdx[day];
+        const weekHours = getEmployeeHoursInWeek(trainee.id, wIdx);
+        if (weekHours + 8.0 > 40.0) {
+          score -= 600;
+        } else {
+          score += 250;
+        }
+
+        if (jitterSeed > 0) {
+          score += ((trainee.id * 31 + day * 19 + jitterSeed * 47) % 60) - 30;
+        }
+
+        candidateDays.push({
+          day,
+          hasSmAsmAm,
+          hasSmAsmPm,
+          hasSsvAm,
+          hasSsvPm,
+          preferredCode,
+          score
+        });
+      }
+
+      candidateDays.sort((a, b) => b.score - a.score);
+
+      for (const cand of candidateDays) {
+        if (currentHours >= nominal - 2.0) break;
+        const day = cand.day;
+
+        // Opcje zmian: preferowana, a w razie kolizji 11h odpoczynku KP sprawdzamy alternatywną
+        const codeOptions: string[] = [];
+        codeOptions.push(cand.preferredCode);
+        if (cand.preferredCode === 'TAM') codeOptions.push('TPM', 'T');
+        else if (cand.preferredCode === 'TPM') codeOptions.push('TAM', 'T');
+        else codeOptions.push('TAM', 'TPM');
+
+        for (const shiftCode of codeOptions) {
+          const shiftDef = shiftMap.get(shiftCode);
+          const shiftHours = shiftDef?.hours || 8.0;
+
+          if (isShiftLaborLawCompliant(trainee, day, shiftCode, shiftHours)) {
+            const key = `${trainee.id}_${day}`;
+            const cur = workingSchedule.get(key)!;
+            workingSchedule.set(key, {
+              ...cur,
+              shift_code: shiftCode,
+              hours: shiftHours
+            });
+            currentHours += shiftHours;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Lekki pojedynczy przebieg turniejowy operujący na mapie z pamięci podręcznej (zero zbędnych alokacji).
    */
   private static runFastSinglePass(
@@ -508,6 +754,10 @@ export class AutoSchedulerEngine {
     baseScheduleMap.forEach((val, key) => {
       workingSchedule.set(key, { ...val });
     });
+
+    const regularEmployees = employees.filter(e => !isManagerInTraining(e.role));
+    const traineeEmployees = employees.filter(e => isManagerInTraining(e.role));
+    const coverageEmployees = regularEmployees.length > 0 ? regularEmployees : employees;
 
     const daySlots = daySlotTemplates.map(t => ({ ...t }));
     const compromises: string[] = [];
@@ -767,7 +1017,7 @@ export class AutoSchedulerEngine {
         const shiftDef = shiftMap.get(shiftCode);
         const shiftHours = shiftDef?.hours || (isSun ? 6.0 : 8.0);
 
-        let candidates = employees.filter(emp => {
+        let candidates = coverageEmployees.filter(emp => {
           const key = `${emp.id}_${day}`;
           if (lockedCells.has(key)) return false;
           const s = workingSchedule.get(key);
@@ -826,7 +1076,7 @@ export class AutoSchedulerEngine {
         const shiftDef = shiftMap.get(shiftCode);
         const shiftHours = shiftDef?.hours || (isSun ? 7.0 : 8.0);
 
-        let candidates = employees.filter(emp => {
+        let candidates = coverageEmployees.filter(emp => {
           const key = `${emp.id}_${day}`;
           if (lockedCells.has(key)) return false;
           const s = workingSchedule.get(key);
@@ -891,7 +1141,7 @@ export class AutoSchedulerEngine {
         let offWorkerShiftHours = 8.0;
 
         if (options.respectDispositions) {
-          employees.forEach(emp => {
+          coverageEmployees.forEach(emp => {
             const s = workingSchedule.get(`${emp.id}_${day}`);
             const dispo = s?.disposition || dispositionsByEmployee[emp.id]?.[day] || '';
             if (dispo === 'OFF' && s && s.hours > 0 && s.shift_code !== 'OFF') {
@@ -902,7 +1152,7 @@ export class AutoSchedulerEngine {
           });
         }
 
-        let candidates = employees.filter(emp => {
+        let candidates = coverageEmployees.filter(emp => {
           const key = `${emp.id}_${day}`;
           if (lockedCells.has(key)) return false;
           const s = workingSchedule.get(key);
@@ -971,7 +1221,7 @@ export class AutoSchedulerEngine {
       let ncCount = 0;
       let totalWorking = 0;
 
-      for (const e of employees) {
+      for (const e of coverageEmployees) {
         const s = workingSchedule.get(`${e.id}_${d}`);
         if (s && s.hours > 0 && s.shift_code !== 'OFF') {
           totalWorking++;
@@ -984,7 +1234,7 @@ export class AutoSchedulerEngine {
       return { amCount, pmCount, midCount, ncCount, totalWorking };
     };
 
-    employees.forEach(emp => {
+    coverageEmployees.forEach(emp => {
       const nominal = empNominals.get(emp.id) || 160;
       let currentHours = getEmployeeAssignedHours(emp.id);
 
@@ -1066,10 +1316,10 @@ export class AutoSchedulerEngine {
     if (options.respectDispositions) {
       for (let day = 1; day <= totalDays; day++) {
         const isSun = isSunday[day];
-        for (let i = 0; i < employees.length; i++) {
-          for (let j = i + 1; j < employees.length; j++) {
-            const empA = employees[i];
-            const empB = employees[j];
+        for (let i = 0; i < coverageEmployees.length; i++) {
+          for (let j = i + 1; j < coverageEmployees.length; j++) {
+            const empA = coverageEmployees[i];
+            const empB = coverageEmployees[j];
             const keyA = `${empA.id}_${day}`;
             const keyB = `${empB.id}_${day}`;
             if (lockedCells.has(keyA) || lockedCells.has(keyB)) continue;
@@ -1142,7 +1392,7 @@ export class AutoSchedulerEngine {
     // 3. DETERMINISTYCZNY PASSER RATUNKOWY: BEZWZGLĘDNA ELIMINACJA KONFLIKTÓW OFF
     if (options.respectDispositions) {
       for (let day = 1; day <= totalDays; day++) {
-        for (const empOff of employees) {
+        for (const empOff of coverageEmployees) {
           const keyOff = `${empOff.id}_${day}`;
           if (lockedCells.has(keyOff)) continue;
           const shiftOff = workingSchedule.get(keyOff);
@@ -1154,7 +1404,7 @@ export class AutoSchedulerEngine {
           // Pracownik empOff ma prośbę o OFF, ale został mu przydzielony dyżur (np. AM, PM, MIB, SUP)!
           // SCENARIUSZ 1: Sprawdź, czy inny pracownik empOther ma w tym samym dniu zmianę nieobligatoryjną (MIB, MID, SUP, SAM, SPM)
           let rescued = false;
-          for (const empOther of employees) {
+          for (const empOther of coverageEmployees) {
             if (empOther.id === empOff.id) continue;
             const keyOther = `${empOther.id}_${day}`;
             if (lockedCells.has(keyOther)) continue;
@@ -1198,7 +1448,7 @@ export class AutoSchedulerEngine {
           if (rescued) continue;
 
           // SCENARIUSZ 2: Sprawdź, czy inny pracownik empOther ma w tym dniu OFF (pełna dostępność FULL lub preferencja AM/PM)
-          for (const empOther of employees) {
+          for (const empOther of coverageEmployees) {
             if (empOther.id === empOff.id) continue;
             const keyOther = `${empOther.id}_${day}`;
             if (lockedCells.has(keyOther)) continue;
@@ -1280,6 +1530,23 @@ export class AutoSchedulerEngine {
       }
     }
 
+    // E. ALOKACJA ZMIAN SZKOLENIOWYCH DLA MENEDŻERÓW W SZKOLENIU (IN TRAINING)
+    // Dokładanie zmian szkoleniowych (TAM / TPM / T) do ułożonej propozycji grafiku,
+    // najlepiej tam gdzie dyżur rano (AM) lub wieczorem (PM) ma SM / ASM (mentorzy).
+    if (traineeEmployees.length > 0) {
+      this.assignTraineeShifts(
+        ctx,
+        workingSchedule,
+        coverageEmployees,
+        traineeEmployees,
+        dispositionsByEmployee,
+        isShiftLaborLawCompliant,
+        getEmployeeAssignedHours,
+        getEmployeeHoursInWeek,
+        jitterSeed
+      );
+    }
+
     // Szybka ewaluacja metryk i fitness
     let totalPlannedHours = 0;
     let dispoTotal = 0;
@@ -1307,10 +1574,31 @@ export class AutoSchedulerEngine {
           const dispo = s.disposition || dispositionsByEmployee[emp.id]?.[day] || '';
           if (dispo === 'AM' || dispo === 'M') {
             dispoTotal++;
-            if (s.shift_code === 'AM' || s.shift_code === 'AMN' || s.shift_code === 'NC' || s.shift_code === 'MIB' || s.shift_code === 'OFF' || s.hours === 0) dispoMatched++;
+            if (
+              s.shift_code === 'AM' ||
+              s.shift_code === 'AMN' ||
+              s.shift_code === 'NC' ||
+              s.shift_code === 'MIB' ||
+              s.shift_code === 'TAM' ||
+              s.shift_code === 'T' ||
+              s.shift_code === 'OFF' ||
+              s.hours === 0
+            ) {
+              dispoMatched++;
+            }
           } else if (dispo === 'PM' || dispo === 'Z') {
             dispoTotal++;
-            if (s.shift_code === 'PM' || s.shift_code === 'PMN' || s.shift_code === 'MIB' || s.shift_code === 'OFF' || s.hours === 0) dispoMatched++;
+            if (
+              s.shift_code === 'PM' ||
+              s.shift_code === 'PMN' ||
+              s.shift_code === 'MIB' ||
+              s.shift_code === 'TPM' ||
+              s.shift_code === 'T' ||
+              s.shift_code === 'OFF' ||
+              s.hours === 0
+            ) {
+              dispoMatched++;
+            }
           } else if (dispo === 'OFF') {
             dispoTotal++;
             offViolationsCount++; // Violated: assigned working shift on OFF day
@@ -1453,7 +1741,7 @@ export class AutoSchedulerEngine {
           if (finalShift.shift_code === 'AM' || finalShift.shift_code === 'AMN') openingShiftsCount++;
           if (finalShift.shift_code === 'PM' || finalShift.shift_code === 'PMN') closingShiftsCount++;
           if (finalShift.shift_code === 'MIB' || finalShift.shift_code === 'MID') midShiftsCount++;
-          if (finalShift.shift_code === 'NC') ncShiftsCount++;
+          if (finalShift.shift_code === 'NC' || finalShift.shift_code === 'T' || finalShift.shift_code === 'TAM' || finalShift.shift_code === 'TPM') ncShiftsCount++;
         } else {
           offDays++;
         }
@@ -1463,11 +1751,28 @@ export class AutoSchedulerEngine {
           empDispoTotal++;
           let matched = false;
           if ((dispo === 'AM' || dispo === 'M')) {
-            if (finalShift.shift_code === 'AM' || finalShift.shift_code === 'AMN' || finalShift.shift_code === 'NC' || finalShift.shift_code === 'MIB' || finalShift.shift_code === 'OFF' || finalShift.hours === 0) {
+            if (
+              finalShift.shift_code === 'AM' ||
+              finalShift.shift_code === 'AMN' ||
+              finalShift.shift_code === 'NC' ||
+              finalShift.shift_code === 'MIB' ||
+              finalShift.shift_code === 'TAM' ||
+              finalShift.shift_code === 'T' ||
+              finalShift.shift_code === 'OFF' ||
+              finalShift.hours === 0
+            ) {
               matched = true;
             }
           } else if ((dispo === 'PM' || dispo === 'Z')) {
-            if (finalShift.shift_code === 'PM' || finalShift.shift_code === 'PMN' || finalShift.shift_code === 'MIB' || finalShift.shift_code === 'OFF' || finalShift.hours === 0) {
+            if (
+              finalShift.shift_code === 'PM' ||
+              finalShift.shift_code === 'PMN' ||
+              finalShift.shift_code === 'MIB' ||
+              finalShift.shift_code === 'TPM' ||
+              finalShift.shift_code === 'T' ||
+              finalShift.shift_code === 'OFF' ||
+              finalShift.hours === 0
+            ) {
               matched = true;
             }
           } else if (dispo === 'OFF') {

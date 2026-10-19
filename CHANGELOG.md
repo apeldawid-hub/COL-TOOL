@@ -5,6 +5,28 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.60] — 2026-10-19: AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training)
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Automatyczne układanie grafiku (AutoSchedulerEngine) odseparowuje menedżerów w szkoleniu (SM/ASM/SSV in Training) od samodzielnych dyżurów otwarć i zamknięć**
+- **Dedykowana faza dokłada zmiany szkoleniowe (TAM: 07:00–15:00, TPM: 14:30–22:30, T) do ułożonego już grafiku menedżerów**
+- **Inteligentne parowanie zmian szkoleniowych z dniami i godzinami pracy Store Managera (SM) lub Assistant SM (ASM) jako mentorów**
+- **Pełna zgodność z Kodeksem Pracy dla pracownika szkolącego się (11h odpoczynku, 35h tygodniowo, 100% dociążenia etatu bez nadgodzin)**
+- **Opcje ról in-training (SM in Tr., ASM in Tr., SSV in Tr.) zsynchronizowane w Ustawieniach Głównych oraz dedykowanym oknie Skład Zespołu**
+
+### ✨ Nowe Funkcje (Features):
+- `[managers_schedule]` Implementacja dedykowanej fazy AutoSchedulerEngine.assignTraineeShifts parującej zmiany szkoleniowe (TAM/TPM) ze zmianami SM/ASM.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[managers_schedule]` Separacja regularnych menedżerów od menedżerów w szkoleniu podczas rozwiązywania otwarć, zamknięć oraz obsady TPLH i Floor Hours.
+- `[managers_schedule]` Dodanie opcji ról SM in Tr., ASM in Tr., SSV in Tr. do selektora ról menedżerów w UnifiedSettingsModal.
+
+### 🛡️ Tarcza Kodeksu Pracy & Baza SQLite:
+- Twarda weryfikacja 11h odpoczynku dobowego, limitów tygodniowych i wymiaru etatu dla menedżerów w pozycji in training.
+
+---
+
 ## [v2.8.59] — 2026-10-19: Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite
 *Autor: Dawid Apel & Antigravity Agent*
 

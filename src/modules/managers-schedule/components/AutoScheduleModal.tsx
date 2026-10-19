@@ -308,7 +308,7 @@ export const AutoScheduleModal: React.FC<AutoScheduleModalProps> = ({
                       <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-[#006241] text-[10px] font-bold">Zalecane</span>
                     </div>
                     <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                      Układa cały miesiąc od nowa na 20 000 symulacji. <strong>Zachowuje i chroni</strong> wprowadzone urlopy (H), chorobowe (L4), administrację (NC), szkolenia (T) oraz wsparcia (SUP/SAM/SPM).
+                      Układa cały miesiąc od nowa na 20 000 symulacji. <strong>Zachowuje i chroni</strong> wprowadzone urlopy (H), chorobowe (L4), administrację (NC) oraz wsparcia (SUP/SAM/SPM). Dla menedżerów w szkoleniu (in Training) automatycznie dokłada dedykowane zmiany szkoleniowe (TAM/TPM) w dniach dyżurów SM/ASM jako mentorów.
                     </p>
                   </div>
                 </button>
