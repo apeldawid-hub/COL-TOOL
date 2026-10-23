@@ -5,6 +5,26 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.8.65] — 2026-10-24: Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC
+*Autor: Dawid Apel & Antigravity Agent*
+
+### 🌟 Główne Atuty Wydania:
+- **Dedykowany Panel Administratora (Admin Console): Nowy moduł zarządzania personelem, dostępny z poziomu paska bocznego wyłącznie dla Store Managera.**
+- **Kolejka Wniosków o Dostęp: Błyskawiczna weryfikacja nowych pracowników (imię, firmowy email, urządzenie) i zatwierdzenie w 2 kliknięcia.**
+- **Granularne Suwaki Uprawnień (Column-Level Access Control): Precyzyjne sterowanie widocznością stawek godzinowych PLN, kosztów COL, zwolnień L4 i eksportu danych.**
+- **Procedura Kill-Switch: Natychmiastowe odcięcie dostępu i unieważnienie sesji dla byłego pracownika w czasie <500 ms.**
+- **Dziennik Audytu Bezpieczeństwa: Niezmienialny rejestr zdarzeń (logowania 2FA, zmiany ról, odcięcia dostępu) dla kawiarni 18120 Janki.**
+- **Architektura 3 Sejfów Zero-Leak: Fizyczne rozdzielenie danych na public_schedule, private_staff_vault i executive_financial_vault.**
+
+### ✨ Nowe Funkcje (Features):
+- Stworzenie komponentu AdminConsoleModal.tsx oraz serwisu zarządzania flotą i uprawnieniami adminService.ts.
+- Dodanie przycisku Panel Admina z licznikiem oczekujących wniosków w pasku bocznym Sidebar.tsx.
+
+### 🛡️ Tarcza Kodeksu Pracy & Baza SQLite:
+- Wdrożenie typów i granularnych uprawnień kolumnowych (canViewWageRates, canViewMedicalLeaves, canViewColPnl) w types/admin.ts.
+
+---
+
 ## [v2.8.63] — 2026-10-24: Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4)
 *Autor: Dawid Apel & Antigravity Agent*
 

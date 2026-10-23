@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.65](#v2.8.65--2026-10-24)** | 2026-10-24 | Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC | `feature` | 🚀 Opublikowana |
 | **[v2.8.63](#v2.8.63--2026-10-24)** | 2026-10-24 | Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4) | `patch` | 🚀 Opublikowana |
 | **[v2.8.62](#v2.8.62--2026-10-19)** | 2026-10-19 | AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training) | `patch` | 🚀 Opublikowana |
 | **[v2.8.59](#v2.8.59--2026-10-19)** | 2026-10-19 | Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite | `patch` | 🚀 Opublikowana |
@@ -34,6 +35,27 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.65] — 2026-10-24
+**Tytuł:** Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Dedykowany Panel Administratora (Admin Console): Nowy moduł zarządzania personelem, dostępny z poziomu paska bocznego wyłącznie dla Store Managera.
+- Kolejka Wniosków o Dostęp: Błyskawiczna weryfikacja nowych pracowników (imię, firmowy email, urządzenie) i zatwierdzenie w 2 kliknięcia.
+- Granularne Suwaki Uprawnień (Column-Level Access Control): Precyzyjne sterowanie widocznością stawek godzinowych PLN, kosztów COL, zwolnień L4 i eksportu danych.
+- Procedura Kill-Switch: Natychmiastowe odcięcie dostępu i unieważnienie sesji dla byłego pracownika w czasie <500 ms.
+- Dziennik Audytu Bezpieczeństwa: Niezmienialny rejestr zdarzeń (logowania 2FA, zmiany ról, odcięcia dostępu) dla kawiarni 18120 Janki.
+- Architektura 3 Sejfów Zero-Leak: Fizyczne rozdzielenie danych na public_schedule, private_staff_vault i executive_financial_vault.
+
+#### ✨ Nowe Funkcje:
+- Stworzenie komponentu AdminConsoleModal.tsx oraz serwisu zarządzania flotą i uprawnieniami adminService.ts.
+- Dodanie przycisku Panel Admina z licznikiem oczekujących wniosków w pasku bocznym Sidebar.tsx.
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Wdrożenie typów i granularnych uprawnień kolumnowych (canViewWageRates, canViewMedicalLeaves, canViewColPnl) w types/admin.ts.
+
+---
 
 ### [v2.8.63] — 2026-10-24
 **Tytuł:** Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4)  

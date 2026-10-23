@@ -10,6 +10,8 @@ import { AppUpdateModal } from './components/AppUpdateModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BugReporterModal } from './components/BugReporterModal';
 import { StoreSwitcherModal } from './components/StoreSwitcherModal';
+import { AdminConsoleModal } from './components/admin/AdminConsoleModal';
+import { AdminService } from './services/admin/adminService';
 import { useStore } from './context/StoreContext';
 import {
   LaborForecastView,
@@ -167,6 +169,10 @@ export const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId | undefined>(undefined);
   const [isBugReporterOpen, setIsBugReporterOpen] = useState<boolean>(false);
+  const [isAdminConsoleOpen, setIsAdminConsoleOpen] = useState<boolean>(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(() => {
+    return AdminService.getPendingRequests().length;
+  });
   const [activeViewerWeek, setActiveViewerWeek] = useState<{
     key: string;
     label: string;
@@ -555,6 +561,11 @@ export const App: React.FC = () => {
             setSettingsInitialTab(undefined);
             setIsSettingsOpen(true);
           }}
+          onOpenAdminConsole={() => {
+            setPendingRequestsCount(AdminService.getPendingRequests().length);
+            setIsAdminConsoleOpen(true);
+          }}
+          pendingRequestsCount={pendingRequestsCount}
           onOpenImportModal={() => setIsImportModalOpen(true)}
           onRefresh={loadMonthData}
           isLoading={isLoading}
@@ -791,6 +802,17 @@ export const App: React.FC = () => {
       <CloudDocumentsModal
         isOpen={isCloudDocsModalOpen}
         onClose={() => setIsCloudDocsModalOpen(false)}
+      />
+
+      {/* Okno Modalne Panelu Administratora (Admin Console) */}
+      <AdminConsoleModal
+        isOpen={isAdminConsoleOpen}
+        onClose={() => {
+          setIsAdminConsoleOpen(false);
+          setPendingRequestsCount(AdminService.getPendingRequests().length);
+        }}
+        adminName={loggedInUser}
+        storeUnitCode="18120"
       />
 
       {/* Okno Interaktywnego Animowanego Samouczka Modelowego */}

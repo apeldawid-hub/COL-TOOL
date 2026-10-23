@@ -23,6 +23,7 @@ import {
   BookOpen,
   Bell,
   ChevronsUpDown,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTutorial } from '../context/TutorialContext';
 import { useStore } from '../context/StoreContext';
@@ -34,11 +35,13 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onOpenSettings?: () => void;
+  onOpenAdminConsole?: () => void;
   onOpenBackupModal?: () => void;
   onOpenImportModal?: () => void;
   onOpenUpdateModal?: () => void;
   onOpenBugReporter?: () => void;
   hasUpdateAvailable?: boolean;
+  pendingRequestsCount?: number;
   onRefresh?: () => void;
   isLoading?: boolean;
   onLogout?: () => void;
@@ -108,11 +111,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   onToggleCollapse,
   onOpenSettings,
+  onOpenAdminConsole,
   onOpenBackupModal,
   onOpenImportModal,
   onOpenUpdateModal,
   onOpenBugReporter,
   hasUpdateAvailable = false,
+  pendingRequestsCount = 0,
   onRefresh,
   isLoading,
   onLogout,
@@ -319,6 +324,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
           )}
         </button>
+
+        {/* Panel Administratora Floty & Dostępu (Tylko dla SM) */}
+        {onOpenAdminConsole && (
+          <button
+            onClick={onOpenAdminConsole}
+            title={isCollapsed ? 'Panel Administratora Floty & Uprawnień' : undefined}
+            className={`w-full flex items-center rounded-2xl text-xs font-semibold text-amber-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer relative ${
+              isCollapsed ? 'justify-center p-3' : 'px-3.5 py-2 justify-between'
+            }`}
+          >
+            <div className="flex items-center space-x-3 truncate">
+              <ShieldCheck className="w-4 h-4 text-[#CBA258] shrink-0" />
+              {!isCollapsed && <span className="font-bold text-[#CBA258]">Panel Admina</span>}
+            </div>
+            {!isCollapsed ? (
+              pendingRequestsCount && pendingRequestsCount > 0 ? (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-rose-500 text-white animate-pulse">
+                  {pendingRequestsCount}
+                </span>
+              ) : (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#CBA258]/20 text-[#CBA258] font-bold uppercase">
+                  Root
+                </span>
+              )
+            ) : (
+              pendingRequestsCount && pendingRequestsCount > 0 && (
+                <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-[#1E3932] animate-pulse" />
+              )
+            )}
+          </button>
+        )}
 
         {/* Ustawienia Konfiguracji (Dynamiczne pozycjonowanie wg modułu) */}
         {onOpenSettings && (
