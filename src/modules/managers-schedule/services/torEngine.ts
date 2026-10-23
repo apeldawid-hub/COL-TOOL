@@ -112,13 +112,13 @@ export class TorEngine {
             const code = s.shift_code;
             if (code === 'H') {
               hDays++;
-              // Urlop nie liczy się w weekendy i święta państwowe (0.0h)
-              const dayH = isNonWorkingDay ? 0.0 : (s.hours > 0 ? s.hours : Number((8.0 * contractRatio).toFixed(1)));
+              // Urlop wlicza się ściśle wg wymiaru etatu w dni robocze (8h * etat, 0h w weekendy i święta)
+              const dayH = isNonWorkingDay ? 0.0 : Number((8.0 * contractRatio).toFixed(1));
               hHours += dayH;
             } else if (code === 'L4') {
               l4Days++;
-              // L4 wlicza się do etatu w dni robocze (0h w dni wolne)
-              const dayL4 = isNonWorkingDay ? 0.0 : (s.hours > 0 ? s.hours : Number((8.0 * contractRatio).toFixed(1)));
+              // L4 wlicza się ściśle wg wymiaru etatu w dni robocze (8h * etat, 0h w weekendy i święta)
+              const dayL4 = isNonWorkingDay ? 0.0 : Number((8.0 * contractRatio).toFixed(1));
               l4Hours += dayL4;
             } else if (s.hours > 0 && !['OFF', 'M', 'Z', 'FULL'].includes(code)) {
               rcpHours += s.hours;

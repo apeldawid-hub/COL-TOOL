@@ -620,7 +620,7 @@ export const AutoScheduleModal: React.FC<AutoScheduleModalProps> = ({
                             <td className="p-2 text-right text-stone-600">{emp.nominalHours} h</td>
                             <td className="p-2 text-right font-black text-stone-900">{emp.plannedHours} h</td>
                             <td className={`p-2 text-right font-black ${
-                              emp.balanceHours === 0 ? 'text-emerald-700' : (emp.balanceHours > 0 ? 'text-blue-700' : 'text-amber-700')
+                              Math.abs(emp.balanceHours) <= 0.9 ? 'text-emerald-700' : (emp.balanceHours > 0.9 ? 'text-blue-700' : 'text-rose-700')
                             }`}>
                               {emp.balanceHours > 0 ? `+${emp.balanceHours}` : emp.balanceHours} h
                             </td>

@@ -7,7 +7,8 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **[v2.8.61](#v2.8.61--2026-10-19)** | 2026-10-19 | AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training) | `patch` | 🚀 Opublikowana |
+| **[v2.8.63](#v2.8.63--2026-10-24)** | 2026-10-24 | Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4) | `patch` | 🚀 Opublikowana |
+| **[v2.8.62](#v2.8.62--2026-10-19)** | 2026-10-19 | AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training) | `patch` | 🚀 Opublikowana |
 | **[v2.8.59](#v2.8.59--2026-10-19)** | 2026-10-19 | Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite | `patch` | 🚀 Opublikowana |
 | **[v2.8.58](#v2.8.58--2026-10-19)** | 2026-10-19 | Naprawa Zapisu i Propagacji Składu Zespołu w Nowej Kawiarni & Integracja ManagerTeamModal | `patch` | 🚀 Opublikowana |
 | **[v2.8.57](#v2.8.57--2026-10-18)** | 2026-10-18 | Autonomiczne Bazy Danych SQLite per Kawiarnia (Multi-Store Database Engine & Czysty Start Nowych Jednostek) | `patch` | 🚀 Opublikowana |
@@ -34,7 +35,34 @@
 
 ## Szczegółowa Historia Wydań
 
-### [v2.8.61] — 2026-10-19
+### [v2.8.63] — 2026-10-24
+**Tytuł:** Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4)  
+**Autorzy:** Dawid Apel & Antigravity Agent  
+
+#### 🌟 Co Wprowadziliśmy:
+- Korekta Bazy Floor w Mostach Split-Week: Wyrównano normę pełnego tygodnia na przełomie miesięcy do standardu 224.0h (7 dni × 32.0h/dzień) w calculationEngine.ts.
+- Zamrożona Kolumna Menedżerów (Sticky Left): Nazwiska personelu, wydarzenia kawiarni i obsada dzienna pozostają przypięte po lewej stronie ekranu podczas poziomego przewijania 31 dni miesiąca.
+- Nowe Skróty Klawiaturowe M i S: Wprowadzono bezpośrednie wstawianie międzyzmiany MIB (klawisz M) oraz wsparcia SUP (klawisz S) w matrycy grafiku.
+- Ujednolicenie Bilansu TOR dla Urlopów (H) i Zwolnień (L4): Przeliczanie absencji w kwartale TOR ściśle wg wymiaru etatu (8h * etat, 0h w weekendy/święta), eliminując rozjazdy między miesiącem a kwartałem.
+- Szmaragdowa Tolerancja Zbilansowania ±0.9h: Prawidłowe oznaczanie bilansu miesięcznego jako zrównoważony na zielono w siatce i podsumowaniu AutoSchedulera.
+- Zabezpieczenie Re-importu Fichajes: Skorygowano usuwanie duplikatów logowań personelu wspierającego kawiarnie zewnętrzne.
+
+#### ✨ Nowe Funkcje:
+- Dodanie skrótów klawiszowych M (MIB) i S (SUP) dla błyskawicznego planowania grafiku z samej klawiatury.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Dodanie klas sticky left-0 z-30 oraz z-50 z cieniem krawędziowym dla kolumny menedżerów w ManagerScheduleGrid.tsx.
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Ujednolicenie kalkulacji godzin H i L4 w torEngine.ts ściśle według normy etatu w dni robocze.
+
+#### 🐛 Poprawki Błędów:
+- Podmiana zdezaktualizowanej stałej 272.0h na 224.0h w kalkulatorze mostów przełomu miesięcy (calculationEngine.ts).
+- Rozszerzenie kasowania starych logowań Fichajes o wpisy personelu Janki pracującego w innych lokalach.
+
+---
+
+### [v2.8.62] — 2026-10-19
 **Tytuł:** AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training)  
 **Autorzy:** Dawid Apel & Antigravity Agent  
 

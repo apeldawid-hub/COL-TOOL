@@ -863,12 +863,27 @@ export class UniversalReportParser {
       const minDate = dates[0];
       const maxDate = dates[dates.length - 1];
 
-      // Usunięcie starych rekordów dla Janki w tym zakresie dat
-      db.run(`
-        DELETE FROM labor_actuals_log 
-        WHERE (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%')
-          AND date >= ? AND date <= ?
-      `, [minDate, maxDate]);
+      // Pobranie unikalnych pracowników Janki w importowanym zbiorze
+      const managerNames = Array.from(new Set(records.map(r => r.employee)));
+      const employeePlaceholders = managerNames.map(() => '?').join(',');
+
+      // Usunięcie starych rekordów dla Janki oraz wsparcia menedżerów Janki w innych lokalach w tym zakresie dat
+      if (managerNames.length > 0) {
+        db.run(`
+          DELETE FROM labor_actuals_log 
+          WHERE date >= ? AND date <= ?
+            AND (
+              unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%'
+              OR employee IN (${employeePlaceholders})
+            )
+        `, [minDate, maxDate, ...managerNames]);
+      } else {
+        db.run(`
+          DELETE FROM labor_actuals_log 
+          WHERE (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%')
+            AND date >= ? AND date <= ?
+        `, [minDate, maxDate]);
+      }
 
       // Wstawienie zatwierdzonych rekordów
       const insertStmt = db.prepare(`

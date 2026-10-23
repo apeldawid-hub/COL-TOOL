@@ -1387,12 +1387,12 @@ export class CalculationEngine {
       const nextMonthDates = `${pad(startNextDay)}.${pad(nextMonthIdx + 1)} – ${pad(endNextDay)}.${pad(nextMonthIdx + 1)}`;
       const combinedDateRange = `${lastRow.week.date_from} – ${pad(endNextDay)}.${pad(nextMonthIdx + 1)}`;
 
-      // Suma floor pełnego tygodnia to zawsze 272.0 h
-      const nextFloorHours = Number((272.0 - lastRow.calculatedFloorHours).toFixed(1));
+      // Suma floor pełnego tygodnia to zawsze 224.0 h (7 dni * 32.0 h/dzień)
+      const nextFloorHours = Number((224.0 - lastRow.calculatedFloorHours).toFixed(1));
 
       // Szacunkowy plan godzin kolejnego miesiąca
       const nextPlanHours = Number(
-        ((nextFloorHours / 272.0) * (lastRow.planHours / (lastRow.calculatedDaysCount / 7))).toFixed(1)
+        ((nextFloorHours / 224.0) * (lastRow.planHours / (lastRow.calculatedDaysCount / 7))).toFixed(1)
       ) || nextFloorHours;
 
       // Obsada menedżerska w kolejnym miesiącu
@@ -1473,7 +1473,7 @@ export class CalculationEngine {
         bridgeType: 'trailing',
         combinedDateRange,
         totalDaysCount: 7,
-        totalFloorHours: 272.0,
+        totalFloorHours: 224.0,
         partCurrentMonth: partCurrent,
         partAdjacentMonth: partAdjacent,
         totalCombinedPlanHours: totalCombinedPlan,
@@ -1481,7 +1481,7 @@ export class CalculationEngine {
         totalCombinedManagerHours: totalMgrHours,
         totalCombinedBaristaPool: Math.max(
           0,
-          Number(((recCombined || 272.0) - totalMgrHours).toFixed(1))
+          Number(((recCombined || 224.0) - totalMgrHours).toFixed(1))
         ),
         all7DaysCoverage: all7Days,
         missingAmTotal: all7Days.filter((d) => !d.hasAm).length,
@@ -1508,9 +1508,9 @@ export class CalculationEngine {
       const prevMonthDates = `${pad(startPrevDay)}.${pad(prevMonthIdx + 1)} – ${pad(daysInPrevMonth)}.${pad(prevMonthIdx + 1)}`;
       const combinedDateRange = `${pad(startPrevDay)}.${pad(prevMonthIdx + 1)} – ${firstRow.week.date_to}`;
 
-      const prevFloorHours = Number((272.0 - firstRow.calculatedFloorHours).toFixed(1));
+      const prevFloorHours = Number((224.0 - firstRow.calculatedFloorHours).toFixed(1));
       const prevPlanHours = Number(
-        ((prevFloorHours / 272.0) * (firstRow.planHours / (firstRow.calculatedDaysCount / 7))).toFixed(1)
+        ((prevFloorHours / 224.0) * (firstRow.planHours / (firstRow.calculatedDaysCount / 7))).toFixed(1)
       ) || prevFloorHours;
 
       // Obsada menedżerska w poprzednim miesiącu
@@ -1591,7 +1591,7 @@ export class CalculationEngine {
         bridgeType: 'leading',
         combinedDateRange,
         totalDaysCount: 7,
-        totalFloorHours: 272.0,
+        totalFloorHours: 224.0,
         partCurrentMonth: partCurrent,
         partAdjacentMonth: partAdjacent,
         totalCombinedPlanHours: totalCombinedPlan,
@@ -1599,7 +1599,7 @@ export class CalculationEngine {
         totalCombinedManagerHours: totalMgrHours,
         totalCombinedBaristaPool: Math.max(
           0,
-          Number(((recCombined || 272.0) - totalMgrHours).toFixed(1))
+          Number(((recCombined || 224.0) - totalMgrHours).toFixed(1))
         ),
         all7DaysCoverage: all7Days,
         missingAmTotal: all7Days.filter((d) => !d.hasAm).length,

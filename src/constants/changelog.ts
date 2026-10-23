@@ -24,7 +24,49 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
-    version: '2.8.61',
+    version: '2.8.63',
+    date: '2026-10-24',
+    title: 'Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent',
+    highlights: [
+      'Korekta Bazy Floor w Mostach Split-Week: Wyrównano normę pełnego tygodnia na przełomie miesięcy do standardu 224.0h (7 dni × 32.0h/dzień) w calculationEngine.ts.',
+      'Zamrożona Kolumna Menedżerów (Sticky Left): Nazwiska personelu, wydarzenia kawiarni i obsada dzienna pozostają przypięte po lewej stronie ekranu podczas poziomego przewijania 31 dni miesiąca.',
+      'Nowe Skróty Klawiaturowe M i S: Wprowadzono bezpośrednie wstawianie międzyzmiany MIB (klawisz M) oraz wsparcia SUP (klawisz S) w matrycy grafiku.',
+      'Ujednolicenie Bilansu TOR dla Urlopów (H) i Zwolnień (L4): Przeliczanie absencji w kwartale TOR ściśle wg wymiaru etatu (8h * etat, 0h w weekendy/święta), eliminując rozjazdy między miesiącem a kwartałem.',
+      'Szmaragdowa Tolerancja Zbilansowania ±0.9h: Prawidłowe oznaczanie bilansu miesięcznego jako zrównoważony na zielono w siatce i podsumowaniu AutoSchedulera.',
+      'Zabezpieczenie Re-importu Fichajes: Skorygowano usuwanie duplikatów logowań personelu wspierającego kawiarnie zewnętrzne.'
+    ],
+    items: [
+      {
+        type: 'fix',
+        description: 'Podmiana zdezaktualizowanej stałej 272.0h na 224.0h w kalkulatorze mostów przełomu miesięcy (calculationEngine.ts).',
+        module: 'labor_forecast',
+      },
+      {
+        type: 'enhancement',
+        description: 'Dodanie klas sticky left-0 z-30 oraz z-50 z cieniem krawędziowym dla kolumny menedżerów w ManagerScheduleGrid.tsx.',
+        module: 'managers_schedule',
+      },
+      {
+        type: 'feature',
+        description: 'Dodanie skrótów klawiszowych M (MIB) i S (SUP) dla błyskawicznego planowania grafiku z samej klawiatury.',
+        module: 'managers_schedule',
+      },
+      {
+        type: 'compliance',
+        description: 'Ujednolicenie kalkulacji godzin H i L4 w torEngine.ts ściśle według normy etatu w dni robocze.',
+        module: 'managers_schedule',
+      },
+      {
+        type: 'fix',
+        description: 'Rozszerzenie kasowania starych logowań Fichajes o wpisy personelu Janki pracującego w innych lokalach.',
+        module: 'system',
+      }
+    ]
+  },
+  {
+    version: '2.8.62',
     date: '2026-10-19',
     title: 'AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training)',
     type: 'patch',

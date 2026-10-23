@@ -362,6 +362,12 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
         } else if (keyUpper === 'P') {
           e.preventDefault();
           handleKeyboardShiftAssign('PM');
+        } else if (keyUpper === 'M') {
+          e.preventDefault();
+          handleKeyboardShiftAssign('MIB');
+        } else if (keyUpper === 'S') {
+          e.preventDefault();
+          handleKeyboardShiftAssign('SUP');
         } else if (keyUpper === 'N') {
           e.preventDefault();
           handleKeyboardShiftAssign('NC');
@@ -520,7 +526,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               {isLeftExpanded ? (
                 <th
                   onClick={() => setIsLeftExpanded(false)}
-                  className="bg-[#EEF3F0] hover:bg-stone-200/80 cursor-pointer px-2.5 py-2 text-left font-bold text-[#006241] w-[200px] min-w-[200px] max-w-[200px] border-r-2 border-stone-300 text-xs transition-colors select-none group"
+                  className="sticky left-0 z-50 bg-[#EEF3F0] hover:bg-stone-200/80 cursor-pointer px-2.5 py-2 text-left font-bold text-[#006241] w-[200px] min-w-[200px] max-w-[200px] border-r-2 border-stone-300 text-xs transition-colors select-none group shadow-[2px_0_5px_rgba(0,0,0,0.05)]"
                   title="Kliknij, aby zwinąć kolumnę menedżerów do 44px"
                 >
                   <div className="flex items-center justify-between gap-1">
@@ -553,7 +559,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               ) : (
                 <th
                   onClick={() => setIsLeftExpanded(true)}
-                  className="bg-[#EEF3F0] hover:bg-emerald-100/70 cursor-pointer px-1 py-2 text-center font-bold text-[#006241] w-[44px] min-w-[44px] max-w-[44px] border-r-2 border-stone-300 text-[10px] transition-colors select-none group"
+                  className="sticky left-0 z-50 bg-[#EEF3F0] hover:bg-emerald-100/70 cursor-pointer px-1 py-2 text-center font-bold text-[#006241] w-[44px] min-w-[44px] max-w-[44px] border-r-2 border-stone-300 text-[10px] transition-colors select-none group shadow-[2px_0_5px_rgba(0,0,0,0.05)]"
                   title="Kliknij, aby rozwinąć dane menedżerów (Imię, Rola, Wymiar etatu, Stawka)"
                 >
                   <div className="flex flex-col items-center justify-center gap-0.5">
@@ -661,7 +667,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               {isLeftExpanded ? (
                 <th
                   onClick={() => setIsLeftExpanded(false)}
-                  className="bg-[#EEF3F0] hover:bg-stone-200/80 cursor-pointer px-2 py-1 text-left font-bold text-stone-500 w-[200px] min-w-[200px] max-w-[200px] border-r-2 border-stone-300 text-[9.5px] uppercase tracking-wider select-none truncate"
+                  className="sticky left-0 z-50 bg-[#EEF3F0] hover:bg-stone-200/80 cursor-pointer px-2 py-1 text-left font-bold text-stone-500 w-[200px] min-w-[200px] max-w-[200px] border-r-2 border-stone-300 text-[9.5px] uppercase tracking-wider select-none truncate shadow-[2px_0_5px_rgba(0,0,0,0.05)]"
                   title="Kliknij, aby zwinąć"
                 >
                   Status Kalendarza
@@ -669,7 +675,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               ) : (
                 <th
                   onClick={() => setIsLeftExpanded(true)}
-                  className="bg-[#EEF3F0] hover:bg-emerald-100/70 cursor-pointer px-0.5 py-1 text-center font-black text-stone-500 w-[44px] min-w-[44px] max-w-[44px] border-r-2 border-stone-300 uppercase tracking-tighter text-[7.5px] select-none"
+                  className="sticky left-0 z-50 bg-[#EEF3F0] hover:bg-emerald-100/70 cursor-pointer px-0.5 py-1 text-center font-black text-stone-500 w-[44px] min-w-[44px] max-w-[44px] border-r-2 border-stone-300 uppercase tracking-tighter text-[7.5px] select-none shadow-[2px_0_5px_rgba(0,0,0,0.05)]"
                   title="Kalendarz i statusy (Kliknij, aby rozwinąć menedżerów)"
                 >
                   CAL
@@ -801,8 +807,9 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               const isEven = idx % 2 === 0;
               const isFullTime = row.employee.contract_type === 'FULL';
               const isOffValid = row.totalOffDays >= data.offDaysNorm;
-              const hasOvertime = row.balanceHours > 0;
-              const hasDeficit = row.balanceHours < 0;
+              const isBalanced = Math.abs(row.balanceHours) <= 0.9;
+              const hasOvertime = !isBalanced && row.balanceHours > 0.9;
+              const hasDeficit = !isBalanced && row.balanceHours < -0.9;
               const hasViolations = row.violations.length > 0;
 
               const rowBg = isEven ? 'bg-white' : 'bg-[#FAFCFB]';
@@ -816,7 +823,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                   {isLeftExpanded ? (
                     <td
                       onClick={() => setIsLeftExpanded(false)}
-                      className={`px-2 py-1 text-left border-r-2 border-stone-300 w-[200px] min-w-[200px] max-w-[200px] cursor-pointer hover:bg-stone-100/60 transition-colors select-none ${rowBg}`}
+                      className={`sticky left-0 z-30 px-2 py-1 text-left border-r-2 border-stone-300 w-[200px] min-w-[200px] max-w-[200px] cursor-pointer hover:bg-stone-100/60 transition-colors select-none shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${rowBg}`}
                       title="Kliknij, aby zwinąć kolumnę menedżerów"
                     >
                       <div className="flex items-center justify-between gap-1">
@@ -874,7 +881,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                   ) : (
                     <td
                       onClick={() => setIsLeftExpanded(true)}
-                      className={`px-0.5 py-1 text-center border-r-2 border-stone-300 w-[44px] min-w-[44px] max-w-[44px] cursor-pointer hover:bg-emerald-50/70 transition-colors select-none ${rowBg}`}
+                      className={`sticky left-0 z-30 px-0.5 py-1 text-center border-r-2 border-stone-300 w-[44px] min-w-[44px] max-w-[44px] cursor-pointer hover:bg-emerald-50/70 transition-colors select-none shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${rowBg}`}
                       title={`Kliknij, aby rozwinąć dane menedżera\n${row.employee.name} — ${formatManagerRole(row.employee.role)} (${row.employee.contract_type === 'FULL' ? '1.00' : (row.employee.contract_type === 'PART_3_4' ? '0.75' : '0.50')})${row.employee.monthly_salary ? ` • ${Math.round(row.employee.monthly_salary * (row.employee.contract_hours_ratio || 1.0)).toLocaleString('pl-PL')} zł/mc` : (row.employee.hourly_rate ? ` • ${row.employee.hourly_rate.toFixed(2)} zł/h` : '')}`}
                     >
                       <div className="flex flex-col items-center justify-center gap-0.5">
@@ -1127,12 +1134,12 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
 
                       {/* Podsumowanie: Bilans */}
                       <td className="px-1 py-1 text-center bg-[#F7F9F8] min-w-[46px]">
-                        <span className={`inline-flex items-center justify-center px-1 py-0.2 rounded text-[10.5px] font-black ${
-                          hasOvertime
-                            ? 'bg-blue-100 text-blue-900'
-                            : hasDeficit
-                            ? 'bg-rose-100 text-rose-900'
-                            : 'bg-stone-100 text-stone-700'
+                        <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10.5px] font-black ${
+                          isBalanced
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : hasOvertime
+                            ? 'bg-blue-100 text-blue-900 border border-blue-300'
+                            : 'bg-rose-100 text-rose-900 border border-rose-300'
                         }`}>
                           {hasOvertime ? `+${row.balanceHours.toFixed(1)}h` : `${row.balanceHours.toFixed(1)}h`}
                         </span>
@@ -1144,12 +1151,12 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                       className="px-1 py-1 text-center bg-[#F7F9F8] border-l-2 border-[#D0DCD6] min-w-[50px] cursor-pointer hover:bg-emerald-50/70 transition-colors select-none"
                       title={`Kliknij, aby rozwinąć pełne 5 kolumn podsumowania\nWypracowane: ${row.totalWorkedHours.toFixed(1)}h / Norma: ${row.nominalHours.toFixed(0)}h (${((row.totalWorkedHours / (row.nominalHours || 1)) * 100).toFixed(0)}%)\nDni OFF: ${row.totalOffDays}\nBilans: ${row.balanceHours > 0 ? `+${row.balanceHours.toFixed(1)}h` : `${row.balanceHours.toFixed(1)}h`}`}
                     >
-                      <span className={`inline-flex items-center justify-center px-1 py-0.2 rounded text-[10.5px] font-black ${
-                        hasOvertime
-                          ? 'bg-blue-100 text-blue-900'
-                          : hasDeficit
-                          ? 'bg-rose-100 text-rose-900'
-                          : 'bg-stone-100 text-stone-700'
+                      <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10.5px] font-black ${
+                        isBalanced
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : hasOvertime
+                          ? 'bg-blue-100 text-blue-900 border border-blue-300'
+                          : 'bg-rose-100 text-rose-900 border border-rose-300'
                       }`}>
                         {hasOvertime ? `+${row.balanceHours.toFixed(1)}h` : `${row.balanceHours.toFixed(1)}h`}
                       </span>
@@ -1164,7 +1171,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               {isLeftExpanded ? (
                 <td
                   onClick={() => setIsLeftExpanded(false)}
-                  className="px-2 py-1 font-bold text-amber-950 bg-amber-100 border-r-2 border-amber-300 text-[11px] w-[200px] min-w-[200px] max-w-[200px] cursor-pointer hover:bg-amber-200/80 transition-colors select-none align-middle"
+                  className="sticky left-0 z-30 px-2 py-1 font-bold text-amber-950 bg-amber-100 border-r-2 border-amber-300 text-[11px] w-[200px] min-w-[200px] max-w-[200px] cursor-pointer hover:bg-amber-200/80 transition-colors select-none align-middle shadow-[2px_0_5px_rgba(0,0,0,0.05)]"
                   title="Kliknij, aby zwinąć"
                 >
                   <div className="flex items-center justify-between">
@@ -1178,7 +1185,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               ) : (
                 <td
                   onClick={() => setIsLeftExpanded(true)}
-                  className="px-0.5 py-1 font-bold text-amber-950 bg-amber-100 border-r-2 border-amber-300 text-center w-[44px] min-w-[44px] max-w-[44px] cursor-pointer hover:bg-amber-200 transition-colors select-none align-middle"
+                  className="sticky left-0 z-30 px-0.5 py-1 font-bold text-amber-950 bg-amber-100 border-r-2 border-amber-300 text-center w-[44px] min-w-[44px] max-w-[44px] cursor-pointer hover:bg-amber-200 transition-colors select-none align-middle shadow-[2px_0_5px_rgba(0,0,0,0.05)]"
                   title="Wydarzenia i notatki operacyjne (Kliknij, aby rozwinąć)"
                 >
                   <div className="flex flex-col items-center justify-center gap-1.5 py-1">
@@ -1301,7 +1308,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               {isLeftExpanded ? (
                 <td
                   onClick={() => setIsLeftExpanded(false)}
-                  className="px-2 py-1 bg-[#1E3932] border-r-2 border-emerald-700 text-emerald-300 font-bold text-[11px] w-[200px] min-w-[200px] max-w-[200px] cursor-pointer hover:bg-[#25463e] transition-colors select-none"
+                  className="sticky left-0 z-30 px-2 py-1 bg-[#1E3932] border-r-2 border-emerald-700 text-emerald-300 font-bold text-[11px] w-[200px] min-w-[200px] max-w-[200px] cursor-pointer hover:bg-[#25463e] transition-colors select-none shadow-[2px_0_5px_rgba(0,0,0,0.15)]"
                   title="Kliknij, aby zwinąć kolumnę menedżerów"
                 >
                   <div className="flex items-center justify-between">
@@ -1312,7 +1319,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               ) : (
                 <td
                   onClick={() => setIsLeftExpanded(true)}
-                  className="px-0.5 py-1 bg-[#1E3932] border-r-2 border-emerald-700 text-emerald-300 font-bold text-center w-[44px] min-w-[44px] max-w-[44px] cursor-pointer hover:bg-[#25463e] transition-colors select-none"
+                  className="sticky left-0 z-30 px-0.5 py-1 bg-[#1E3932] border-r-2 border-emerald-700 text-emerald-300 font-bold text-center w-[44px] min-w-[44px] max-w-[44px] cursor-pointer hover:bg-[#25463e] transition-colors select-none shadow-[2px_0_5px_rgba(0,0,0,0.15)]"
                   title="Obsada dzienna menedżerów (Kliknij, aby rozwinąć menedżerów)"
                 >
                   <div className="flex flex-col items-center justify-center gap-0.5">
