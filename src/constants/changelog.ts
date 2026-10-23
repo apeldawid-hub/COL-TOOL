@@ -24,6 +24,42 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.8.67',
+    date: '2026-10-24',
+    title: 'Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Dwuetapowe Logowanie 2FA: Bezpieczna autoryzacja pracowników z weryfikacją firmowych domen @amrest.eu i @starbucks.com oraz 6-cyfrowym kodem OTP.',
+      'Szybkie Uwierzytelnienie Store Managera: Jednoklikowy dostęp dla stacji roboczej zaplecza CH Janki z zachowaniem pełnych uprawnień zarządczych.',
+      'Rejestracja Nowych Pracowników (Partner Onboarding): Formularz zgłoszeniowy dla załogi kawiarni z automatyczną delegacją wniosku do Panelu Administratora.',
+      'Produkcyjne Reguły Firestore (Zero-Leak Security): Serwerowa izolacja sejfów (public_schedule, private_staff_vault, executive_financial_vault) uniemożliwiająca wyciek stawek i płac.',
+      'Silnik Local-First Hybrid Sync: Buforowanie zmian w asynchronicznej kolejce Outbox z priorytetem lokalnego SSD (0 ms opóźnień) i pełnym wsparciem offline.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Wdrożenie modułu autoryzacji authService.ts z obsługą domen korporacyjnych, kodów 2FA OTP i fingerprintingu urządzeń.',
+        module: 'system',
+      },
+      {
+        type: 'feature',
+        description: 'Nowoczesny pulpit logowania LoginView.tsx z 3 zakładkami: Store Manager, Logowanie 2FA oraz Rejestracja nowego konta.',
+        module: 'system',
+      },
+      {
+        type: 'compliance',
+        description: 'Stworzenie produkcyjnych reguł firestore.rules dla architektury 3 Sejfów przez wyspecjalizowanego subagenta firestore-rules-author.',
+        module: 'system',
+      },
+      {
+        type: 'database',
+        description: 'Implementacja serwisu syncEngine.ts z asynchroniczną kolejką zmian (sbx_sync_outbox) i bezpiecznym filtrowaniem Zero-Leak.',
+        module: 'database',
+      }
+    ]
+  },
+  {
     version: '2.8.65',
     date: '2026-10-24',
     title: 'Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC',

@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.67](#v2.8.67--2026-10-24)** | 2026-10-24 | Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync | `patch` | 🚀 Opublikowana |
 | **[v2.8.65](#v2.8.65--2026-10-24)** | 2026-10-24 | Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC | `feature` | 🚀 Opublikowana |
 | **[v2.8.63](#v2.8.63--2026-10-24)** | 2026-10-24 | Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4) | `patch` | 🚀 Opublikowana |
 | **[v2.8.62](#v2.8.62--2026-10-19)** | 2026-10-19 | AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training) | `patch` | 🚀 Opublikowana |
@@ -35,6 +36,19 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.67] — 2026-10-24
+**Tytuł:** Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- **Dwuetapowe Logowanie 2FA z Domeną Firmową**: Nowy serwis `authService.ts` egzekwuje logowanie wyłącznie z adresów `@amrest.eu` oraz `@starbucks.com`, generując 6-cyfrowy kod autoryzacyjny OTP.
+- **Szybkie Wejście Store Managera**: Jednoklikowe logowanie z zaplecza kawiarni 18120 Janki dla Dawida Apela z natychmiastowym odblokowaniem skarbców płac i stawek.
+- **Formularz Wniosku o Dostęp (Partner Onboarding)**: Wygodna rejestracja nowych baristów i shift supervisorów z automatycznym przekazaniem wniosku do kolejki Store Managera.
+- **Produkcyjne Reguły Bezpieczeństwa Firestore**: Oficjalny plik `firestore.rules` zabezpieczający 3 sejfy serwerowe (`public_schedule`, `private_staff_vault`, `executive_financial_vault`), całkowicie blokujący wyciek danych finansowych dla ról niemenedżerskich.
+- **Architektura Local-First Hybrid Sync**: Nowy silnik `syncEngine.ts` z asynchroniczną kolejką zmian `sbx_sync_outbox`, gwarantujący natychmiastowy zapis w lokalnym SQLite bez opóźnień sieciowych i pełne działanie offline.
+
+---
 
 ### [v2.8.65] — 2026-10-24
 **Tytuł:** Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC  

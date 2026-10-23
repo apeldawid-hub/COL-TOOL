@@ -12,6 +12,7 @@ import { BugReporterModal } from './components/BugReporterModal';
 import { StoreSwitcherModal } from './components/StoreSwitcherModal';
 import { AdminConsoleModal } from './components/admin/AdminConsoleModal';
 import { AdminService } from './services/admin/adminService';
+import { AuthService } from './services/auth/authService';
 import { useStore } from './context/StoreContext';
 import {
   LaborForecastView,
@@ -51,7 +52,7 @@ const DEFAULT_MONTHS = [
 ];
 
 export const App: React.FC = () => {
-  const { isStoreSwitcherOpen, closeStoreSwitcher } = useStore();
+  const { currentStore, isStoreSwitcherOpen, closeStoreSwitcher } = useStore();
 
   // Stan pierwszego uruchomienia / Menu Startowego (Onboarding)
   // null = trwa weryfikacja z bazą SQLite / ustawieniami, true = ukończono, false = nowe uruchomienie
@@ -570,6 +571,7 @@ export const App: React.FC = () => {
           onRefresh={loadMonthData}
           isLoading={isLoading}
           onLogout={() => {
+            AuthService.logout();
             setIsLoggedIn(false);
             setLoggedInUser('Store Manager (SM)');
           }}
@@ -812,7 +814,7 @@ export const App: React.FC = () => {
           setPendingRequestsCount(AdminService.getPendingRequests().length);
         }}
         adminName={loggedInUser}
-        storeUnitCode="18120"
+        storeUnitCode={currentStore?.unitCode || '18120'}
       />
 
       {/* Okno Interaktywnego Animowanego Samouczka Modelowego */}

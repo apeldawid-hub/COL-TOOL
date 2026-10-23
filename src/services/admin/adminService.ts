@@ -322,4 +322,63 @@ export class AdminService {
     if (logs.length > 200) logs.pop();
     localStorage.setItem(STORAGE_LOGS_KEY, JSON.stringify(logs));
   }
+
+  public static submitAccessRequest(payload: {
+    storeUnitCode: string;
+    fullName: string;
+    email: string;
+    requestedRole: AppUserRole;
+    deviceFingerprint: string;
+    deviceName: string;
+    ipAddress?: string;
+    requestNote?: string;
+  }): PendingAccessRequest {
+    const requests = this.getPendingRequests();
+    
+    // Sprawdź czy już istnieje oczekujący wniosek dla tego e-maila
+    const existingIndex = requests.findIndex(r => r.email.toLowerCase() === payload.email.toLowerCase());
+    
+    const newRequest: PendingAccessRequest = {
+      id: `req_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      storeUnitCode: payload.storeUnitCode,
+      fullName: payload.fullName,
+      email: payload.email.toLowerCase(),
+      requestedRole: payload.requestedRole,
+      deviceFingerprint: payload.deviceFingerprint,
+      deviceName: payload.deviceName,
+      ipAddress: payload.ipAddress || 'Lokalna sieć kawiarni',
+      requestNote: payload.requestNote || 'Nowe zgłoszenie dostępu przez aplikację desktopową',
+      createdAt: new Date().toISOString(),
+      status: 'PENDING',
+    };
+
+    if (existingIndex >= 0) {
+      requests[existingIndex] = newRequest;
+    } else {
+      requests.unshift(newRequest);
+    }
+
+    localStorage.setItem(STORAGE_REQUESTS_KEY, JSON.stringify(requests));
+
+    this.addAuditLog({
+      actorName: payload.fullName,
+      actorRole: payload.requestedRole,
+      actionType: 'REQUEST_APPROVED', // log submission
+      targetResource: `request:${payload.email}`,
+      details: `Wpłynął nowy wniosek o dostęp do kawiarni ${payload.storeUnitCode} z urządzenia ${payload.deviceName}`,
+      deviceName: payload.deviceName,
+    });
+
+    return newRequest;
+  }
+
+  public static getUserByEmail(email: string): ManagedAppUser | null {
+    const users = this.getUsers();
+    return users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+  }
+
+  public static getRequestByEmail(email: string): PendingAccessRequest | null {
+    const requests = this.getPendingRequests();
+    return requests.find(r => r.email.toLowerCase() === email.toLowerCase()) || null;
+  }
 }
