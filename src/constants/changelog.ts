@@ -27,7 +27,7 @@ export const APP_CHANGELOG: ReleaseEntry[] = [
     version: '2.8.65',
     date: '2026-10-24',
     title: 'Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC',
-    type: 'feature',
+    type: 'patch',
     author: 'Dawid Apel & Antigravity Agent',
     highlights: [
       'Dedykowany Panel Administratora (Admin Console): Nowy moduł zarządzania personelem, dostępny z poziomu paska bocznego wyłącznie dla Store Managera.',
