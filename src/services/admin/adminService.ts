@@ -74,98 +74,25 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AppUserRole, GranularUserPermissio
   },
 };
 
-const STORAGE_USERS_KEY = 'sbx_admin_managed_users';
-const STORAGE_REQUESTS_KEY = 'sbx_admin_pending_requests';
-const STORAGE_LOGS_KEY = 'sbx_admin_security_logs';
+import { StoreStorage } from '../storeStorage';
 
 export class AdminService {
   private static initDefaults(): void {
-    if (!localStorage.getItem(STORAGE_USERS_KEY)) {
-      const defaultUsers: ManagedAppUser[] = [
-        {
-          id: 'usr_sm_dawid_apel',
-          storeUnitCode: '18120',
-          fullName: 'Dawid Apel',
-          email: 'dawid.apel@amrest.eu',
-          role: 'STORE_MANAGER',
-          isActive: true,
-          permissions: ROLE_DEFAULT_PERMISSIONS.STORE_MANAGER,
-          lastLoginAt: new Date().toISOString(),
-          deviceName: 'MacBook Air - Zaplecze Janki',
-          sessionVersion: 1,
-          createdAt: '2026-09-01T08:00:00Z',
-        },
-        {
-          id: 'usr_ssv_kamil_k',
-          storeUnitCode: '18120',
-          fullName: 'Kamil Kamiński',
-          email: 'kamil.kaminski@amrest.eu',
-          role: 'SHIFT_SUPERVISOR',
-          isActive: true,
-          permissions: ROLE_DEFAULT_PERMISSIONS.SHIFT_SUPERVISOR,
-          lastLoginAt: '2026-10-23T14:30:00Z',
-          deviceName: 'iPhone 15 - Partner Mobile',
-          sessionVersion: 1,
-          createdAt: '2026-09-01T08:00:00Z',
-        },
-        {
-          id: 'usr_ssv_zuzanna_m',
-          storeUnitCode: '18120',
-          fullName: 'Zuzanna Makowska',
-          email: 'zuzanna.makowska@amrest.eu',
-          role: 'SHIFT_SUPERVISOR',
-          isActive: true,
-          permissions: ROLE_DEFAULT_PERMISSIONS.SHIFT_SUPERVISOR,
-          lastLoginAt: '2026-10-22T21:45:00Z',
-          deviceName: 'Galaxy S24 - Partner Mobile',
-          sessionVersion: 1,
-          createdAt: '2026-09-01T08:00:00Z',
-        },
-      ];
-      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(defaultUsers));
+    if (StoreStorage.getItem('admin_managed_users') === null) {
+      StoreStorage.setItem('admin_managed_users', []);
     }
-
-    if (!localStorage.getItem(STORAGE_REQUESTS_KEY)) {
-      const defaultRequests: PendingAccessRequest[] = [
-        {
-          id: 'req_new_01',
-          storeUnitCode: '18120',
-          fullName: 'Piotr Wiśniewski',
-          email: 'piotr.wisniewski@amrest.eu',
-          requestedRole: 'BARISTA',
-          deviceFingerprint: 'dev_fp_iphone_pw',
-          deviceName: 'iPhone 13 - iOS 18.1',
-          ipAddress: '192.168.1.112 (CH Janki Wi-Fi)',
-          requestNote: 'Nowy partner w trakcie szkolenia First 30 (T1-T10)',
-          createdAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-          status: 'PENDING',
-        },
-      ];
-      localStorage.setItem(STORAGE_REQUESTS_KEY, JSON.stringify(defaultRequests));
+    if (StoreStorage.getItem('admin_pending_requests') === null) {
+      StoreStorage.setItem('admin_pending_requests', []);
     }
-
-    if (!localStorage.getItem(STORAGE_LOGS_KEY)) {
-      const defaultLogs: SecurityAuditLog[] = [
-        {
-          id: 'log_01',
-          timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-          actorName: 'Dawid Apel',
-          actorRole: 'STORE_MANAGER',
-          actionType: 'LOGIN_2FA',
-          targetResource: 'system:root_admin',
-          details: 'Pomyślne uwierzytelnienie 2FA firmowym adresem dawid.apel@amrest.eu',
-          ipAddress: '192.168.1.10 (MacBook Air Zaplecze)',
-          deviceName: 'macOS 15.2',
-        },
-      ];
-      localStorage.setItem(STORAGE_LOGS_KEY, JSON.stringify(defaultLogs));
+    if (StoreStorage.getItem('admin_security_logs') === null) {
+      StoreStorage.setItem('admin_security_logs', []);
     }
   }
 
   public static getUsers(): ManagedAppUser[] {
     this.initDefaults();
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]');
+      return StoreStorage.getItem<ManagedAppUser[]>('admin_managed_users') || [];
     } catch {
       return [];
     }
@@ -174,7 +101,7 @@ export class AdminService {
   public static getPendingRequests(): PendingAccessRequest[] {
     this.initDefaults();
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_REQUESTS_KEY) || '[]');
+      return StoreStorage.getItem<PendingAccessRequest[]>('admin_pending_requests') || [];
     } catch {
       return [];
     }
@@ -183,7 +110,7 @@ export class AdminService {
   public static getSecurityLogs(): SecurityAuditLog[] {
     this.initDefaults();
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_LOGS_KEY) || '[]');
+      return StoreStorage.getItem<SecurityAuditLog[]>('admin_security_logs') || [];
     } catch {
       return [];
     }
@@ -197,7 +124,7 @@ export class AdminService {
     const req = requests[reqIndex];
     req.status = 'APPROVED';
     requests.splice(reqIndex, 1);
-    localStorage.setItem(STORAGE_REQUESTS_KEY, JSON.stringify(requests));
+    StoreStorage.setItem('admin_pending_requests', requests);
 
     const newUser: ManagedAppUser = {
       id: `usr_${Date.now()}`,
@@ -216,7 +143,7 @@ export class AdminService {
 
     const users = this.getUsers();
     users.push(newUser);
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    StoreStorage.setItem('admin_managed_users', users);
 
     this.addAuditLog({
       actorName: adminName,
@@ -237,7 +164,7 @@ export class AdminService {
 
     const req = requests[reqIndex];
     requests.splice(reqIndex, 1);
-    localStorage.setItem(STORAGE_REQUESTS_KEY, JSON.stringify(requests));
+    StoreStorage.setItem('admin_pending_requests', requests);
 
     this.addAuditLog({
       actorName: adminName,
@@ -257,7 +184,7 @@ export class AdminService {
 
     user.isActive = false;
     user.sessionVersion += 1; // Inkrementacja natychmiast odrzuca tokeny sesyjne
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    StoreStorage.setItem('admin_managed_users', users);
 
     this.addAuditLog({
       actorName: adminName,
@@ -278,7 +205,7 @@ export class AdminService {
     const oldRole = user.role;
     user.role = newRole;
     user.permissions = { ...ROLE_DEFAULT_PERMISSIONS[newRole] };
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    StoreStorage.setItem('admin_managed_users', users);
 
     this.addAuditLog({
       actorName: adminName,
@@ -298,7 +225,7 @@ export class AdminService {
 
     const newValue = !user.permissions[key];
     user.permissions[key] = newValue;
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    StoreStorage.setItem('admin_managed_users', users);
 
     this.addAuditLog({
       actorName: adminName,
@@ -320,7 +247,7 @@ export class AdminService {
     };
     logs.unshift(newLog);
     if (logs.length > 200) logs.pop();
-    localStorage.setItem(STORAGE_LOGS_KEY, JSON.stringify(logs));
+    StoreStorage.setItem('admin_security_logs', logs);
   }
 
   public static submitAccessRequest(payload: {
@@ -358,7 +285,7 @@ export class AdminService {
       requests.unshift(newRequest);
     }
 
-    localStorage.setItem(STORAGE_REQUESTS_KEY, JSON.stringify(requests));
+    StoreStorage.setItem('admin_pending_requests', requests);
 
     this.addAuditLog({
       actorName: payload.fullName,

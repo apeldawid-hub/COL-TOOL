@@ -551,6 +551,8 @@ export class UniversalReportParser {
       'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
     ];
     const daysMap = ['Nd', 'Pn', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob'];
+    const { unitCode: activeUnitCode, mpk: activeMpk, storeName: activeStoreName } = dbManager.getActiveStoreIdentifiers();
+    const cleanActiveName = activeStoreName ? activeStoreName.toLowerCase().replace(/^108\d{3}\s*/, '').replace(/^sbx\s*/i, '').trim() : '';
 
     for (let r = 7; r < rawRows.length; r++) {
       const row = rawRows[r];
@@ -560,15 +562,15 @@ export class UniversalReportParser {
       const unitCode = String(row[13] || '');
       const empName = String(row[2] || '').trim();
 
-      const isJanki = unitName.includes('108120') || 
-                      unitName.includes('18120') ||
-                      unitName.toLowerCase().includes('janki') || 
-                      unitCode.includes('18120') ||
-                      unitCode.includes('384');
+      const isStoreMatch = Boolean(
+        (activeUnitCode && (unitCode === activeUnitCode || unitCode.includes(activeUnitCode) || activeUnitCode.includes(unitCode))) ||
+        (activeMpk && (unitName.includes(activeMpk) || unitCode.includes(activeMpk))) ||
+        (cleanActiveName && cleanActiveName.length >= 3 && unitName.toLowerCase().includes(cleanActiveName))
+      );
 
       const isManager = managerNames.some(mName => matchesManagerName(empName, mName));
 
-      if (!isJanki && !isManager) continue;
+      if (!isStoreMatch && !isManager) continue;
 
       const dateVal = row[5];
       let dateNormalized = '';
@@ -645,8 +647,8 @@ export class UniversalReportParser {
         category,
         contract_type: contractType,
         computable_time: Number(compTime.toFixed(2)),
-        unit_code: unitCode || '18120',
-        unit_name: unitName || '108120 SBX Warszawa Janki',
+        unit_code: unitCode || activeUnitCode || activeMpk || '',
+        unit_name: unitName || activeStoreName || '',
         is_manager: isManager
       });
     }
@@ -659,9 +661,9 @@ export class UniversalReportParser {
         validation: {
           isValid: false,
           warnings: [],
-          errors: ['W wybranym raporcie nie znaleziono żadnych wpisów dla lokalu Janki (18120) ani menedżerów.']
+          errors: [`W wybranym raporcie nie znaleziono żadnych wpisów dla lokalu ${activeStoreName || 'aktywnego'} (${activeUnitCode || activeMpk || ''}) ani menedżerów.`]
         },
-        message: 'Nie znaleziono danych logowań dla kawiarni 108120 SBX Warszawa Janki.'
+        message: `Nie znaleziono danych logowań dla kawiarni ${activeStoreName || 'aktywnej'}.`
       };
     }
 
@@ -866,23 +868,25 @@ export class UniversalReportParser {
       // Pobranie unikalnych pracowników Janki w importowanym zbiorze
       const managerNames = Array.from(new Set(records.map(r => r.employee)));
       const employeePlaceholders = managerNames.map(() => '?').join(',');
+      const { unitCode: activeUnitCode, mpk: activeMpk, storeName: activeStoreName } = dbManager.getActiveStoreIdentifiers();
+      const storeFilter = `%${activeMpk || activeUnitCode}%`;
 
-      // Usunięcie starych rekordów dla Janki oraz wsparcia menedżerów Janki w innych lokalach w tym zakresie dat
+      // Usunięcie starych rekordów dla kawiarni oraz wsparcia menedżerów w innych lokalach w tym zakresie dat
       if (managerNames.length > 0) {
         db.run(`
           DELETE FROM labor_actuals_log 
           WHERE date >= ? AND date <= ?
             AND (
-              unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%'
+              unit_code = ? OR unit_code = ? OR unit_name LIKE ?
               OR employee IN (${employeePlaceholders})
             )
-        `, [minDate, maxDate, ...managerNames]);
+        `, [minDate, maxDate, activeUnitCode, activeMpk, storeFilter, ...managerNames]);
       } else {
         db.run(`
           DELETE FROM labor_actuals_log 
-          WHERE (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%')
+          WHERE (unit_code = ? OR unit_code = ? OR unit_name LIKE ?)
             AND date >= ? AND date <= ?
-        `, [minDate, maxDate]);
+        `, [activeUnitCode, activeMpk, storeFilter, minDate, maxDate]);
       }
 
       // Wstawienie zatwierdzonych rekordów
@@ -924,7 +928,7 @@ export class UniversalReportParser {
         importedCount: records.length,
         minDate,
         maxDate,
-        message: `✨ Pomyślnie zaimportowano ${records.length} logowań (${totalHours}h) dla kawiarni Janki w zakresie ${minDate} – ${maxDate}.`
+        message: `✨ Pomyślnie zaimportowano ${records.length} logowań (${totalHours}h) dla kawiarni ${activeStoreName || 'aktywnej'} w zakresie ${minDate} – ${maxDate}.`
       };
     } catch (err: any) {
       console.error('Błąd commitMapalData:', err);
@@ -1309,7 +1313,8 @@ export class UniversalReportParser {
     let detectedYear = 2026;
     let detectedMonthName = 'Wrzesień';
     let detectedMonthNum = 9;
-    let detectedStoreName = '108120 SBX Warszawa Janki';
+    const { storeName: activeStoreName } = DatabaseManager.getInstance().getActiveStoreIdentifiers();
+    let detectedStoreName = activeStoreName || 'Kawiarnia Starbucks';
 
     const monthMap: Record<string, { name: string; num: number }> = {
       'jan': { name: 'Styczeń', num: 1 },

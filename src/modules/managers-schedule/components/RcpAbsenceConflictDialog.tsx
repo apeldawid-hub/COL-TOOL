@@ -115,7 +115,7 @@ export const RcpAbsenceConflictDialog: React.FC<RcpAbsenceConflictDialogProps> =
                       {c.unitName && (
                         <div className="flex items-center gap-1 text-stone-500">
                           <Building2 className="w-3.5 h-3.5 text-stone-400" />
-                          <span className="text-[11px]">{c.unitName} ({c.unitCode || '384'})</span>
+                          <span className="text-[11px]">{c.unitName} {c.unitCode ? `(${c.unitCode})` : ''}</span>
                         </div>
                       )}
                     </div>

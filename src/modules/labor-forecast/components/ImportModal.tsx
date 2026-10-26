@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { useStore } from '../../../context/StoreContext';
 import {
   X,
   UploadCloud,
@@ -120,6 +121,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   onClose,
   onImportSuccess,
 }) => {
+  const { currentStore } = useStore();
   const [stage, setStage] = useState<ModalStage>('DROPZONE');
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -137,7 +139,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [filterSingleDate, setFilterSingleDate] = useState<string>('ALL');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
-  const [filterUnit, setFilterUnit] = useState<'ALL' | 'JANKI_ONLY' | 'SUPPORT_ONLY'>('ALL');
+  const [filterUnit, setFilterUnit] = useState<'ALL' | 'STORE_ONLY' | 'SUPPORT_ONLY'>('ALL');
   const [sortField, setSortField] = useState<'date' | 'employee' | 'hours'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -255,12 +257,15 @@ export const ImportModal: React.FC<ImportModalProps> = ({
           return false;
         }
 
-        // 6. Lokal (Janki vs Wsparcie w innym lokalu)
-        const isJanki = r.unit_code === '18120' || (r.unit_name && r.unit_name.includes('Janki'));
-        if (filterUnit === 'JANKI_ONLY' && !isJanki) {
+        // 6. Lokal (Lokal aktywny vs Wsparcie w innym lokalu)
+        const isCurrentStore = (currentStore.unitCode && r.unit_code === currentStore.unitCode) ||
+          (currentStore.mpk && r.unit_code === currentStore.mpk) ||
+          (currentStore.shortName && r.unit_name && r.unit_name.toLowerCase().includes(currentStore.shortName.toLowerCase())) ||
+          (!currentStore.unitCode && !currentStore.mpk);
+        if (filterUnit === 'STORE_ONLY' && !isCurrentStore) {
           return false;
         }
-        if (filterUnit === 'SUPPORT_ONLY' && isJanki) {
+        if (filterUnit === 'SUPPORT_ONLY' && isCurrentStore) {
           return false;
         }
 
@@ -726,7 +731,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                 {stage === 'DROPZONE' && 'Przeciągnij raport, aby automatycznie zweryfikować i edytować dane przed importem.'}
                 {stage === 'PREVIEW_AOP' && 'Możesz edytować wartości w tabeli poniżej. Zmiany zostaną zapisane dopiero po kliknięciu Zatwierdź.'}
                 {stage === 'PREVIEW_MAPAL' && 'Zweryfikuj zaimportowane godziny pracowników i zatwierdź zapis do bazy danych.'}
-                {stage === 'PREVIEW_DAILY_KPI' && `Sprawdź i dostosuj rzeczywiste wykonanie sprzedaży, TRX i godzin dla ${dailyKpiData?.storeName || '108120 Janki'}.`}
+                {stage === 'PREVIEW_DAILY_KPI' && `Sprawdź i dostosuj rzeczywiste wykonanie sprzedaży, TRX i godzin dla ${dailyKpiData?.storeName || currentStore.name || 'wybranej kawiarni'}.`}
                 {stage === 'SUCCESS' && 'Dane zostały pomyślnie zwalidowane i zapisane w bazie SQLite.'}
               </p>
             </div>
@@ -818,7 +823,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   <div>
                     <div className="font-bold text-[#1E3932]">Ewidencja MAPAL</div>
                     <div className="text-[11px] text-[#5C6F68] mt-0.5">
-                      Rzeczywiste logowania baristów i menedżerów (Fichajes) dla lokalu 108120 Janki.
+                      Rzeczywiste logowania baristów i menedżerów (Fichajes) dla lokalu {currentStore.shortName || currentStore.name || 'kawiarni'}.
                     </div>
                   </div>
                 </div>
@@ -1126,7 +1131,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                       className="w-full px-2.5 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white hover:border-[#006241] focus:border-[#006241] outline-hidden"
                     >
                       <option value="ALL">📍 Wszystkie lokale</option>
-                      <option value="JANKI_ONLY">💚 Tylko 108120 Janki</option>
+                      <option value="STORE_ONLY">💚 Tylko {currentStore.shortName || currentStore.name || 'Lokal macierzysty'}</option>
                       <option value="SUPPORT_ONLY">🏢 Wsparcia / Inne lokale</option>
                     </select>
                   </div>
@@ -1350,10 +1355,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                               />
                             </td>
                             <td className="p-2 text-stone-600 text-[11px] truncate max-w-[160px]" title={rec.unit_name}>
-                              {rec.unit_code === '18120' || (rec.unit_name && rec.unit_name.includes('Janki')) ? (
-                                <span className="text-[#006241] font-semibold">108120 Janki</span>
+                              {((currentStore.unitCode && rec.unit_code === currentStore.unitCode) ||
+                                (currentStore.mpk && rec.unit_code === currentStore.mpk) ||
+                                (currentStore.shortName && rec.unit_name && rec.unit_name.toLowerCase().includes(currentStore.shortName.toLowerCase()))) ? (
+                                <span className="text-[#006241] font-semibold">{currentStore.shortName || currentStore.name || rec.unit_name}</span>
                               ) : (
-                                <span className="text-blue-700 font-semibold">{rec.unit_name}</span>
+                                <span className="text-blue-700 font-semibold">{rec.unit_name || rec.unit_code}</span>
                               )}
                             </td>
                             <td className="p-2 pr-3 text-center">

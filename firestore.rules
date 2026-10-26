@@ -1,90 +1,70 @@
 rules_version = '2';
 
 // =========================================================================================
-// Starbucks Operations Suite — Production Firestore Security Rules
-// Kawiarnia: 108120 SBX Warszawa Janki (Unit Code: 18120, Store Code: 384)
-// Architektura: Zero-Leak Vault Architecture (Fizyczna i Logiczna Separacja Serwerowa)
+// Starbucks Operations Suite — Production Hardened Firestore Security Rules
+// Architecture: Zero-Leak Multi-Store Tenant Isolation (100+ Autonomous Retail Units)
+// Standard: AES-256-GCM Encrypted Vaults & Strict Custom Claim Tenant Scoping
 // =========================================================================================
 
 // =========================================================================================
-// Assumed Data Model
+// Assumed Data Model & Cloud Vault Architecture
 // =========================================================================================
 //
-// 1. Collection: /stores/{storeId}/managed_users/{userId}
-//    Document ID: {userId} (Firebase Auth UID pracownika)
-//    Description: Ewidencja ról i uprawnień pracowników przypisanych do danej kawiarni.
+// 1. Collection: /stores/{storeId}/vault_financials/{docId}
+//    Document ID: {docId} (e.g. 'month_2026_03', 'aop_budget_2026')
+//    Description: AES-256-GCM encrypted executive financial vault (P&L, AOP targets, sales, bonuses, labor costs).
+//                 Strict executive access: STORE_MANAGER and DISTRICT_MANAGER only.
 //    Fields:
-//      - userId: string (1-128 chars, immutable) - Firebase Auth UID
-//      - email: string (5-128 chars, valid corporate email @amrest.eu lub @starbucks.com)
-//      - displayName: string (1-100 chars) - Imię i nazwisko pracownika
-//      - role: string - jedna z wartości: 'STORE_MANAGER', 'ASSISTANT_STORE_MANAGER', 'SHIFT_SUPERVISOR', 'BARISTA', 'DISTRICT_MANAGER'
-//      - status: string - jedna z wartości: 'active', 'suspended', 'pending'
-//      - storeId: string (1-32 chars) - Kod jednostki (np. '18120', '108120')
-//      - assignedAt: timestamp (immutable) - Data przydzielenia roli
-//      - updatedAt: timestamp - Data ostatniej modyfikacji
+//      - docId: string (1-128 chars, immutable)
+//      - storeId: string (1-32 chars, immutable, matches path storeId)
+//      - vaultType: string (immutable, must be 'vault_financials')
+//      - version: string ('v1', immutable)
+//      - keyId: string (1-64 chars, optional)
+//      - iv: string (16-32 chars base64, 96-bit AES-GCM IV)
+//      - tag: string (20-32 chars base64, 128-bit AES-GCM Auth Tag)
+//      - ciphertext: string (1-2000000 chars base64)
+//      - recordCount: int (>= 0, optional)
+//      - checksum: string (32-128 chars, optional)
+//      - updatedAt: timestamp (recent)
+//      - updatedBy: string (1-128 chars, Firebase Auth UID)
 //
-// 2. Collection: /stores/{storeId}/public_schedule/{docId}
-//    Document ID: {docId} (np. 'schedule_2026_w42')
-//    Description: Oficjalny grafik operacyjny kawiarni dostępny dla całej załogi lokalu.
+// 2. Collection: /stores/{storeId}/vault_personnel/{docId}
+//    Document ID: {docId} (e.g. 'active_roster', 'contracts_2026')
+//    Description: AES-256-GCM encrypted confidential personnel vault (salaries, hourly rates, contracts, TOR balances).
+//                 Strict executive access: STORE_MANAGER and DISTRICT_MANAGER only.
+//    Fields: same encrypted envelope schema as vault_financials (vaultType == 'vault_personnel').
+//
+// 3. Collection: /stores/{storeId}/vault_schedules/{docId}
+//    Document ID: {docId} (e.g. 'week_2026_W12')
+//    Description: AES-256-GCM encrypted manager scheduling vault.
+//                 Store staff can read encrypted schedule; ASM/SM can write.
+//    Fields: same encrypted envelope schema as vault_financials (vaultType == 'vault_schedules').
+//
+// 4. Collection: /stores/{storeId}/vault_health_gdpr/{docId}
+//    Document ID: {docId} (e.g. 'medical_l4_2026_Q1')
+//    Description: AES-256-GCM encrypted GDPR Art. 9 sensitive medical absence & sick leave vault.
+//                 Strict executive access: STORE_MANAGER only.
+//    Fields: same encrypted envelope schema as vault_financials (vaultType == 'vault_health_gdpr').
+//
+// 5. Collection: /stores/{storeId}/telemetry/{docId}
+//    Document ID: {docId} (e.g. 'status', 'client_heartbeat')
+//    Description: Store operational telemetry and sync status (unencrypted routing metadata).
 //    Fields:
-//      - docId: string (1-128 chars, immutable) - Identyfikator dokumentu grafiku
-//      - weekNumber: int (1-53, immutable) - Numer tygodnia ISO
-//      - year: int (2020-2050, immutable) - Rok kalendarzowy
-//      - status: string - 'draft', 'published', 'archived'
-//      - shiftsCount: int (>= 0 i <= 1000) - Liczba zaplanowanych zmian
-//      - totalFloorHours: number (>= 0.0 i <= 5000.0) - Suma godzin Floor
-//      - schedulePayload: string (1-500000 chars) - Zserializowany JSON z obsadą zmian i przerw
-//      - publishedAt: timestamp (optional) - Czas publikacji
-//      - updatedAt: timestamp - Czas aktualizacji
-//      - updatedBy: string (1-128 chars) - UID managera aktualizującego
+//      - docId: string (1-128 chars)
+//      - storeId: string (1-32 chars, matches path storeId)
+//      - status: string ('online', 'offline', 'syncing', 'idle')
+//      - clientVersion: string (1-64 chars)
+//      - lastSyncAt: string or timestamp
+//      - updatedAt: timestamp
 //
-// 3. Collection: /stores/{storeId}/private_staff_vault/{docId}
-//    Document ID: {docId} (zazwyczaj zgodny z userId lub prefiksowany)
-//    Description: Poufne dane personalne (telefon, kontakt alarmowy, dyspozycyjność, notatki 1-on-1).
-//    Fields:
-//      - userId: string (1-128 chars, immutable) - UID właściciela rekordu
-//      - availability: string (0-10000 chars) - Deklaracja dyspozycyjności pracownika
-//      - phone: string (0-30 chars, optional) - Numer kontaktowy
-//      - emergencyContact: string (0-200 chars, optional) - Dane osoby do kontaktu w nagłych wypadkach
-//      - notes: string (0-5000 chars, optional) - Notatki operacyjne
-//      - updatedAt: timestamp - Czas modyfikacji
-//      - updatedBy: string (1-128 chars) - UID osoby dokonującej zmiany
-//
-// 4. Collection: /stores/{storeId}/executive_financial_vault/{docId}
-//    Document ID: {docId} (np. 'pl_2026_10', 'payroll_2026_w42')
-//    Description: Ściśle tajne dane zarządcze: stawki godzinowe PLN, płace, koszty pracy P&L,
-//                 narzut ZUS 19.48%, absencje medyczne L4.
-//                 BEZWZGLĘDNY ZAKAZ DOSTĘPU DLA BARISTA I SHIFT_SUPERVISOR.
-//    Fields:
-//      - docId: string (1-128 chars, immutable) - Identyfikator rekordu finansowego
-//      - vaultType: string (immutable) - 'salaries', 'col_pl', 'medical_l4', 'executive_audit'
-//      - period: string (1-32 chars, immutable) - Okres rozliczeniowy (np. '2026-10')
-//      - financialDataEncrypted: string (1-200000 chars) - Szyfrowany ładunek lub zserializowany JSON
-//      - totalLaborCostPLN: number (>= 0.0, optional) - Sumaryczny koszt pracy PLN
-//      - zusCostPLN: number (>= 0.0, optional) - Koszt składek ZUS
-//      - updatedAt: timestamp - Czas ostatniej aktualizacji
-//      - updatedBy: string (1-128 chars) - UID dyrektora / SM
-//
-// 5. Collection: /stores/{storeId}/access_requests/{requestId}
-//    Document ID: {requestId}
-//    Description: Zgłoszenia dostępu nowo zatrudnionych pracowników z e-mailem firmowym.
-//    Fields:
-//      - requestId: string (1-128 chars, immutable) - Identyfikator wniosku
-//      - userId: string (1-128 chars, immutable) - UID zgłaszającego pracownika
-//      - email: string (5-128 chars, immutable) - Adres e-mail (@amrest.eu lub @starbucks.com)
-//      - displayName: string (1-100 chars, immutable) - Imię i nazwisko
-//      - requestedRole: string - Wnioskowana rola ('BARISTA', 'SHIFT_SUPERVISOR', 'ASSISTANT_STORE_MANAGER')
-//      - status: string - 'pending', 'approved', 'rejected'
-//      - createdAt: timestamp (immutable) - Czas rejestracji wniosku
-//      - reviewedAt: timestamp (optional) - Czas decyzji SM
-//      - reviewedBy: string (1-128 chars, optional) - UID managera rozpatrującego wniosek
-//      - rejectionReason: string (0-500 chars, optional) - Uzasadnienie odrzucenia
-//
-// 6. Collection: /cloud_operational_docs/{docId}
-//    Description: Zanonimizowane standardy operacyjne, procedury HACCP, normy Kodeksu Pracy.
-//
-// 7. Collection: /app_installations/{installId}
-//    Description: Telemetria i stan stacji roboczych platformy.
+// 6. Backwards-Compatible Operational Collections:
+//    - /stores/{storeId}/public_schedule/{docId} (Plaintext schedule view for in-store staff)
+//    - /stores/{storeId}/executive_financial_vault/{docId} (Legacy executive vault bridge)
+//    - /stores/{storeId}/private_staff_vault/{docId} (Personal staff contact and emergency info)
+//    - /stores/{storeId}/managed_users/{userId} (Store user directory and roles)
+//    - /stores/{storeId}/access_requests/{requestId} (Store access onboarding requests)
+//    - /cloud_operational_docs/{docId} (Read-only operational standards)
+//    - /app_installations/{installId} (Isolated station telemetry)
 //
 // =========================================================================================
 
@@ -92,7 +72,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // =====================================================================================
-    // Helper Functions: Authentication & Corporate Identity
+    // Helper Functions: Authentication & Tenant Identity
     // =====================================================================================
 
     function isAuthenticated() {
@@ -113,51 +93,56 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uidField;
     }
 
+    // Strict Tenant Isolation: User must have matching storeId in Custom Claims token
+    function isStoreAuthorized(storeId) {
+      return isAuthenticated() &&
+             request.auth.token.storeId != null &&
+             request.auth.token.storeId == storeId;
+    }
+
     // =====================================================================================
     // Helper Functions: RBAC (Role-Based Access Control)
     // =====================================================================================
 
-    // Pobiera rolę użytkownika: priorytet mają Custom Claims w tokenie, fallback do managed_users
     function getUserRole(storeId) {
-      return ('role' in request.auth.token)
+      return ('role' in request.auth.token && isStoreAuthorized(storeId))
         ? request.auth.token.role
         : (exists(/databases/$(database)/documents/stores/$(storeId)/managed_users/$(request.auth.uid))
             ? get(/databases/$(database)/documents/stores/$(storeId)/managed_users/$(request.auth.uid)).data.role
             : 'NONE');
     }
 
-    // Weryfikuje aktywny status zatrudnienia pracownika w jednostce
     function isUserActive(storeId) {
-      return ('role' in request.auth.token)
+      return ('role' in request.auth.token && isStoreAuthorized(storeId))
         ? true
         : (exists(/databases/$(database)/documents/stores/$(storeId)/managed_users/$(request.auth.uid)) &&
            get(/databases/$(database)/documents/stores/$(storeId)/managed_users/$(request.auth.uid)).data.status == 'active');
     }
 
-    // Wszyscy zatwierdzeni pracownicy kawiarni (Barista, SSV, ASM, SM, DM)
     function isStoreStaff(storeId) {
       return isCorporateUser() &&
+             isStoreAuthorized(storeId) &&
              isUserActive(storeId) &&
              (getUserRole(storeId) in ['BARISTA', 'SHIFT_SUPERVISOR', 'ASSISTANT_STORE_MANAGER', 'STORE_MANAGER', 'DISTRICT_MANAGER']);
     }
 
-    // Kierownictwo bezpośrednie (SM oraz ASM)
     function isAssistantOrStoreManager(storeId) {
       return isCorporateUser() &&
+             isStoreAuthorized(storeId) &&
              isUserActive(storeId) &&
              (getUserRole(storeId) in ['ASSISTANT_STORE_MANAGER', 'STORE_MANAGER', 'DISTRICT_MANAGER']);
     }
 
-    // Wyłączna rola Store Manager lub District Manager
     function isStoreManager(storeId) {
       return isCorporateUser() &&
+             isStoreAuthorized(storeId) &&
              isUserActive(storeId) &&
              (getUserRole(storeId) in ['STORE_MANAGER', 'DISTRICT_MANAGER']);
     }
 
-    // Rola wykonawcza / dyrektorska (dostęp do Executive Financial Vault)
     function isExecutive(storeId) {
       return isCorporateUser() &&
+             isStoreAuthorized(storeId) &&
              isUserActive(storeId) &&
              (getUserRole(storeId) in ['STORE_MANAGER', 'DISTRICT_MANAGER']);
     }
@@ -186,17 +171,39 @@ service cloud.firestore {
       return val == null || (val is string && val.size() >= minLen && val.size() <= maxLen);
     }
 
-    function isRecent(t) {
-      return t is timestamp &&
-             t > request.time - duration.value(10, 'm') &&
-             t <= request.time + duration.value(2, 'm');
+    // Validates encrypted vault payload envelope (Feature F14)
+    function isValidVaultDocument(data, storeId, expectedVaultType) {
+      return hasRequiredFields(['docId', 'storeId', 'vaultType', 'version', 'iv', 'tag', 'ciphertext', 'updatedAt', 'updatedBy']) &&
+             data.storeId == storeId &&
+             data.vaultType == expectedVaultType &&
+             data.version == 'v1' &&
+             validString(data.docId, 1, 128) &&
+             validString(data.iv, 16, 32) &&
+             validString(data.tag, 20, 32) &&
+             validString(data.ciphertext, 1, 2000000) &&
+             (!('keyId' in data) || validString(data.keyId, 1, 64)) &&
+             (!('encryptedPayload' in data) || validString(data.encryptedPayload, 1, 2500000)) &&
+             (!('schemaVersion' in data) || validString(data.schemaVersion, 1, 16)) &&
+             (!('clientVersion' in data) || validString(data.clientVersion, 1, 64)) &&
+             (!('unitCode' in data) || validString(data.unitCode, 1, 32)) &&
+             (!('period' in data) || validOptionalString(data.period, 1, 64)) &&
+             (!('staffGroup' in data) || validOptionalString(data.staffGroup, 1, 64)) &&
+             (!('weekKey' in data) || validOptionalString(data.weekKey, 1, 64)) &&
+             (!('recordCount' in data) || (data.recordCount is int && data.recordCount >= 0)) &&
+             (!('checksum' in data) || validString(data.checksum, 32, 128)) &&
+             (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() > 0)) &&
+             validString(data.updatedBy, 1, 128);
     }
 
-    // =====================================================================================
-    // Domain Validators: Enforce Schema & Eliminate Update Bypass
-    // =====================================================================================
+    function isValidStoreTelemetry(data, storeId) {
+      return hasRequiredFields(['docId', 'storeId', 'status', 'clientVersion', 'updatedAt']) &&
+             data.storeId == storeId &&
+             validString(data.docId, 1, 128) &&
+             data.status in ['online', 'offline', 'syncing', 'idle', 'error'] &&
+             validString(data.clientVersion, 1, 64) &&
+             (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() > 0));
+    }
 
-    // 1. Walidator konta w managed_users
     function isValidManagedUser(data) {
       return hasOnlyAllowedFields(['userId', 'email', 'displayName', 'role', 'status', 'storeId', 'assignedAt', 'updatedAt']) &&
              hasRequiredFields(['userId', 'email', 'displayName', 'role', 'status', 'storeId', 'assignedAt', 'updatedAt']) &&
@@ -211,7 +218,6 @@ service cloud.firestore {
              data.updatedAt is timestamp;
     }
 
-    // 2. Walidator oficjalnego grafiku kawiarni
     function isValidPublicSchedule(data) {
       return hasOnlyAllowedFields(['docId', 'weekNumber', 'year', 'status', 'shiftsCount', 'totalFloorHours', 'schedulePayload', 'publishedAt', 'updatedAt', 'updatedBy']) &&
              hasRequiredFields(['docId', 'weekNumber', 'year', 'status', 'shiftsCount', 'totalFloorHours', 'schedulePayload', 'updatedAt', 'updatedBy']) &&
@@ -227,7 +233,6 @@ service cloud.firestore {
              validString(data.updatedBy, 1, 128);
     }
 
-    // 3. Walidator prywatnego sejfu pracownika
     function isValidPrivateStaffVault(data) {
       return hasOnlyAllowedFields(['userId', 'availability', 'phone', 'emergencyContact', 'notes', 'updatedAt', 'updatedBy']) &&
              hasRequiredFields(['userId', 'availability', 'updatedAt', 'updatedBy']) &&
@@ -240,7 +245,6 @@ service cloud.firestore {
              validString(data.updatedBy, 1, 128);
     }
 
-    // 4. Walidator sejfu finansowego dyrekcji (P&L, płace, L4)
     function isValidExecutiveFinancialVault(data) {
       return hasOnlyAllowedFields(['docId', 'vaultType', 'period', 'financialDataEncrypted', 'totalLaborCostPLN', 'zusCostPLN', 'updatedAt', 'updatedBy']) &&
              hasRequiredFields(['docId', 'vaultType', 'period', 'financialDataEncrypted', 'updatedAt', 'updatedBy']) &&
@@ -254,7 +258,6 @@ service cloud.firestore {
              validString(data.updatedBy, 1, 128);
     }
 
-    // 5. Walidator wniosku o dostęp (Access Request)
     function isValidAccessRequestCreate(data) {
       return hasOnlyAllowedFields(['requestId', 'userId', 'email', 'displayName', 'requestedRole', 'status', 'createdAt']) &&
              hasRequiredFields(['requestId', 'userId', 'email', 'displayName', 'requestedRole', 'status', 'createdAt']) &&
@@ -282,7 +285,6 @@ service cloud.firestore {
              (!('rejectionReason' in data) || validOptionalString(data.rejectionReason, 0, 500));
     }
 
-    // 6. Walidator dokumentów operacyjnych
     function isValidOperationalDoc(data) {
       return hasOnlyAllowedFields(['docId', 'category', 'title', 'description', 'piiFree', 'notStarbucksMarked', 'itemCount', 'lastUpdated', 'jsonData']) &&
              hasRequiredFields(['docId', 'category', 'title', 'description', 'piiFree', 'notStarbucksMarked', 'itemCount', 'lastUpdated', 'jsonData']) &&
@@ -297,7 +299,6 @@ service cloud.firestore {
              validString(data.jsonData, 1, 200000);
     }
 
-    // 7. Walidator rekordu instalacji
     function isValidInstallationRecord(data) {
       return hasOnlyAllowedFields(['id', 'installId', 'appVersion', 'installedAt', 'lastSeenAt', 'platform', 'storeName', 'unitCode', 'userName', 'userRole', 'userEmail', 'launchCount', 'status', 'notes']) &&
              hasRequiredFields(['installId', 'appVersion', 'installedAt', 'lastSeenAt', 'platform', 'storeName', 'unitCode', 'userName', 'userRole', 'userEmail', 'launchCount', 'status']) &&
@@ -325,115 +326,140 @@ service cloud.firestore {
     }
 
     // =====================================================================================
-    // Kawiarnie: Zero-Leak Vault Architecture (/stores/{storeId}/...)
+    // Kawiarnie: Zero-Leak Multi-Store Tenant Isolation (/stores/{storeId}/...)
     // =====================================================================================
     match /stores/{storeId} {
 
-      // Metadata kawiarni (odczyt dla personelu, edycja wyłącznie SM/DM)
+      // Metadata kawiarni (odczyt dla personelu danej jednostki, edycja wyłącznie SM/DM)
       allow read: if isStoreStaff(storeId);
       allow write: if isStoreManager(storeId);
 
       // -----------------------------------------------------------------------------------
-      // 1. ZARZĄDZANIE KONTAMI I UPRAWNIENIAMI (/managed_users/{userId})
+      // FEATURE F14: CLOUD VAULT SECURE COLLECTIONS
       // -----------------------------------------------------------------------------------
-      match /managed_users/{userId} {
-        // Pracownik może odczytać swój własny profil; kierownictwo widzi całą obsadę
-        allow read: if isCorporateUser() && (isDocOwner(userId) || isAssistantOrStoreManager(storeId));
 
-        // Zapis, modyfikacja i usuwanie ról wyłącznie przez STORE_MANAGER lub DISTRICT_MANAGER
+      // 1. VAULT FINANCIALS (P&L, AOP targets, sales, bonuses, labor costs)
+      match /vault_financials/{docId} {
+        allow read: if isExecutive(storeId);
+        allow create: if isStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_financials') &&
+                         request.resource.data.docId == docId;
+        allow update: if isStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_financials') &&
+                         areImmutableFieldsUnchanged(['docId', 'storeId', 'vaultType', 'version']);
+        allow delete: if isStoreManager(storeId);
+      }
+
+      // 2. VAULT PERSONNEL (Salaries, hourly rates, contracts, TOR overtime balances)
+      match /vault_personnel/{docId} {
+        allow read: if isExecutive(storeId);
+        allow create: if isStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_personnel') &&
+                         request.resource.data.docId == docId;
+        allow update: if isStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_personnel') &&
+                         areImmutableFieldsUnchanged(['docId', 'storeId', 'vaultType', 'version']);
+        allow delete: if isStoreManager(storeId);
+      }
+
+      // 3. VAULT SCHEDULES (Manager schedules, shift allocations, historical shifts)
+      match /vault_schedules/{docId} {
+        allow read: if isStoreStaff(storeId);
+        allow create: if isAssistantOrStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_schedules') &&
+                         request.resource.data.docId == docId;
+        allow update: if isAssistantOrStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_schedules') &&
+                         areImmutableFieldsUnchanged(['docId', 'storeId', 'vaultType', 'version']);
+        allow delete: if isStoreManager(storeId);
+      }
+
+      // 4. VAULT HEALTH & GDPR (Art. 9 GDPR health data, L4 medical absences)
+      match /vault_health_gdpr/{docId} {
+        allow read: if isExecutive(storeId);
+        allow create: if isStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_health_gdpr') &&
+                         request.resource.data.docId == docId;
+        allow update: if isStoreManager(storeId) &&
+                         isValidVaultDocument(request.resource.data, storeId, 'vault_health_gdpr') &&
+                         areImmutableFieldsUnchanged(['docId', 'storeId', 'vaultType', 'version']);
+        allow delete: if isStoreManager(storeId);
+      }
+
+      // 5. TELEMETRY & SYNC STATUS (Sync heartbeat, client version, store operational state)
+      match /telemetry/{docId} {
+        allow read: if isStoreStaff(storeId);
+        allow create, update: if isStoreStaff(storeId) &&
+                                 isValidStoreTelemetry(request.resource.data, storeId) &&
+                                 request.resource.data.docId == docId;
+        allow delete: if isStoreManager(storeId);
+      }
+
+      // -----------------------------------------------------------------------------------
+      // BACKWARDS-COMPATIBLE OPERATIONAL COLLECTIONS
+      // -----------------------------------------------------------------------------------
+
+      // 6. MANAGED USERS (/managed_users/{userId})
+      match /managed_users/{userId} {
+        allow read: if isCorporateUser() && isStoreAuthorized(storeId) && (isDocOwner(userId) || isAssistantOrStoreManager(storeId));
         allow create: if isStoreManager(storeId) &&
                          isValidManagedUser(request.resource.data) &&
                          request.resource.data.userId == userId;
-
         allow update: if isStoreManager(storeId) &&
                          isValidManagedUser(request.resource.data) &&
                          areImmutableFieldsUnchanged(['userId', 'assignedAt']);
-
         allow delete: if isStoreManager(storeId);
       }
 
-      // -----------------------------------------------------------------------------------
-      // 2. OFICJALNY GRAFIK OPERACYJNY KAWIARNI (/public_schedule/{docId})
-      // -----------------------------------------------------------------------------------
+      // 7. PUBLIC SCHEDULE (/public_schedule/{docId})
       match /public_schedule/{docId} {
-        // Odczyt dla wszystkich zatwierdzonych pracowników kawiarni (Barista, SSV, ASM, SM, DM)
         allow read: if isStoreStaff(storeId);
-
-        // Zapis i aktualizacja wyłącznie dla STORE_MANAGER oraz ASSISTANT_STORE_MANAGER
         allow create: if isAssistantOrStoreManager(storeId) &&
                          isValidPublicSchedule(request.resource.data) &&
                          request.resource.data.docId == docId;
-
         allow update: if isAssistantOrStoreManager(storeId) &&
                          isValidPublicSchedule(request.resource.data) &&
                          areImmutableFieldsUnchanged(['docId', 'weekNumber', 'year']);
-
-        // Usunięcie grafiku wyłącznie przez Store Managera
         allow delete: if isStoreManager(storeId);
       }
 
-      // -----------------------------------------------------------------------------------
-      // 3. PRYWATNY SEJF PERSONALNY (/private_staff_vault/{docId})
-      // -----------------------------------------------------------------------------------
+      // 8. PRIVATE STAFF VAULT (/private_staff_vault/{docId})
       match /private_staff_vault/{docId} {
-        // Odczyt dla właściciela rekordu lub Store Managera / ASM
-        allow read: if isCorporateUser() &&
+        allow read: if isCorporateUser() && isStoreAuthorized(storeId) &&
                        (isDocOwner(resource.data.userId) || isAssistantOrStoreManager(storeId));
-
-        // Tworzenie: pracownik dla swojego UID lub kierownictwo
-        allow create: if isCorporateUser() &&
+        allow create: if isCorporateUser() && isStoreAuthorized(storeId) &&
                          isValidPrivateStaffVault(request.resource.data) &&
                          (isDocOwner(request.resource.data.userId) || isAssistantOrStoreManager(storeId));
-
-        // Aktualizacja: właściciel lub kierownictwo, z zakazem zmiany userId
-        allow update: if isCorporateUser() &&
+        allow update: if isCorporateUser() && isStoreAuthorized(storeId) &&
                          isValidPrivateStaffVault(request.resource.data) &&
                          areImmutableFieldsUnchanged(['userId']) &&
                          (isDocOwner(resource.data.userId) || isAssistantOrStoreManager(storeId));
-
-        // Usunięcie wyłącznie przez Store Managera lub właściciela
-        allow delete: if isCorporateUser() &&
+        allow delete: if isCorporateUser() && isStoreAuthorized(storeId) &&
                          (isDocOwner(resource.data.userId) || isStoreManager(storeId));
       }
 
-      // -----------------------------------------------------------------------------------
-      // 4. SEJF FINANSOWY DYREKCJI (/executive_financial_vault/{docId})
-      // BEZWZGLĘDNY ZAKAZ DOSTĘPU (NAWET ODCZYTU) DLA BARISTA I SHIFT_SUPERVISOR
-      // -----------------------------------------------------------------------------------
+      // 9. EXECUTIVE FINANCIAL VAULT (Legacy bridge collection)
       match /executive_financial_vault/{docId} {
-        // Wyłącznie STORE_MANAGER oraz DISTRICT_MANAGER
         allow read: if isExecutive(storeId);
-
         allow create: if isExecutive(storeId) &&
                          isValidExecutiveFinancialVault(request.resource.data) &&
                          request.resource.data.docId == docId;
-
         allow update: if isExecutive(storeId) &&
                          isValidExecutiveFinancialVault(request.resource.data) &&
                          areImmutableFieldsUnchanged(['docId', 'vaultType', 'period']);
-
         allow delete: if isStoreManager(storeId);
       }
 
-      // -----------------------------------------------------------------------------------
-      // 5. ZGŁOSZENIA DOSTĘPU PRACOWNIKÓW (/access_requests/{requestId})
-      // -----------------------------------------------------------------------------------
+      // 10. ACCESS REQUESTS (/access_requests/{requestId})
       match /access_requests/{requestId} {
-        // Pracownik może odczytać własne zgłoszenie; Store Manager widzi wszystkie wnioski lokalu
         allow read: if isCorporateUser() &&
-                       (isDocOwner(resource.data.userId) || isStoreManager(storeId));
-
-        // Każdy zalogowany użytkownik z e-mailem @amrest.eu lub @starbucks.com może złożyć wniosek
+                       (isDocOwner(resource.data.userId) || (isStoreAuthorized(storeId) && isStoreManager(storeId)));
         allow create: if isCorporateUser() &&
                          isValidAccessRequestCreate(request.resource.data) &&
                          request.resource.data.requestId == requestId;
-
-        // Tylko STORE_MANAGER może zatwierdzać/odrzucać wnioski
         allow update: if isStoreManager(storeId) &&
                          isValidAccessRequestUpdate(request.resource.data) &&
                          areImmutableFieldsUnchanged(['requestId', 'userId', 'email', 'createdAt']);
-
-        // Tylko STORE_MANAGER może usuwać przetworzone zgłoszenia
         allow delete: if isStoreManager(storeId);
       }
     }
@@ -442,10 +468,7 @@ service cloud.firestore {
     // Zanonimizowane Dokumenty Operacyjne (/cloud_operational_docs/{docId})
     // =====================================================================================
     match /cloud_operational_docs/{docId} {
-      // Dostępne do odczytu dla wszystkich uwierzytelnionych pracowników z e-mailem korporacyjnym
       allow read: if isCorporateUser();
-
-      // Tworzenie i aktualizacja tylko dla autoryzowanego kierownictwa
       allow create, update: if isCorporateUser() && isValidOperationalDoc(request.resource.data);
       allow delete: if false;
     }
@@ -454,14 +477,12 @@ service cloud.firestore {
     // Telemetria & Heartbeat Stanowisk (/app_installations/{installId})
     // =====================================================================================
     match /app_installations/{installId} {
-      // Odczyt dla użytkownika jego własnej instalacji lub dla kierownictwa
-      allow read: if isCorporateUser();
-
-      // Zapis z walidacją rekordu stacji i e-maila użytkownika
+      // Aggregation leak prevented: Users can ONLY read their own installation record
+      allow read: if isCorporateUser() &&
+                     (request.auth.token.email == resource.data.userEmail || request.auth.token.role == 'DISTRICT_MANAGER');
       allow create, update: if isCorporateUser() &&
                                isValidInstallationRecord(request.resource.data) &&
                                request.resource.data.userEmail == request.auth.token.email;
-
       allow delete: if isCorporateUser() &&
                        request.auth.token.email == resource.data.userEmail;
     }

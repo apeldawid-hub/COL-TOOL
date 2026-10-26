@@ -10,9 +10,15 @@ import { UniversalReportParser } from './importer/universalReportParser';
 import { AppUpdater } from './updater';
 import { CrashLogManager } from './crashLogManager';
 import { GitHubReporter } from './githubReporter';
+import { VaultKeyManager } from './security/vaultKeyManager';
 
 // Rejestracja globalnego łapania awarii w procesie głównym Electron
 process.on('uncaughtException', (error) => {
+  try {
+    const dbManager = DatabaseManager.getInstance();
+    dbManager.getConnectionPool().persistAll();
+    dbManager.persist();
+  } catch (_) {}
   CrashLogManager.getInstance().log('FATAL', 'ElectronMain:uncaughtException', error.message, error.stack);
   GitHubReporter.getInstance().submitIssue({
     category: 'FATAL_PROCESS',
@@ -167,15 +173,16 @@ function setupIpcHandlers() {
   // Konfiguracja aplikacji, profil i trwały stan Onboardingu
   ipcMain.handle('app:get-settings', () => {
     const settings = dbManager.getAppSettings();
+    const hasStore = dbManager.hasActiveStore();
     const hasData = dbManager.hasExistingData();
     const hasCompletedOnboarding =
-      settings['sbx_onboarding_completed'] === 'true' ||
-      settings['onboarding_completed'] === 'true' ||
-      hasData;
+      hasStore &&
+      (settings['sbx_onboarding_completed'] === 'true' ||
+       settings['onboarding_completed'] === 'true');
 
     return {
       settings,
-      hasCompletedOnboarding,
+      hasCompletedOnboarding: Boolean(hasCompletedOnboarding),
       hasExistingData: hasData,
     };
   });
@@ -186,10 +193,27 @@ function setupIpcHandlers() {
   });
 
   // Przełączanie bazy danych na wybraną kawiarnię (z izolowaną, nową bazą SQLite dla nowej jednostki)
-  ipcMain.handle('store:switch-database', async (_event, payload: { storeId: string; storeInfo?: any }) => {
+  ipcMain.handle('store:switch-database', async (_event, arg1: any, arg2?: any) => {
     try {
-      const result = await dbManager.switchStoreDatabase(payload.storeId, payload.storeInfo);
-      console.log(`🏬 [Multi-Store] Przełączono bazę kawiarni: ${payload.storeId} -> ${result.dbPath} (nowa: ${result.isNew})`);
+      let storeId: string;
+      let storeInfo: any;
+
+      if (typeof arg1 === 'string') {
+        storeId = arg1;
+        storeInfo = arg2;
+      } else if (arg1 && typeof arg1 === 'object') {
+        storeId = arg1.storeId;
+        storeInfo = arg1.storeInfo;
+      } else {
+        throw new Error(`Nieprawidłowe parametry dla store:switch-database: oczekiwano (storeId, storeInfo) lub ({ storeId, storeInfo }), otrzymano: ${typeof arg1}`);
+      }
+
+      if (!storeId || typeof storeId !== 'string') {
+        throw new Error(`Brak lub nieprawidłowy storeId w wywołaniu store:switch-database: ${storeId}`);
+      }
+
+      const result = await dbManager.switchStoreDatabase(storeId, storeInfo);
+      console.log(`🏬 [Multi-Store] Przełączono bazę kawiarni: ${storeId} -> ${result.dbPath} (nowa: ${result.isNew})`);
       return result;
     } catch (err: any) {
       console.error('Błąd przełączania bazy kawiarni w IPC:', err);
@@ -523,14 +547,16 @@ function setupIpcHandlers() {
   ipcMain.handle('db:get-actual-hours-for-month', (_event, year: number, month: string) => {
     const db = dbManager.getDb();
     const pattern = `${year}_${month}_%`;
+    const { unitCode, mpk } = dbManager.getActiveStoreIdentifiers();
+    const storeLike = `%${mpk || unitCode}%`;
     const stmt = db.prepare(`
       SELECT week_key, SUM(computable_time) as total_hours
       FROM labor_actuals_log
       WHERE week_key LIKE ?
-        AND (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%' OR unit_code IS NULL OR unit_code = '')
+        AND (unit_code = ? OR unit_code = ? OR unit_name LIKE ? OR unit_code IS NULL OR unit_code = '')
       GROUP BY week_key
     `);
-    stmt.bind([pattern]);
+    stmt.bind([pattern, unitCode, mpk, storeLike]);
     const hoursMap: Record<string, number> = {};
     while (stmt.step()) {
       const row = stmt.getAsObject();
@@ -592,6 +618,8 @@ function setupIpcHandlers() {
     const db = dbManager.getDb();
     const monthPattern = `${year}-${String(monthNum).padStart(2, '0')}-%`;
     const dotPattern = `%.${String(monthNum).padStart(2, '0')}.${year}%`;
+    const { unitCode, mpk } = dbManager.getActiveStoreIdentifiers();
+    const storeLike = `%${mpk || unitCode}%`;
     const hoursMap: Record<string, number> = {};
     try {
       const stmt = db.prepare(`
@@ -599,10 +627,10 @@ function setupIpcHandlers() {
         FROM labor_actuals_log
         WHERE (date LIKE ? OR date LIKE ?)
           AND computable_time > 0
-          AND (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%' OR unit_code IS NULL OR unit_code = '')
+          AND (unit_code = ? OR unit_code = ? OR unit_name LIKE ? OR unit_code IS NULL OR unit_code = '')
         GROUP BY date
       `);
-      stmt.bind([monthPattern, dotPattern]);
+      stmt.bind([monthPattern, dotPattern, unitCode, mpk, storeLike]);
       while (stmt.step()) {
         const row = stmt.getAsObject();
         hoursMap[String(row.date)] = Number(Number(row.total_hours).toFixed(1));
@@ -796,7 +824,22 @@ function setupIpcHandlers() {
     stmt.free();
 
     // Aktualizacja w tabeli stores
-    db.run(`UPDATE stores SET weekly_floor_hours = ? WHERE store_code = '18120' OR store_code = '384'`, [weeklySum]);
+    const { unitCode, mpk, storeName } = dbManager.getActiveStoreIdentifiers();
+    db.run(
+      `UPDATE stores SET weekly_floor_hours = ? WHERE store_code = ? OR store_code = ? OR store_code IS NULL OR store_code = ''`,
+      [weeklySum, unitCode, mpk]
+    );
+
+    // Zabezpieczenie: jeśli tabela stores nie miała rekordu dla tej kawiarni, wstaw wpis
+    if (db.getRowsModified() === 0 && (unitCode || mpk)) {
+      const primaryCode = unitCode || mpk;
+      const insertStoreStmt = db.prepare(`
+        INSERT OR REPLACE INTO stores (store_code, store_name, weekly_floor_hours)
+        VALUES (?, ?, ?)
+      `);
+      insertStoreStmt.run([primaryCode, storeName || `Kawiarnia Starbucks (${primaryCode})`, weeklySum]);
+      insertStoreStmt.free();
+    }
 
     dbManager.persist();
 
@@ -853,13 +896,16 @@ function setupIpcHandlers() {
   // Agregacja godzin według dni tygodnia z bazy logowań MAPAL
   ipcMain.handle('db:get-day-of-week-stats', () => {
     const db = dbManager.getDb();
+    const { unitCode, mpk } = dbManager.getActiveStoreIdentifiers();
+    const storeLike = `%${mpk || unitCode}%`;
     const stmt = db.prepare(`
       SELECT day_of_week, SUM(computable_time) as total_hours, COUNT(DISTINCT date) as days_count
       FROM labor_actuals_log
       WHERE computable_time > 0
-        AND (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%' OR unit_code IS NULL OR unit_code = '')
+        AND (unit_code = ? OR unit_code = ? OR unit_name LIKE ? OR unit_code IS NULL OR unit_code = '')
       GROUP BY day_of_week
     `);
+    stmt.bind([unitCode, mpk, storeLike]);
     const stats: any[] = [];
     while (stmt.step()) {
       const row = stmt.getAsObject();
@@ -1759,33 +1805,37 @@ function setupIpcHandlers() {
   ipcMain.handle('import:fichajes-file', (_event, filePath: string) => handleUniversalImportFile(filePath));
   ipcMain.handle('import:fichajes-buffer', (_event, arrayBuffer: ArrayBuffer) => handleUniversalImportBuffer(arrayBuffer));
 
-  // Zarządzanie Kopiami Zapasowymi (SQLite Backup Manager)
-  ipcMain.handle('db:create-backup', (_event, reason?: string) => {
-    return BackupManager.getInstance().createBackup(reason || 'manual');
+  // Zarządzanie Kopiami Zapasowymi (SQLite Backup Manager - F11 Store Partitioned)
+  ipcMain.handle('db:create-backup', (_event, reason?: string, explicitStoreId?: string) => {
+    return BackupManager.getInstance().createBackup(reason || 'manual', explicitStoreId);
   });
 
-  ipcMain.handle('db:list-backups', () => {
-    return BackupManager.getInstance().listBackups();
+  ipcMain.handle('db:list-backups', (_event, filterStoreId?: string) => {
+    return BackupManager.getInstance().listBackups(filterStoreId);
   });
 
-  ipcMain.handle('db:restore-backup', (_event, filename: string) => {
-    const res = BackupManager.getInstance().restoreBackup(filename);
+  ipcMain.handle('db:restore-backup', async (_event, filename: string, forceRestore?: boolean) => {
+    const res = await BackupManager.getInstance().restoreBackup(filename, forceRestore);
     if (res.success && mainWindow) {
       mainWindow.webContents.send('data:refreshed');
     }
     return res;
   });
 
-  ipcMain.handle('db:restore-backup-buffer', (_event, buffer: ArrayBuffer) => {
-    const res = BackupManager.getInstance().restoreFromBuffer(buffer);
+  ipcMain.handle('db:restore-backup-buffer', async (_event, buffer: ArrayBuffer, forceRestore?: boolean) => {
+    const res = await BackupManager.getInstance().restoreFromBuffer(buffer, forceRestore);
     if (res.success && mainWindow) {
       mainWindow.webContents.send('data:refreshed');
     }
     return res;
   });
 
-  ipcMain.handle('db:get-database-status', () => {
-    return BackupManager.getInstance().getDatabaseStatus();
+  ipcMain.handle('db:inspect-backup', async (_event, buffer: ArrayBuffer, targetStoreId: string) => {
+    return await BackupManager.getInstance().inspectBackupBuffer(buffer, targetStoreId);
+  });
+
+  ipcMain.handle('db:get-database-status', (_event, filterStoreId?: string) => {
+    return BackupManager.getInstance().getDatabaseStatus(filterStoreId);
   });
 
   // Inspektor Zdrowia & Optymalizacji SQLite (Health Check & VACUUM)
@@ -1914,6 +1964,87 @@ function setupIpcHandlers() {
   ipcMain.handle('github:submit-issue', (_event, payload: any) => {
     return GitHubReporter.getInstance().submitIssue(payload);
   });
+
+  // =========================================================================
+  // Feature F12: Client-Side AES-256-GCM & SafeStorage Key Management
+  // =========================================================================
+  ipcMain.handle('crypto:is-safe-storage-available', async () => {
+    return VaultKeyManager.getInstance().isSafeStorageAvailable();
+  });
+
+  ipcMain.handle('crypto:get-master-passphrase', async () => {
+    return VaultKeyManager.getInstance().getOrCreateMasterPassphrase();
+  });
+
+  ipcMain.handle('crypto:derive-store-key', async (_event, storeId: string, unitCode: string) => {
+    return VaultKeyManager.getInstance().deriveStoreKey(storeId, unitCode);
+  });
+
+  ipcMain.handle('crypto:safe-storage-encrypt', async (_event, plaintext: string) => {
+    return VaultKeyManager.getInstance().encryptString(plaintext);
+  });
+
+  ipcMain.handle('crypto:safe-storage-decrypt', async (_event, encryptedBase64: string) => {
+    return VaultKeyManager.getInstance().decryptString(encryptedBase64);
+  });
+
+  // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification IPC
+  ipcMain.handle('migration:execute-store-migration', async (_event, options: any) => {
+    try {
+      const { CloudMigrationService } = await import('../src/services/security/cloudMigrationService');
+      return await CloudMigrationService.executeMigration(options);
+    } catch (err: any) {
+      return {
+        success: false,
+        status: 'failed',
+        rollbackTriggered: true,
+        localDbUntouched: true,
+        error: {
+          phase: 'preflight_backup',
+          message: err.message,
+          stack: err.stack,
+        },
+      };
+    }
+  });
+
+  ipcMain.handle('migration:verify-store-parity', async (_event, storeId: string, options?: any) => {
+    try {
+      const { ParityVerificationService } = await import('../src/services/security/parityVerificationService');
+      return await ParityVerificationService.verifyStoreParity(storeId, options);
+    } catch (err: any) {
+      return {
+        storeId,
+        unitCode: options?.unitCode || '',
+        verifiedAt: new Date().toISOString(),
+        isParityVerified: false,
+        localRecordsCount: 0,
+        cloudRecordsCount: 0,
+        totalTablesCompared: 0,
+        localCanonicalHash: '',
+        cloudCanonicalHash: '',
+        localTableDigests: {},
+        cloudTableDigests: {},
+        mismatches: [
+          {
+            table: 'system',
+            id: 'parity_error',
+            reason: err.message || 'Parity verification failed',
+          },
+        ],
+      };
+    }
+  });
+
+  ipcMain.handle('migration:extract-store-tables', async (_event, storeId: string) => {
+    const { CloudMigrationService } = await import('../src/services/security/cloudMigrationService');
+    return await CloudMigrationService.extractAllTables(storeId);
+  });
+
+  ipcMain.handle('migration:get-receipt', async (_event, storeId: string) => {
+    const { CloudMigrationService } = await import('../src/services/security/cloudMigrationService');
+    return CloudMigrationService.getSavedReceipt(storeId);
+  });
 }
 
 app.whenReady().then(() => {
@@ -1925,15 +2056,57 @@ app.whenReady().then(() => {
   });
 });
 
+/**
+ * Synchronous dirty write persistence helper for graceful shutdown.
+ * Flushes all pooled store connections with pending dirty writes and the active store.
+ */
+function flushAllStoreDatabases(reason: string = 'shutdown'): void {
+  try {
+    const dbManager = DatabaseManager.getInstance();
+    // 1. Flush all pooled store connections with pending dirty writes (synchronous)
+    dbManager.getConnectionPool().persistAll();
+    // 2. Flush active store database (failsafe for unpooled or unflagged instances)
+    dbManager.persist();
+    console.log(`💾 [Shutdown] Wszystkie aktywne i buforowane bazy danych zapisane na dysk (${reason}).`);
+  } catch (err) {
+    console.error(`❌ [Shutdown] Błąd zapisu baz danych (${reason}):`, err);
+  }
+}
+
 app.on('window-all-closed', () => {
-  const dbManager = DatabaseManager.getInstance();
-  dbManager.persist();
+  flushAllStoreDatabases('window-all-closed');
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('before-quit', () => {
-  const dbManager = DatabaseManager.getInstance();
-  dbManager.persist();
+  flushAllStoreDatabases('before-quit');
 });
+
+app.on('will-quit', () => {
+  try {
+    const dbManager = DatabaseManager.getInstance();
+    // Final flush and clean closure of SQLite handles when all windows have closed
+    dbManager.getConnectionPool().closeAll();
+    console.log('🔒 [Shutdown] Połączenia bazy SQLite zostały bezpiecznie zamknięte (will-quit).');
+  } catch (err) {
+    console.error('❌ [Shutdown] Błąd zamykania połączeń (will-quit):', err);
+  }
+});
+
+// Obsługa sygnałów przerwania procesu (terminal / CLI / Docker / SIGTERM / SIGINT)
+let isTerminating = false;
+const handleProcessTermination = (signal: string) => {
+  if (isTerminating) return;
+  isTerminating = true;
+  console.log(`🛑 [ElectronMain] Odebrano sygnał ${signal} — bezpieczne zatrzymywanie...`);
+  flushAllStoreDatabases(signal);
+  try {
+    DatabaseManager.getInstance().getConnectionPool().closeAll();
+  } catch (_) {}
+  app.quit();
+};
+
+process.on('SIGINT', () => handleProcessTermination('SIGINT'));
+process.on('SIGTERM', () => handleProcessTermination('SIGTERM'));

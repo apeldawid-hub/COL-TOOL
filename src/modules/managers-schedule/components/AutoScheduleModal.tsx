@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useStore } from '../../../context/StoreContext';
 import {
   X,
   Sparkles,
@@ -55,6 +56,7 @@ export const AutoScheduleModal: React.FC<AutoScheduleModalProps> = ({
   initialResult = null,
   onOpenDispositions
 }) => {
+  const { currentStore } = useStore();
   // Domyślne opcje generatora (wszystkie zaawansowane heurystyki są na stałe aktywne)
   const [selectedMode, setSelectedMode] = useState<'smart_full' | 'fill_gaps'>('smart_full');
   const [activeTab, setActiveTab] = useState<'grid' | 'employees' | 'diff' | 'insights'>('grid');
@@ -256,7 +258,7 @@ export const AutoScheduleModal: React.FC<AutoScheduleModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-emerald-100/90 mt-0.5">
-                Starbucks 108120 Janki • <strong>{data.monthName} {data.year}</strong> • Norma: {data.fullTimeNominalHours}h (pełny etat)
+                Starbucks {currentStore.shortName || currentStore.name || 'Lokal Aktywny'} • <strong>{data.monthName} {data.year}</strong> • Norma: {data.fullTimeNominalHours}h (pełny etat)
               </p>
             </div>
           </div>

@@ -200,7 +200,7 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
             <FeatureInfoButton
               title="Nienaruszalna Baza Floor Hours (32.0h/dzień)"
               category="TPLH & ROBOCIZNA"
-              description="Minimalna dobowa obsada operacyjna kawiarni 108120 Janki zapewniająca bezpieczne otwarcie i zamknięcie lokalu."
+              description="Minimalna dobowa obsada operacyjna kawiarni zapewniająca bezpieczne otwarcie i zamknięcie lokalu."
               rules={[
                 "1 MGR + 1 Barista rano (AM) oraz 1 MGR + 1 Barista wieczorem (PM) = 32.0h / dobę",
                 "Łącznie 224.0h w każdym 7-dniowym tygodniu operacyjnym"
@@ -240,7 +240,7 @@ export const LaborForecastView: React.FC<LaborForecastViewProps> = ({
             <FeatureInfoButton
               title="Strategie Sezonowe AI AOP"
               category="AI & OPTYMALIZACJA"
-              description="Model uczenia maszynowego analizujący wielomiesięczną historię popytu i transakcji lokalu 108120 Janki."
+              description="Model uczenia maszynowego analizujący wielomiesięczną historię popytu i transakcji lokalu."
               details={[
                 "Floor-Safe: maksymalna ochrona TPLH w niskim sezonie (styczeń–kwiecień)",
                 "Balanced: optymalny balans godzin i Customer Connection",

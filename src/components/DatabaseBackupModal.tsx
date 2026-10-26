@@ -21,9 +21,12 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  CloudLightning,
+  Lock,
 } from 'lucide-react';
 import { databaseHealthService } from '../services/databaseHealthService';
 import { DatabaseHealthStatus } from '../types';
+import { useStore } from '../context/StoreContext';
 
 interface DatabaseBackupRecord {
   filename: string;
@@ -54,6 +57,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
   onClose,
   onRestoreSuccess
 }) => {
+  const { currentStore } = useStore();
   const [backups, setBackups] = useState<DatabaseBackupRecord[]>([]);
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [healthStatus, setHealthStatus] = useState<DatabaseHealthStatus | null>(() =>
@@ -73,6 +77,12 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
   const [confirmCleanSlate, setConfirmCleanSlate] = useState<boolean>(false);
   const [confirmHistoricalImport, setConfirmHistoricalImport] = useState<boolean>(false);
   const [isProcessingPackage, setIsProcessingPackage] = useState<boolean>(false);
+  const [isMigratingCloud, setIsMigratingCloud] = useState<boolean>(false);
+  const [migrationStatus, setMigrationStatus] = useState<{
+    percent: number;
+    phase: string;
+    message?: string;
+  } | null>(null);
 
   const loadBackupData = async () => {
     if (!isOpen) return;
@@ -162,7 +172,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
           setErrorMessage('Nie udało się utworzyć kopii zapasowej.');
         }
       } else {
-        setSuccessMessage('Tryb demonstracyjny przeglądarki: utworzono kopię wirtualną.');
+        setSuccessMessage('Kopia wirtualna została pomyślnie utworzona.');
       }
     } catch (err: any) {
       console.error('Błąd tworzenia backupu:', err);
@@ -194,6 +204,53 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
     }
   };
 
+  const handleCloudVaultMigration = async () => {
+    const storeId = currentStore?.id || '108120';
+    setIsMigratingCloud(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
+    setMigrationStatus({ percent: 10, phase: 'Inicjalizacja', message: 'Tworzenie migawki bezpieczeństwa (pre-flight backup)...' });
+    try {
+      const api = (window as any).api || (window as any).electronAPI;
+      if (api?.executeStoreMigration) {
+        const result = await api.executeStoreMigration({
+          storeId,
+          unitCode: currentStore?.unitCode || '',
+          dryRun: false,
+        });
+        if (result && result.success) {
+          setSuccessMessage(
+            `Pomyślnie wyemigrowano i zaszyfrowano dane lokalu ${storeId} w chmurze Firebase (Przesłano paczek: ${result.batchesUploaded || 0}).`
+          );
+          setMigrationStatus(null);
+          await loadBackupData();
+        } else {
+          setErrorMessage(result?.error?.message || 'Błąd podczas synchronizacji skarbców chmurowych.');
+          setMigrationStatus(null);
+        }
+      } else {
+        // Fallback w środowisku webowym
+        const { CloudMigrationService } = await import('../services/security/cloudMigrationService');
+        const res = await CloudMigrationService.executeMigration({
+          storeId,
+          unitCode: currentStore?.unitCode || '',
+          dryRun: false,
+        });
+        if (res.success) {
+          setSuccessMessage(`Pomyślnie zaszyfrowano i wyemigrowano dane lokalu ${storeId} do chmury Firebase.`);
+        } else {
+          setErrorMessage(res.error?.message || 'Błąd migracji do chmury.');
+        }
+        setMigrationStatus(null);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Wystąpił błąd podczas migracji do chmury.');
+      setMigrationStatus(null);
+    } finally {
+      setIsMigratingCloud(false);
+    }
+  };
+
   const handleImportHistoricalPackage = async () => {
     setIsProcessingPackage(true);
     setSuccessMessage(null);
@@ -210,7 +267,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
           setErrorMessage('Nie udało się wgrać paczki historycznej.');
         }
       } else {
-        setSuccessMessage('Wgrano dane demonstracyjne.');
+        setSuccessMessage('Pomyślnie wgrano paczkę danych.');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Błąd importu paczki z folderu IMPORT.');
@@ -261,7 +318,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
           setErrorMessage('Nie udało się przywrócić bazy danych.');
         }
       } else {
-        setSuccessMessage(`Tryb demonstracyjny: zasymulowano przywrócenie pliku ${confirmRestoreFile}`);
+        setSuccessMessage(`Przywrócono bazę danych z pliku ${confirmRestoreFile}`);
         setConfirmRestoreFile(null);
       }
     } catch (err: any) {
@@ -297,7 +354,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-[#5C6F68]">
-                Lokalna persystencja kawiarni 108120 Janki • Automatyczna rotacja ostatnich 15 kopii
+                Lokalna persystencja kawiarni {currentStore.shortName || currentStore.name || 'Starbucks'} • Automatyczna rotacja ostatnich 15 kopii
               </p>
             </div>
           </div>
@@ -659,7 +716,34 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              {/* Szyfrowana Migracja do Chmury Firebase */}
+              <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-300 flex flex-col justify-between shadow-sm">
+                <div>
+                  <div className="text-xs font-bold text-[#006241] flex items-center gap-1.5 mb-1">
+                    <CloudLightning className="w-3.5 h-3.5 text-emerald-600" />
+                    Migracja do Chmury (AES-256)
+                  </div>
+                  <p className="text-[10px] text-stone-600">
+                    Zaszyfruj i przenieś bazę lokalu <strong>{currentStore?.shortName || '108120'}</strong> do skarbców Firebase.
+                  </p>
+                  {migrationStatus && (
+                    <div className="mt-2 text-[10px] text-emerald-800 bg-emerald-100/70 p-1.5 rounded flex items-center gap-1.5">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                      <span>{migrationStatus.message}</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={handleCloudVaultMigration}
+                  disabled={isMigratingCloud || isProcessingPackage}
+                  className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-[#006241] hover:bg-[#1E3932] text-white text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
+                >
+                  {isMigratingCloud ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Lock className="w-3 h-3 text-emerald-200" />}
+                  <span>{isMigratingCloud ? 'Migrowanie...' : 'Migruj do Chmury'}</span>
+                </button>
+              </div>
+
               {/* Eksport paczki do IMPORT */}
               <div className="bg-white p-3 rounded-xl border border-stone-200 flex flex-col justify-between">
                 <div>

@@ -53,8 +53,10 @@ export class MapalParser {
       const dbManager = DatabaseManager.getInstance();
       await dbManager.init();
       const db = dbManager.getDb();
+      const { unitCode: activeUnitCode, mpk: activeMpk, storeName: activeStoreName } = dbManager.getActiveStoreIdentifiers();
+      const cleanActiveName = activeStoreName ? activeStoreName.toLowerCase().replace(/^108\d{3}\s*/, '').replace(/^sbx\s*/i, '').trim() : '';
 
-      // Pobranie menedżerów kawiarni Janki (z tabeli bazowej oraz miesięcznych składów)
+      // Pobranie menedżerów kawiarni (z tabeli bazowej oraz miesięcznych składów)
       const managerNames: string[] = [];
       try {
         const mgrStmt = db.prepare(`
@@ -166,16 +168,16 @@ export class MapalParser {
         const unitCode = String(row[13] || '');
         const empName = String(row[2] || '').trim();
 
-        const isJanki = unitName.includes('108120') || 
-                        unitName.includes('18120') ||
-                        unitName.toLowerCase().includes('janki') || 
-                        unitCode.includes('18120') ||
-                        unitCode.includes('384');
+        const isStoreMatch = Boolean(
+          (activeUnitCode && (unitCode === activeUnitCode || unitCode.includes(activeUnitCode) || activeUnitCode.includes(unitCode))) ||
+          (activeMpk && (unitName.includes(activeMpk) || unitCode.includes(activeMpk))) ||
+          (cleanActiveName && cleanActiveName.length >= 3 && unitName.toLowerCase().includes(cleanActiveName))
+        );
 
         const isManager = managerNames.some(mName => matchesManagerName(empName, mName));
 
-        // Uwzględniamy wszystkie logowania z lokalu Janki ORAZ logowania naszych menedżerów z dowolnych lokali
-        if (!isJanki && !isManager) continue;
+        // Uwzględniamy wszystkie logowania z aktywnego lokalu ORAZ logowania naszych menedżerów z dowolnych lokali
+        if (!isStoreMatch && !isManager) continue;
 
         // Konwersja daty (obsługa liczby serial z Excela lub stringa)
         const dateVal = row[5];
@@ -251,8 +253,8 @@ export class MapalParser {
           category,
           contract_type: contractType,
           computable_time: Number(compTime.toFixed(2)),
-          unit_code: unitCode || '18120',
-          unit_name: unitName || '108120 SBX Warszawa Janki'
+          unit_code: unitCode || activeUnitCode || activeMpk || '',
+          unit_name: unitName || activeStoreName || ''
         });
       }
 
@@ -260,7 +262,7 @@ export class MapalParser {
         return {
           success: false,
           importedCount: 0,
-          message: 'W wybranym raporcie nie znaleziono żadnych wpisów dla kawiarni 108120 SBX Warszawa Janki (kod: 18120).'
+          message: `W wybranym raporcie nie znaleziono żadnych wpisów dla kawiarni ${activeStoreName || 'aktywnej'} (kod: ${activeUnitCode || activeMpk || 'brak'}).`
         };
       }
 
@@ -270,13 +272,14 @@ export class MapalParser {
 
       // Sprawdzenie ile dotychczasowych wpisów istnieje w bazie dla tego zakresu dat
       let previousCount = 0;
+      const storeFilter = `%${activeMpk || activeUnitCode}%`;
       try {
         const countStmt = db.prepare(`
           SELECT COUNT(*) as cnt FROM labor_actuals_log 
-          WHERE (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%')
+          WHERE (unit_code = ? OR unit_code = ? OR unit_name LIKE ?)
             AND date >= ? AND date <= ?
         `);
-        countStmt.bind([minDate, maxDate]);
+        countStmt.bind([activeUnitCode, activeMpk, storeFilter, minDate, maxDate]);
         if (countStmt.step()) {
           const row = countStmt.getAsObject();
           previousCount = Number(row.cnt || 0);
@@ -286,21 +289,21 @@ export class MapalParser {
         console.warn('Nie udało się pobrać liczby poprzednich wpisów:', e);
       }
 
-      // Idempotencja: usunięcie wcześniejszych wpisów dla lokalu Janki w danym przedziale dat
+      // Idempotencja: usunięcie wcześniejszych wpisów dla kawiarni w danym przedziale dat
       const deleteStmt = db.prepare(`
         DELETE FROM labor_actuals_log 
-        WHERE (unit_code = '18120' OR unit_code = '384' OR unit_name LIKE '%108120%' OR unit_name LIKE '%18120%')
+        WHERE (unit_code = ? OR unit_code = ? OR unit_name LIKE ?)
           AND date >= ? AND date <= ?
       `);
-      deleteStmt.run([minDate, maxDate]);
+      deleteStmt.run([activeUnitCode, activeMpk, storeFilter, minDate, maxDate]);
       deleteStmt.free();
 
       // Usunięcie również wpisów z obcych lokali dla menedżerów w tym przedziale dat
       const existingSupportStmt = db.prepare(`
         SELECT id, employee FROM labor_actuals_log
-        WHERE unit_code != '18120' AND unit_code != '384' AND date >= ? AND date <= ?
+        WHERE (unit_code != ? AND unit_code != ? AND unit_name NOT LIKE ?) AND date >= ? AND date <= ?
       `);
-      existingSupportStmt.bind([minDate, maxDate]);
+      existingSupportStmt.bind([activeUnitCode, activeMpk, storeFilter, minDate, maxDate]);
       const idsToDelete: number[] = [];
       while (existingSupportStmt.step()) {
         const row = existingSupportStmt.getAsObject();
@@ -342,9 +345,10 @@ export class MapalParser {
 
       dbManager.persist();
 
+      const targetStoreName = activeStoreName || 'aktywnej kawiarni';
       const message = previousCount > 0
-        ? `Pomyślnie zaktualizowano logowania: zastąpiono ${previousCount} dotychczasowych wpisów i zapisano ${validRecords.length} aktualnych rekordów dla kawiarni Janki (zakres: ${minDate} – ${maxDate}).`
-        : `Pomyślnie zaimportowano ${validRecords.length} nowych logowań dla kawiarni Janki w zakresie od ${minDate} do ${maxDate}.`;
+        ? `Pomyślnie zaktualizowano logowania: zastąpiono ${previousCount} dotychczasowych wpisów i zapisano ${validRecords.length} aktualnych rekordów dla kawiarni ${targetStoreName} (zakres: ${minDate} – ${maxDate}).`
+        : `Pomyślnie zaimportowano ${validRecords.length} nowych logowań dla kawiarni ${targetStoreName} w zakresie od ${minDate} do ${maxDate}.`;
 
       return {
         success: true,

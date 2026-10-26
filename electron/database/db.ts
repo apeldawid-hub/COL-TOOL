@@ -1,7 +1,216 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import initSqlJs, { Database } from 'sql.js';
-import { app } from 'electron';
+// Safe dynamic resolution of electron app in both packaged Electron and standalone Node/tsx test runners
+let app: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const electronModule = typeof require === 'function' ? require('electron') : undefined;
+  app = (typeof electronModule === 'object' && electronModule !== null && 'app' in electronModule)
+    ? electronModule.app
+    : undefined;
+} catch {
+  app = undefined;
+}
+
+export interface PooledConnection {
+  storeId: string;
+  db: Database;
+  filePath: string;
+  lastAccessed: number;
+  isDirty: boolean;
+  debounceTimer?: NodeJS.Timeout | null;
+}
+
+/**
+ * Concurrency Mutex for serialized async store switching operations
+ */
+export class AsyncMutex {
+  private queue: Promise<void> = Promise.resolve();
+
+  public async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    let release: () => void;
+    const waitPromise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const previous = this.queue;
+    this.queue = previous.then(() => waitPromise);
+
+    await previous;
+    try {
+      return await fn();
+    } finally {
+      release!();
+    }
+  }
+}
+
+/**
+ * LRU Connection Pool maintaining up to maxConnections (default 8) SQLite handles
+ */
+export class StoreConnectionPool {
+  private pool = new Map<string, PooledConnection>();
+  public evictionLog: Array<{ evictedStoreId: string; flushed: boolean }> = [];
+
+  constructor(public readonly maxConnections: number = 8) {}
+
+  public get(storeId: string): Database | null {
+    const entry = this.pool.get(storeId);
+    if (!entry) return null;
+    entry.lastAccessed = Date.now();
+    return entry.db;
+  }
+
+  public getEntry(storeId: string): PooledConnection | null {
+    const entry = this.pool.get(storeId);
+    if (!entry) return null;
+    entry.lastAccessed = Date.now();
+    return entry;
+  }
+
+  public has(storeId: string): boolean {
+    return this.pool.has(storeId);
+  }
+
+  public size(): number {
+    return this.pool.size;
+  }
+
+  public put(
+    storeId: string,
+    db: Database,
+    filePath: string,
+    isDirty: boolean = false
+  ): { evicted?: string; flushed?: boolean } {
+    if (this.pool.has(storeId)) {
+      const existing = this.pool.get(storeId)!;
+      existing.lastAccessed = Date.now();
+      existing.db = db;
+      existing.filePath = filePath;
+      if (isDirty) existing.isDirty = true;
+      return {};
+    }
+
+    let evicted: string | undefined;
+    let flushed = false;
+
+    // Evict least recently used if capacity reached
+    if (this.pool.size >= this.maxConnections) {
+      let oldestId: string | null = null;
+      let oldestTime = Infinity;
+
+      for (const [id, entry] of this.pool.entries()) {
+        if (entry.lastAccessed < oldestTime) {
+          oldestTime = entry.lastAccessed;
+          oldestId = id;
+        }
+      }
+
+      if (oldestId) {
+        const evictedEntry = this.pool.get(oldestId)!;
+
+        // Clear any pending debounce timer
+        if (evictedEntry.debounceTimer) {
+          clearTimeout(evictedEntry.debounceTimer);
+          evictedEntry.debounceTimer = null;
+        }
+
+        // Flush dirty writes to disk before closing handle
+        if (evictedEntry.isDirty && evictedEntry.filePath) {
+          try {
+            const data = evictedEntry.db.export();
+            fs.writeFileSync(evictedEntry.filePath, Buffer.from(data));
+            flushed = true;
+            console.log(`💾 [StoreConnectionPool] Zapisano niezapisane dane (dirty flush) dla eksmitowanej kawiarni [${oldestId}]`);
+          } catch (err) {
+            console.error(`Błąd zapisu dirty write podczas eksmisji [${oldestId}]:`, err);
+          }
+        }
+
+        // Cleanly close SQLite database handle
+        try {
+          evictedEntry.db.close();
+        } catch (err) {
+          console.warn(`Ostrzeżenie przy zamykaniu bazy [${oldestId}]:`, err);
+        }
+
+        this.evictionLog.push({ evictedStoreId: oldestId, flushed: evictedEntry.isDirty || flushed });
+        this.pool.delete(oldestId);
+        evicted = oldestId;
+        console.log(`♻️ [StoreConnectionPool] Wyeksmitowano połączenie LRU [${oldestId}] (flushed: ${flushed}, rozmiar puli: ${this.pool.size})`);
+      }
+    }
+
+    this.pool.set(storeId, {
+      storeId,
+      db,
+      filePath,
+      lastAccessed: Date.now(),
+      isDirty,
+      debounceTimer: null,
+    });
+
+    return { evicted, flushed };
+  }
+
+  public markDirty(storeId: string, debounceMs: number = 2000): void {
+    const entry = this.pool.get(storeId);
+    if (!entry) return;
+    entry.isDirty = true;
+
+    if (entry.debounceTimer) {
+      clearTimeout(entry.debounceTimer);
+    }
+
+    entry.debounceTimer = setTimeout(() => {
+      this.persistStore(storeId);
+    }, debounceMs);
+  }
+
+  public persistStore(storeId: string): boolean {
+    const entry = this.pool.get(storeId);
+    if (!entry || !entry.db || !entry.filePath) return false;
+
+    if (entry.debounceTimer) {
+      clearTimeout(entry.debounceTimer);
+      entry.debounceTimer = null;
+    }
+
+    try {
+      const data = entry.db.export();
+      fs.writeFileSync(entry.filePath, Buffer.from(data));
+      entry.isDirty = false;
+      return true;
+    } catch (err) {
+      console.error(`Błąd persystencji bazy dla kawiarni [${storeId}]:`, err);
+      return false;
+    }
+  }
+
+  public persistAll(): void {
+    for (const [storeId, entry] of this.pool.entries()) {
+      if (entry.isDirty) {
+        this.persistStore(storeId);
+      }
+    }
+  }
+
+  public closeAll(): void {
+    this.persistAll();
+    for (const [, entry] of this.pool.entries()) {
+      try {
+        entry.db.close();
+      } catch (_) {}
+    }
+    this.pool.clear();
+  }
+
+  public clear(): void {
+    this.closeAll();
+  }
+}
 
 function getEasterDate(year: number): { month: number; day: number } {
   const a = year % 19;
@@ -76,11 +285,14 @@ export class DatabaseManager {
   private db: Database | null = null;
   private dbFilePath: string;
   private storageDir: string;
-  private currentStoreId: string = '108120_janki';
+  private currentStoreId: string = '';
 
   private SQL: any = null;
 
-  private constructor(storageDir?: string) {
+  private pool: StoreConnectionPool;
+  private switchMutex: AsyncMutex;
+
+  public constructor(storageDir?: string) {
     let dir = storageDir;
     if (!dir) {
       if (typeof app !== 'undefined' && app && app.isPackaged) {
@@ -93,13 +305,21 @@ export class DatabaseManager {
       fs.mkdirSync(dir, { recursive: true });
     }
     this.storageDir = dir;
+    this.pool = new StoreConnectionPool(8);
+    this.switchMutex = new AsyncMutex();
+
+    // Check for F6 legacy migration during startup
+    this.migrateLegacyTplhDatabase('108120');
 
     // Odczytaj zapisaną aktywną kawiarnię (jeśli istnieje)
     const meta = this.loadActiveStoreMeta();
     if (meta?.storeId) {
       this.currentStoreId = meta.storeId;
+      this.dbFilePath = this.computeDbFilePath(this.currentStoreId, meta?.storeInfo);
+    } else {
+      this.currentStoreId = '';
+      this.dbFilePath = '';
     }
-    this.dbFilePath = this.computeDbFilePath(this.currentStoreId, meta?.storeInfo);
   }
 
   public static getInstance(storageDir?: string): DatabaseManager {
@@ -109,36 +329,49 @@ export class DatabaseManager {
     return DatabaseManager.instance;
   }
 
+  public static resetInstanceForTesting(): void {
+    if (DatabaseManager.instance) {
+      try {
+        DatabaseManager.instance.pool.closeAll();
+      } catch (_) {}
+    }
+    DatabaseManager.instance = null as any;
+  }
+
+  public getConnectionPool(): StoreConnectionPool {
+    return this.pool;
+  }
+
+  public getSwitchMutex(): AsyncMutex {
+    return this.switchMutex;
+  }
+
   public async init(): Promise<Database> {
     if (this.db) return this.db;
 
     this.SQL = await initSqlJs();
 
+    // Świeży start bez aktywnej kawiarni (Clean Launch) -> czysta baza w pamięci, oczekiwanie na kreator
+    if (!this.currentStoreId || !this.dbFilePath) {
+      this.db = new this.SQL.Database();
+      this.createSchema();
+      console.log('🆕 [Clean Launch] Zainicjalizowano czystą bazę SQLite w pamięci — oczekiwanie na OnboardingWizard.');
+      return this.db!;
+    }
+
     if (fs.existsSync(this.dbFilePath)) {
       const fileBuffer = fs.readFileSync(this.dbFilePath);
       this.db = new this.SQL.Database(fileBuffer);
-      console.log('📦 Załadowano istniejącą bazę SQLite z pliku:', this.dbFilePath);
+      console.log('📦 Załadowano istniejącą bazę SQLite dla kawiarni [' + this.currentStoreId + '] z:', this.dbFilePath);
       this.createSchema();
-
-      // Jeśli baza zawiera już dane, upewnij się że flaga onboarding_completed jest zapisana w SQLite
-      if (this.hasExistingData()) {
-        const currentSettings = this.getAppSettings();
-        if (currentSettings['sbx_onboarding_completed'] !== 'true') {
-          this.setAppSettings({
-            sbx_onboarding_completed: 'true',
-            onboarding_completed: 'true',
-            store_name: currentSettings['store_name'] || '108120 SBX Warszawa Janki',
-            unit_code: currentSettings['unit_code'] || '18120',
-          });
-          console.log('✅ Zabezpieczono flagę onboarding_completed w SQLite na bazie istniejących danych.');
-        }
-      }
+      this.pool.put(this.currentStoreId, this.db!, this.dbFilePath, false);
     } else {
       this.db = new this.SQL.Database();
-      console.log('🆕 Utworzono nową bazę SQLite w pamięci.');
+      console.log('🆕 Utworzono nową bazę SQLite dla kawiarni:', this.currentStoreId);
       this.createSchema();
-      this.seedInitialData();
+      this.seedNewStoreData();
       this.persist();
+      this.pool.put(this.currentStoreId, this.db!, this.dbFilePath, false);
     }
 
     return this.db!;
@@ -156,6 +389,9 @@ export class DatabaseManager {
     }
     this.db = new this.SQL.Database(fileBuffer);
     this.createSchema();
+    if (this.currentStoreId) {
+      this.pool.put(this.currentStoreId, this.db!, this.dbFilePath, false);
+    }
     console.log('🔄 Przeładowano bazę SQLite z dysku:', this.dbFilePath);
     return this.db!;
   }
@@ -175,13 +411,105 @@ export class DatabaseManager {
     return this.currentStoreId;
   }
 
-  private computeDbFilePath(storeId: string, storeInfo?: { unitCode?: string; mpk?: string }): string {
-    const isJanki = storeId === '108120_janki' || storeInfo?.mpk === '108120' || storeInfo?.unitCode === '18120';
-    if (isJanki) {
-      return path.join(this.storageDir, 'tplh_forecast.db');
-    }
-    const safeId = storeId.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+  /**
+   * F6: Uniform SQLite database file naming: store_${safeId}.db
+   * Enforces 64-character limit and replaces all path-traversal / illegal characters with underscores.
+   */
+  public computeDbFilePath(storeId: string, storeInfo?: { unitCode?: string; mpk?: string }): string {
+    if (!storeId) return '';
+    const normalizedId = (storeId === '108120_janki' || storeInfo?.mpk === '108120' || storeInfo?.unitCode === '18120')
+      ? '108120'
+      : storeId;
+    const truncated = normalizedId.slice(0, 64);
+    const safeId = truncated.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     return path.join(this.storageDir, `store_${safeId}.db`);
+  }
+
+  /**
+   * F6: Zero-data-loss automated migration of legacy tplh_forecast.db to store_108120.db
+   */
+  public migrateLegacyTplhDatabase(targetStoreId: string = '108120', customBackupDir?: string): { migrated: boolean; error?: string; bytes?: number } {
+    try {
+      const legacyPath = path.join(this.storageDir, 'tplh_forecast.db');
+      const targetPath = this.computeDbFilePath(targetStoreId);
+
+      // Trigger condition: legacy file exists, target uniform file does not exist
+      if (!fs.existsSync(legacyPath) || fs.existsSync(targetPath)) {
+        return { migrated: false };
+      }
+
+      console.log(`🔄 [F6 Migration] Rozpoczęcie automatycznej migracji bazy legacy: ${legacyPath} -> ${targetPath}`);
+
+      const stat = fs.statSync(legacyPath);
+      if (stat.size < 100) {
+        console.warn('⚠️ [F6 Migration] Plik legacy ma rozmiar < 100 bajtów — pomijanie migracji uszkodzonego pliku.');
+        return { migrated: false, error: 'Legacy file too small or corrupted' };
+      }
+
+      // Check SQLite binary header magic
+      const fd = fs.openSync(legacyPath, 'r');
+      const headerBuf = Buffer.alloc(16);
+      fs.readSync(fd, headerBuf, 0, 16, 0);
+      fs.closeSync(fd);
+
+      if (!headerBuf.toString('utf8').startsWith('SQLite format 3')) {
+        console.warn('⚠️ [F6 Migration] Plik legacy nie posiada poprawnego nagłówka SQLite format 3.');
+        return { migrated: false, error: 'Invalid SQLite header' };
+      }
+
+      // 1. Safety backup of legacy database
+      let backupDir = customBackupDir;
+      if (!backupDir) {
+        if (typeof app !== 'undefined' && app && app.isPackaged) {
+          backupDir = path.join(app.getPath('userData'), 'backups', 'db_backups');
+        } else if (this.storageDir && this.storageDir !== path.join(process.cwd(), 'data')) {
+          backupDir = path.join(this.storageDir, 'backups', 'db_backups');
+        } else {
+          backupDir = path.join(process.cwd(), 'backups', 'db_backups');
+        }
+      }
+
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(backupDir, `legacy_tplh_migration_backup_${timestamp}.db`);
+      fs.copyFileSync(legacyPath, backupPath);
+      console.log(`💾 [F6 Migration] Utworzono kopię bezpieczeństwa przed migracją w: ${backupPath}`);
+
+      // 2. Atomic copy to temporary target
+      const tmpTargetPath = `${targetPath}.migration_tmp`;
+      fs.copyFileSync(legacyPath, tmpTargetPath);
+
+      // 3. Cryptographic parity check via SHA-256
+      const hashLegacy = crypto.createHash('sha256').update(fs.readFileSync(legacyPath)).digest('hex');
+      const hashTarget = crypto.createHash('sha256').update(fs.readFileSync(tmpTargetPath)).digest('hex');
+
+      if (hashLegacy !== hashTarget) {
+        fs.unlinkSync(tmpTargetPath);
+        throw new Error(`Błąd spójności SHA-256 podczas migracji: legacy=${hashLegacy}, target=${hashTarget}`);
+      }
+
+      // 4. Atomic rename to final destination
+      fs.renameSync(tmpTargetPath, targetPath);
+
+      // 5. Leave legacy file intact as a safety fall-back and write migration receipt
+      const receiptPath = path.join(this.storageDir, 'legacy_migration_receipt.json');
+      fs.writeFileSync(receiptPath, JSON.stringify({
+        migratedAt: new Date().toISOString(),
+        legacyPath,
+        targetPath,
+        bytes: stat.size,
+        sha256: hashTarget,
+      }, null, 2));
+
+      console.log(`✅ [F6 Migration] Pomyślnie zmigrowano legacy tplh_forecast.db do ${targetPath} (${stat.size} B, SHA-256: ${hashTarget.slice(0, 12)}...)`);
+      return { migrated: true, bytes: stat.size };
+    } catch (err: any) {
+      console.error('❌ [F6 Migration] Krytyczny błąd podczas migracji tplh_forecast.db:', err);
+      return { migrated: false, error: err.message };
+    }
   }
 
   private saveActiveStoreMeta(storeId: string, storeInfo?: any): void {
@@ -237,48 +565,76 @@ export class DatabaseManager {
   }
 
   /**
-   * Błyskawiczne przełączenie bazy danych na wybraną kawiarnię.
-   * Dla nowo utworzonej kawiarni tworzy całkowicie nową, czystą bazę danych SQLite!
+   * F7: Concurrency Mutex and LRU Connection Pool store switching
    */
   public async switchStoreDatabase(
     storeId: string,
-    storeInfo?: { name: string; unitCode: string; mpk: string; city?: string; district?: string }
+    storeInfo?: { name?: string; unitCode?: string; mpk?: string; city?: string; district?: string }
   ): Promise<{ success: boolean; isNew: boolean; dbPath: string; storeId: string }> {
-    // 1. Zapisz dotychczasową bazę na dysk i zwolnij połączenie
-    if (this.db) {
-      try {
-        this.persist();
-        this.db.close();
-      } catch (err) {
-        console.warn('Błąd zamykania dotychczasowej bazy przed przełączeniem:', err);
+    return this.switchMutex.runExclusive(async () => {
+      if (!this.SQL) {
+        this.SQL = await initSqlJs();
       }
-      this.db = null;
-    }
 
-    this.currentStoreId = storeId;
-    this.saveActiveStoreMeta(storeId, storeInfo);
-    this.dbFilePath = this.computeDbFilePath(storeId, storeInfo);
+      // 1. Perform F6 Legacy Migration if target is Store 108120
+      if (storeId === '108120' || storeId === '108120_janki' || storeInfo?.mpk === '108120' || storeInfo?.unitCode === '18120') {
+        this.migrateLegacyTplhDatabase('108120');
+      }
 
-    if (!this.SQL) {
-      this.SQL = await initSqlJs();
-    }
+      const effectiveStoreId = (storeId === '108120_janki' || storeInfo?.mpk === '108120' || storeInfo?.unitCode === '18120') ? '108120' : storeId;
+      const targetDbPath = this.computeDbFilePath(effectiveStoreId, storeInfo);
 
-    const exists = fs.existsSync(this.dbFilePath);
-    if (exists) {
-      const fileBuffer = fs.readFileSync(this.dbFilePath);
-      this.db = new this.SQL.Database(fileBuffer);
-      console.log(`📦 Załadowano istniejącą bazę SQLite dla kawiarni [${storeId}] z: ${this.dbFilePath}`);
-      this.createSchema();
-      return { success: true, isNew: false, dbPath: this.dbFilePath, storeId };
-    } else {
-      // NOWA KAWIARNIA = NOWA BAZA DANYCH!
-      this.db = new this.SQL.Database();
-      console.log(`🆕 Tworzenie nowej czystej bazy danych SQLite dla nowej kawiarni [${storeId}] (${storeInfo?.name || storeId})`);
-      this.createSchema();
-      this.seedNewStoreData(storeInfo);
-      this.persist();
-      return { success: true, isNew: true, dbPath: this.dbFilePath, storeId };
-    }
+      // 2. Check if connection is already hot in StoreConnectionPool (LRU Cache Hit)
+      if (this.pool.has(effectiveStoreId)) {
+        const cachedEntry = this.pool.getEntry(effectiveStoreId)!;
+        this.db = cachedEntry.db;
+        this.dbFilePath = cachedEntry.filePath;
+        this.currentStoreId = effectiveStoreId;
+        this.saveActiveStoreMeta(effectiveStoreId, storeInfo);
+
+        console.log(`⚡ [StoreConnectionPool] Hot-switch (cache hit) dla kawiarni [${effectiveStoreId}] -> ${this.dbFilePath}`);
+        return { success: true, isNew: false, dbPath: this.dbFilePath, storeId: effectiveStoreId };
+      }
+
+      // 3. Persist current active store if dirty before switching
+      if (this.currentStoreId && this.pool.has(this.currentStoreId)) {
+        this.pool.persistStore(this.currentStoreId);
+      }
+
+      this.currentStoreId = effectiveStoreId;
+      this.saveActiveStoreMeta(effectiveStoreId, storeInfo);
+      this.dbFilePath = targetDbPath;
+
+      const exists = fs.existsSync(this.dbFilePath);
+      let newDb: Database;
+      let isNew = false;
+
+      if (exists) {
+        const fileBuffer = fs.readFileSync(this.dbFilePath);
+        newDb = new this.SQL.Database(fileBuffer);
+        this.db = newDb;
+        this.createSchema();
+        isNew = false;
+        console.log(`📦 [StoreConnectionPool] Załadowano bazę z dysku dla [${effectiveStoreId}]: ${this.dbFilePath}`);
+      } else {
+        // Brand new store initialization
+        newDb = new this.SQL.Database();
+        this.db = newDb;
+        this.createSchema();
+        this.seedNewStoreData(storeInfo);
+        isNew = true;
+        // Immediate initial flush
+        const initialBuffer = Buffer.from(newDb.export());
+        fs.writeFileSync(this.dbFilePath, initialBuffer);
+        console.log(`🆕 [StoreConnectionPool] Utworzono nową bazę SQLite dla [${effectiveStoreId}]: ${this.dbFilePath}`);
+      }
+
+      // 4. Place into LRU pool (triggers eviction if > 8 handles)
+      this.pool.put(effectiveStoreId, newDb, this.dbFilePath, false);
+      this.db = newDb;
+
+      return { success: true, isNew, dbPath: this.dbFilePath, storeId: effectiveStoreId };
+    });
   }
 
   /**
@@ -326,11 +682,13 @@ export class DatabaseManager {
     }
 
     // 2. Skonfiguruj app_settings dla tej kawiarni
-    const storeName = storeInfo?.name || 'Nowa Kawiarnia Starbucks';
-    const unitCode = storeInfo?.unitCode || '';
-    const storeMpk = storeInfo?.mpk || '';
-    const storeCity = storeInfo?.city || '';
-    const storeDistrict = storeInfo?.district || '';
+    const activeMeta = this.loadActiveStoreMeta();
+    const effectiveInfo = storeInfo || activeMeta?.storeInfo;
+    const storeName = effectiveInfo?.name || (this.currentStoreId ? `Kawiarnia Starbucks (${this.currentStoreId})` : 'Nowa Kawiarnia Starbucks');
+    const unitCode = effectiveInfo?.unitCode || '';
+    const storeMpk = effectiveInfo?.mpk || '';
+    const storeCity = effectiveInfo?.city || '';
+    const storeDistrict = effectiveInfo?.district || '';
 
     this.setAppSettings({
       store_name: storeName,
@@ -338,15 +696,38 @@ export class DatabaseManager {
       store_mpk: storeMpk,
       store_city: storeCity,
       store_district: storeDistrict,
-      sbx_onboarding_completed: 'true',
-      onboarding_completed: 'true',
     });
 
-    console.log(`✅ [Nowa Kawiarnia] Skonfigurowano app_settings dla: ${storeName} (Kod: ${unitCode})`);
+    // 3. Zarejestruj nowo utworzoną kawiarnię w tabeli stores
+    const primaryStoreCode = unitCode || storeMpk || this.currentStoreId || '';
+    if (primaryStoreCode) {
+      try {
+        const stmt = this.db.prepare(`
+          INSERT OR REPLACE INTO stores (store_code, store_name, weekly_floor_hours)
+          VALUES (?, ?, 272.0)
+        `);
+        stmt.run([primaryStoreCode, storeName]);
+        stmt.free();
+        console.log(`🏬 [Nowa Kawiarnia] Zarejestrowano w tabeli stores: [${primaryStoreCode}] ${storeName} (272.0h)`);
+      } catch (err) {
+        console.error('Błąd rejestracji kawiarni w tabeli stores:', err);
+      }
+    }
+
+    // Zapewnij uniwersalne definicje zmian i normy KP bez mockowych grafików i pracowników
+    this.ensureShiftDefinitions();
+    this.seedMonthlyNorms();
+
+    console.log(`✅ [Nowa Kawiarnia] Skonfigurowano app_settings i stores dla: ${storeName} (Kod: ${primaryStoreCode})`);
   }
 
-  public persist(): void {
-    if (!this.db) return;
+  public persist(storeId?: string): void {
+    const targetId = storeId || this.currentStoreId;
+    if (targetId && this.pool.has(targetId)) {
+      this.pool.persistStore(targetId);
+      return;
+    }
+    if (!this.db || !this.dbFilePath) return;
     const data = this.db.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(this.dbFilePath, buffer);
@@ -416,17 +797,25 @@ export class DatabaseManager {
     }
   }
 
+  public hasActiveStore(): boolean {
+    return Boolean(this.currentStoreId && this.currentStoreId.trim().length > 0);
+  }
+
+  public getActiveStoreIdentifiers(): { unitCode: string; mpk: string; storeName: string } {
+    const meta = this.loadActiveStoreMeta();
+    const settings = this.getAppSettings();
+    const unitCode = meta?.storeInfo?.unitCode || settings['unit_code'] || '';
+    const mpk = meta?.storeInfo?.mpk || settings['store_mpk'] || '';
+    const storeName = meta?.storeInfo?.name || settings['store_name'] || '';
+    return { unitCode, mpk, storeName };
+  }
+
   /**
    * Sprawdza, czy w bazie znajdują się już dane operacyjne (plany AOP, grafik, skład menedżerski lub konfiguracja).
    */
   public hasExistingData(): boolean {
-    if (!this.db) return false;
+    if (!this.db || !this.hasActiveStore()) return false;
     try {
-      const settings = this.getAppSettings();
-      if (settings['sbx_onboarding_completed'] === 'true' || settings['onboarding_completed'] === 'true') {
-        return true;
-      }
-
       // Sprawdzenie planów AOP
       const aopRes = this.db.exec('SELECT COUNT(*) FROM aop_plans');
       if (aopRes.length > 0 && aopRes[0].values.length > 0) {
@@ -1067,11 +1456,6 @@ export class DatabaseManager {
       ('deep_clean', 'Głębokie Czyszczenie Sprzętu (Deep Clean)', 'Czystość', 8.0, 1);
     `);
 
-    // Domyślny lokal: SBX Warszawa Janki
-    this.db.run(`
-      INSERT OR IGNORE INTO stores (store_code, store_name, weekly_floor_hours)
-      VALUES ('18120', '108120 SBX Warszawa Janki', 272.0);
-    `);
 
     // Inicjalizacja danych Modułu 2: Managers Schedule
     this.seedManagerModuleData();
@@ -1142,81 +1526,7 @@ export class DatabaseManager {
   }
 
   public seedDemoManagerTeamAndShifts(): void {
-    if (!this.db) return;
-
-    // 1. Zespół menedżerów (108120 Warszawa Janki)
-    const empCountRes = this.db.exec('SELECT COUNT(*) as count FROM manager_employees');
-    const empCount = empCountRes[0]?.values[0]?.[0] as number || 0;
-    if (empCount === 0) {
-      const defaultTeam = [
-        ['Dawid Szeluga', 'SM', 'FULL', 1.0, 42.0, 1],
-        ['Dawid Apel', 'ASM', 'FULL', 1.0, 36.0, 2],
-        ['Kamil Kamiński', 'SSV', 'FULL', 1.0, 32.5, 3],
-        ['Zuzanna Makowska', 'SSV', '0.75', 0.75, 32.5, 4],
-        ['Weronika Bieńkowska', 'SSV', '0.5', 0.5, 32.5, 5],
-        ['Gabi Znojek', 'SSV', 'FULL', 1.0, 32.5, 6],
-        ['Aleksandra Płużyńska', 'SSV', 'FULL', 1.0, 32.5, 7]
-      ];
-
-      const stmt = this.db.prepare(`
-        INSERT INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, 1)
-      `);
-      for (const m of defaultTeam) {
-        stmt.run(m);
-      }
-      stmt.free();
-      console.log('✅ Zaseedowano zespół menedżerski kawiarni 108120 Janki (7 osób).');
-    }
-
-    // 2. Domyślny grafik na Wrzesień 2026
-    const shifts2026CountRes = this.db.exec("SELECT COUNT(*) as count FROM manager_schedule_shifts WHERE year=2026 AND month=9");
-    const shifts2026Count = shifts2026CountRes[0]?.values[0]?.[0] as number || 0;
-    if (shifts2026Count === 0) {
-      const empsRes = this.db.exec("SELECT id, name FROM manager_employees ORDER BY sort_order ASC");
-      const empMap: Record<string, number> = {};
-      if (empsRes[0]) {
-        for (const row of empsRes[0].values) {
-          empMap[String(row[1])] = Number(row[0]);
-        }
-      }
-
-      const hoursMap: Record<string, number> = {
-        'AM': 8.0, 'PM': 8.0, 'AMN': 6.0, 'PMN': 7.0, 'SAM': 8.0, 'SPM': 8.0, 'SUP': 8.0,
-        'MIB': 8.0, 'AMB': 8.0, 'PMB': 8.0, 'MI4': 4.0, 'BT': 8.0, 'NC': 8.0, 'TAM': 8.0,
-        'TPM': 8.0, 'RET': 8.0, 'T': 8.0, 'PRE': 8.0, 'MEE': 3.0, 'OFF': 0.0, 'H': 8.0, 'L4': 8.0
-      };
-
-      const refShifts: Record<string, string[]> = {
-        'Dawid Szeluga': ['H','H','H','H','OFF','OFF','H','NC','NC','RET','OFF','PM','OFF','NC','NC','NC','NC','NC','OFF','OFF','NC','NC','NC','OFF','AM','NC','OFF','NC','NC','OFF'],
-        'Dawid Apel': ['AM','SAM','OFF','PM','PM','OFF','MIB','PM','SPM','OFF','AM','AM','AM','NC','SUP','OFF','AM','OFF','AM','AM','NC','OFF','PM','NC','SPM','PM','PM','NC','OFF','OFF'],
-        'Kamil Kamiński': ['NC','SAM','AM','SAM','OFF','AM','AM','AM','AM','AM','OFF','OFF','PM','OFF','NC','AM','SPM','PM','OFF','OFF','H','H','H','H','H','OFF','OFF','OFF','PM','PM'],
-        'Zuzanna Makowska': ['OFF','PM','OFF','AM','AM','PM','PM','OFF','PM','OFF','PM','OFF','OFF','AM','AM','SPM','OFF','AM','OFF','OFF','OFF','H','H','H','H','OFF','OFF','AM','AM','NC'],
-        'Weronika Bieńkowska': ['PM','OFF','PM','OFF','OFF','OFF','OFF','OFF','OFF','OFF','OFF','OFF','OFF','OFF','SAM','PM','PM','SPM','OFF','OFF','AM','AM','AM','PM','PM','OFF','OFF','SUP','SUP','OFF'],
-        'Gabi Znojek': ['MIB','AM','OFF','OFF','MIB','OFF','OFF','SPM','SPM','PM','OFF','OFF','OFF','PM','PM','SUP','RET','OFF','PM','PM','PM','PM','OFF','AM','SAM','AM','AM','PM','OFF','AM'],
-        'Aleksandra Płużyńska': ['L4','L4','L4','L4','OFF','OFF','L4','L4','L4','L4','L4','OFF','OFF','L4','L4','L4','L4','L4','OFF','OFF','L4','L4','L4','L4','L4','OFF','OFF','L4','L4','L4']
-      };
-
-      const stmtShift = this.db.prepare(`
-        INSERT OR REPLACE INTO manager_schedule_shifts (year, month, day, date, employee_id, shift_code, hours)
-        VALUES (2026, 9, ?, ?, ?, ?, ?)
-      `);
-
-      for (const [empName, shifts] of Object.entries(refShifts)) {
-        const empId = empMap[empName];
-        if (!empId) continue;
-        shifts.forEach((code, idx) => {
-          const day = idx + 1;
-          const dateStr = `2026-09-${String(day).padStart(2, '0')}`;
-          const h = hoursMap[code] ?? 8.0;
-          stmtShift.run([day, dateStr, empId, code, h]);
-        });
-      }
-      stmtShift.free();
-    }
-
-    this.seedMonthlyRosters();
-    this.persist();
+    // Purged in F2: No-op. Zero mock manager teams or fake shifts seeded in production.
   }
 
   /**
@@ -1256,94 +1566,10 @@ export class DatabaseManager {
   }
 
   /**
-   * Inicjalizuje dedykowane składy managerskie dla Lipca, Sierpnia i Września 2026
+   * Inicjalizuje dedykowane składy managerskie
    */
   private seedMonthlyRosters(): void {
-    if (!this.db) return;
-    try {
-      const res = this.db.exec("SELECT COUNT(*) FROM manager_monthly_roster");
-      const count = (res.length > 0 && res[0].values.length > 0) ? Number(res[0].values[0][0]) : 0;
-      if (count === 0) {
-        // Upewnij się, że Hanna Domachowska istnieje w master registry manager_employees
-        this.db.run(`
-          INSERT OR IGNORE INTO manager_employees (id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-          VALUES (8, 'Hanna Domachowska', 'SSV', '0.5', 0.5, 32.5, 8, 1)
-        `);
-
-        // Pobierz id pracowników z manager_employees
-        const empsRes = this.db.exec("SELECT id, name FROM manager_employees");
-        const empMap: Record<string, number> = {};
-        if (empsRes.length > 0) {
-          for (const row of empsRes[0].values) {
-            empMap[String(row[1])] = Number(row[0]);
-          }
-        }
-
-        // 1. Lipiec 2026 (M07) - 8 osób (w tym Hanna Domachowska, Dawid Apel jako SSV)
-        const julyTeam = [
-          ['Dawid Szeluga', 'SM', 'FULL', 1.0, 42.0, 1],
-          ['Dawid Apel', 'SSV', 'FULL', 1.0, 32.5, 2],
-          ['Kamil Kamiński', 'SSV', 'FULL', 1.0, 32.5, 3],
-          ['Zuzanna Makowska', 'SSV', '0.75', 0.75, 32.5, 4],
-          ['Weronika Bieńkowska', 'SSV', '0.5', 0.5, 32.5, 5],
-          ['Hanna Domachowska', 'SSV', '0.5', 0.5, 32.5, 6],
-          ['Aleksandra Płużyńska', 'SSV', 'FULL', 1.0, 32.5, 7],
-          ['Gabi Znojek', 'SSV', 'FULL', 1.0, 32.5, 8]
-        ];
-
-        // 2. Sierpień 2026 (M08) - 8 osób (w tym Hanna Domachowska, Dawid Apel jako ASM)
-        const augustTeam = [
-          ['Dawid Szeluga', 'SM', 'FULL', 1.0, 42.0, 1],
-          ['Dawid Apel', 'ASM', 'FULL', 1.0, 36.0, 2],
-          ['Kamil Kamiński', 'SSV', 'FULL', 1.0, 32.5, 3],
-          ['Zuzanna Makowska', 'SSV', '0.75', 0.75, 32.5, 4],
-          ['Weronika Bieńkowska', 'SSV', '0.5', 0.5, 32.5, 5],
-          ['Hanna Domachowska', 'SSV', '0.5', 0.5, 32.5, 6],
-          ['Aleksandra Płużyńska', 'SSV', 'FULL', 1.0, 32.5, 7],
-          ['Gabi Znojek', 'SSV', 'FULL', 1.0, 32.5, 8]
-        ];
-
-        // 3. Wrzesień 2026 (M09) - 7 osób (BEZ Hanny, Dawid Apel jako ASM)
-        const septemberTeam = [
-          ['Dawid Szeluga', 'SM', 'FULL', 1.0, 42.0, 1],
-          ['Dawid Apel', 'ASM', 'FULL', 1.0, 36.0, 2],
-          ['Kamil Kamiński', 'SSV', 'FULL', 1.0, 32.5, 3],
-          ['Zuzanna Makowska', 'SSV', '0.75', 0.75, 32.5, 4],
-          ['Weronika Bieńkowska', 'SSV', '0.5', 0.5, 32.5, 5],
-          ['Gabi Znojek', 'SSV', 'FULL', 1.0, 32.5, 6],
-          ['Aleksandra Płużyńska', 'SSV', 'FULL', 1.0, 32.5, 7]
-        ];
-
-        const rStmt = this.db.prepare(`
-          INSERT OR REPLACE INTO manager_monthly_roster 
-          (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, sort_order, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-        `);
-
-        for (const t of julyTeam) {
-          const empId = empMap[t[0] as string] || 0;
-          if (empId > 0) rStmt.run([2026, 7, empId, t[0], t[1], t[2], t[3], t[4], t[5]]);
-        }
-        for (const t of augustTeam) {
-          const empId = empMap[t[0] as string] || 0;
-          if (empId > 0) rStmt.run([2026, 8, empId, t[0], t[1], t[2], t[3], t[4], t[5]]);
-        }
-        for (const t of septemberTeam) {
-          const empId = empMap[t[0] as string] || 0;
-          if (empId > 0) rStmt.run([2026, 9, empId, t[0], t[1], t[2], t[3], t[4], t[5]]);
-        }
-        rStmt.free();
-
-        // Usunięcie ewentualnej próbnej zmiany Hani z września 2026
-        if (empMap['Hanna Domachowska']) {
-          this.db.run(`DELETE FROM manager_schedule_shifts WHERE year = 2026 AND month = 9 AND employee_id = ${empMap['Hanna Domachowska']}`);
-        }
-
-        console.log('✅ Zaseedowano dedykowane składy managerskie dla Lipca (8 os.), Sierpnia (8 os.) i Września 2026 (7 os.).');
-      }
-    } catch (e) {
-      console.error('Błąd seedowania manager_monthly_roster:', e);
-    }
+    // Purged in F2: No-op. Zero mock monthly rosters seeded in production.
   }
 
   private seedInitialData(): void {
@@ -1433,42 +1659,6 @@ export class DatabaseManager {
       stmt.free();
       console.log(`✅ Zaseedowano ${weeksData.length} tygodni biznesowych (2021-2036).`);
     }
-
-    // 3. Seed Labor Actuals 2026
-    const actualsPath = path.join(baseSeedPath, 'labor_actuals_2026_seed.json');
-    if (fs.existsSync(actualsPath)) {
-      const actualsData = JSON.parse(fs.readFileSync(actualsPath, 'utf8'));
-      const stmt = this.db.prepare(`
-        INSERT INTO labor_actuals_log
-        (date, year, month, week, week_key, day_of_week, employee, category, contract_type, computable_time, unit_code, unit_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const a of actualsData) {
-        stmt.run([
-          a.date,
-          Number(a.year),
-          a.month,
-          a.week,
-          a.week_key,
-          a.day_of_week || '',
-          a.employee,
-          a.category || '',
-          a.contract_type || '',
-          Number(a.computable_time) || 0,
-          String(a.unit_code || '18120'),
-          a.unit_name || '108120 SBX Warszawa Janki'
-        ]);
-      }
-      stmt.free();
-      console.log(`✅ Zaseedowano ${actualsData.length} rekordów rzeczywistych godzin (2026).`);
-    }
-
-    // Domyślny wpis TRX dla 2026_Wrzesień_W1 (z makiety: 2050 TRX)
-    this.db.run(`
-      INSERT OR REPLACE INTO weekly_actual_trx (week_key, actual_trx)
-      VALUES ('2026_Wrzesień_W1', 2050);
-    `);
   }
 
   // =========================================================================
@@ -1492,40 +1682,6 @@ export class DatabaseManager {
       res.push(stmt.getAsObject());
     }
     stmt.free();
-
-    // Auto-seed jeśli tabela jest pusta (2 przykładowych partnerów kawiarni 108120 Janki)
-    if (res.length === 0) {
-      const seedPartners = [
-        {
-          name: 'Kacper Wiśniewski',
-          hire_date: '2026-09-01',
-          current_program: 'first_30',
-          assigned_trainer_name: 'Weronika Łukasiak',
-          store_manager_name: 'Dawid Apel',
-          sanepid_valid_until: '2027-08-31',
-          bhp_completed_date: '2026-09-01',
-          status: 'in_progress',
-          notes: 'Nowy barista na etapie wdrożenia First 30 (AM/PM).'
-        },
-        {
-          name: 'Maja Zielińska',
-          hire_date: '2026-06-15',
-          current_program: 'barista_90',
-          assigned_trainer_name: 'Gabriela Szymańska',
-          store_manager_name: 'Dawid Apel',
-          sanepid_valid_until: '2027-06-10',
-          bhp_completed_date: '2026-06-15',
-          status: 'in_progress',
-          notes: 'Ukończony First 30 (certyfikowana). Przygotowanie do 90-Dniowego Check-In.'
-        }
-      ];
-
-      for (const p of seedPartners) {
-        this.saveTrainingPartner(p);
-      }
-      return this.getTrainingPartners();
-    }
-
     return res;
   }
 
@@ -1545,7 +1701,7 @@ export class DatabaseManager {
         partner.current_program || 'first_30',
         partner.assigned_trainer_id || null,
         partner.assigned_trainer_name || null,
-        partner.store_manager_name || 'Dawid Apel',
+        partner.store_manager_name || '',
         partner.sanepid_valid_until || null,
         partner.bhp_completed_date || null,
         partner.status || 'in_progress',
@@ -1800,12 +1956,13 @@ export class DatabaseManager {
       }
     }
 
+    const storeIdents = this.getActiveStoreIdentifiers();
     const manifest = {
       packageName: 'Starbucks Operations Suite — Historical Master Package',
       version: '2.6.0',
       exportDate: new Date().toISOString(),
-      storeCode: '18120',
-      storeName: '108120 SBX Warszawa Janki',
+      storeCode: storeIdents.unitCode || 'custom',
+      storeName: storeIdents.storeName || 'Starbucks Store',
       tablesCount: Object.keys(exportSummary).length,
       recordsSummary: exportSummary,
       masterDatabaseFile: 'tplh_forecast_master_backup.db',
@@ -1857,7 +2014,9 @@ export class DatabaseManager {
       // 1. Zabezpieczający backup bieżącej bazy przed podmianą
       const backupDir = (typeof app !== 'undefined' && app && app.isPackaged)
         ? path.join(app.getPath('userData'), 'backups', 'db_backups')
-        : path.join(process.cwd(), 'backups', 'db_backups');
+        : (this.storageDir && this.storageDir !== path.join(process.cwd(), 'data')
+          ? path.join(this.storageDir, 'backups', 'db_backups')
+          : path.join(process.cwd(), 'backups', 'db_backups'));
 
       if (!fs.existsSync(backupDir)) {
         fs.mkdirSync(backupDir, { recursive: true });
@@ -1891,7 +2050,9 @@ export class DatabaseManager {
     // 1. Zabezpieczający backup bieżącej bazy przed czyszczeniem
     const backupDir = (typeof app !== 'undefined' && app && app.isPackaged)
       ? path.join(app.getPath('userData'), 'backups', 'db_backups')
-      : path.join(process.cwd(), 'backups', 'db_backups');
+      : (this.storageDir && this.storageDir !== path.join(process.cwd(), 'data')
+        ? path.join(this.storageDir, 'backups', 'db_backups')
+        : path.join(process.cwd(), 'backups', 'db_backups'));
 
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
@@ -2055,7 +2216,9 @@ export class DatabaseManager {
 
     const backupDir = (typeof app !== 'undefined' && app && app.isPackaged)
       ? path.join(app.getPath('userData'), 'backups', 'db_backups')
-      : path.join(process.cwd(), 'backups', 'db_backups');
+      : (this.storageDir && this.storageDir !== path.join(process.cwd(), 'data')
+        ? path.join(this.storageDir, 'backups', 'db_backups')
+        : path.join(process.cwd(), 'backups', 'db_backups'));
 
     let backupsCount = 0;
     let lastBackupDate: string | undefined;
@@ -2163,7 +2326,9 @@ export class DatabaseManager {
     // 2. Kopia ratunkowa przed VACUUM
     const backupDir = (typeof app !== 'undefined' && app && app.isPackaged)
       ? path.join(app.getPath('userData'), 'backups', 'db_backups')
-      : path.join(process.cwd(), 'backups', 'db_backups');
+      : (this.storageDir && this.storageDir !== path.join(process.cwd(), 'data')
+        ? path.join(this.storageDir, 'backups', 'db_backups')
+        : path.join(process.cwd(), 'backups', 'db_backups'));
 
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });

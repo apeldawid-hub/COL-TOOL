@@ -1,4 +1,5 @@
-// src/services/todoService.ts
+import { StoreStorage } from './storeStorage';
+import { StoreService } from './storeService';
 
 export interface StoreTask {
   id: string;
@@ -13,17 +14,41 @@ export interface StoreTask {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'sbx_sm_tasks_v1';
-
 class TodoService {
   private tasks: StoreTask[] = [];
   private listeners: Array<() => void> = [];
+  private currentStoreId: string = '';
 
   constructor() {
+    this.currentStoreId = (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || '108120';
     this.loadTasks();
     if (this.tasks.length === 0) {
       this.initDefaultTasks();
     }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sbx:store-switched', (e: any) => {
+        const newStoreId = e?.detail?.currentStore?.id || e?.detail?.id;
+        if (newStoreId && newStoreId !== this.currentStoreId) {
+          this.switchStore(newStoreId);
+        }
+      });
+      window.addEventListener('sbx-store-changed', (e: any) => {
+        const newStoreId = e?.detail?.id;
+        if (newStoreId && newStoreId !== this.currentStoreId) {
+          this.switchStore(newStoreId);
+        }
+      });
+    }
+  }
+
+  public switchStore(newStoreId: string) {
+    this.currentStoreId = newStoreId;
+    this.loadTasks();
+    if (this.tasks.length === 0) {
+      this.initDefaultTasks();
+    }
+    this.notify();
   }
 
   public subscribe(listener: () => void): () => void {
@@ -45,10 +70,7 @@ class TodoService {
 
   private loadTasks() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        this.tasks = JSON.parse(stored);
-      }
+      this.tasks = StoreStorage.getItem<StoreTask[]>('todos', this.currentStoreId) || [];
     } catch {
       this.tasks = [];
     }
@@ -56,7 +78,7 @@ class TodoService {
 
   private saveTasks() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.tasks));
+      StoreStorage.setItem('todos', this.tasks, this.currentStoreId);
     } catch {}
     this.notify();
   }

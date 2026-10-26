@@ -22,7 +22,7 @@ const MODULE_DATA: Record<string, ModuleInfo> = {
     subtitle: 'Kalkulator Kosztu Robocizny i Rentowności Godzinowej',
     icon: Calculator,
     description:
-      'Zaawansowany kalkulator kosztów pracy (Cost of Labor - COL) integrujący stawki godzinowe menedżerów i baristów, narzuty pracodawcy (ZUS, PPK, PFRON), wypracowany budżet AOP oraz symulacje rentowności grafiku w czasie rzeczywistym dla kawiarni 108120 Janki.',
+      'Zaawansowany kalkulator kosztów pracy (Cost of Labor - COL) integrujący stawki godzinowe menedżerów i baristów, narzuty pracodawcy (ZUS, PPK, PFRON), wypracowany budżet AOP oraz symulacje rentowności grafiku w czasie rzeczywistym dla wybranej kawiarni Starbucks.',
     plannedFeatures: [
       'Kalkulacja rzeczywistego procentowego kosztu robocizny (Cost of Labor % vs Sales)',
       'Symulacje kosztowe ułożonego grafiku menedżerów i baristów w czasie rzeczywistym',
@@ -38,7 +38,7 @@ const MODULE_DATA: Record<string, ModuleInfo> = {
     description:
       'Planowany moduł do ewaluacji postępów wdrożeniowych nowych partnerów, harmonogramowania szkoleń Barista Trainer (BT), Coffee Master oraz recertyfikacji BHP i procedur operacyjnych Starbucks.',
     plannedFeatures: [
-      'Matryca kompetencji i certyfikacji partnerów kawiarni Janki',
+      'Matryca kompetencji i certyfikacji partnerów kawiarni',
       'Harmonogram szkoleń First 30/60/90 Days dla nowozatrudnionych baristów',
       'Śledzenie godzin szkoleniowych z budżetu Non-Coverage (NC Training)',
       'Przypomnienia o wygasających badaniach Sanepid i certyfikatach BHP',
@@ -104,7 +104,7 @@ export const ModulePlaceholderView: React.FC<ModulePlaceholderViewProps> = ({
 
         <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${info.badgeColor}`}>
           <Sparkles className="w-3.5 h-3.5" />
-          <span>W budowie (Scratch)</span>
+          <span>Moduł w przygotowaniu</span>
         </span>
       </div>
 
@@ -154,7 +154,7 @@ export const ModulePlaceholderView: React.FC<ModulePlaceholderViewProps> = ({
         <div className="mt-8 bg-[#F0F4F2] p-4 rounded-2xl border border-[#D0DCD6] flex items-center justify-between text-xs">
           <div className="flex items-center space-x-2 text-stone-600">
             <Construction className="w-4 h-4 text-[#CBA258]" />
-            <span>Szablon modułu przygotowany do wdrożenia biznesowego w kolejnym kroku.</span>
+            <span>Moduł w trakcie rozwoju w ramach kolejnych aktualizacji Starbucks Operations Suite.</span>
           </div>
 
           <div className="flex items-center space-x-2">

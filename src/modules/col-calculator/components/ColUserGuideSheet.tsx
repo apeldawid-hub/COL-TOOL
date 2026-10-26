@@ -40,7 +40,7 @@ export const ColUserGuideSheet: React.FC = () => {
             KROK 1: Planowanie Nowego Miesiąca (TARGET)
           </h3>
           <ul className="space-y-2 text-slate-600 dark:text-zinc-400 text-xs list-disc pl-5">
-            <li><strong>Wybór kawiarni i miesiąca:</strong> w nagłówku wybierz numer MPK (108120 Janki) oraz planowany miesiąc i wprowadź ilość dni otwarcia kawiarni.</li>
+            <li><strong>Wybór kawiarni i miesiąca:</strong> w nagłówku zweryfikuj numer jednostki oraz planowany miesiąc i wprowadź ilość dni otwarcia kawiarni.</li>
             <li><strong>Sprzedaż i Transakcje:</strong> wprowadź planowaną wartość sprzedaży (Sales PLN) oraz liczbę transakcji (Transactions) na podstawie AOP lub wytycznych DM.</li>
             <li><strong>Wybór macierzy TPLH:</strong> wybierz Plan A (dane CCE), Plan B (mieszane CCE/DE) lub Plan C (Niemcy) i ustal docelowy <strong>TPLH Target</strong> (np. 6.60).</li>
             <li><strong>Godziny kadry menedżerskiej:</strong> w części <em>Manager Target</em> wprowadź planowany czas pracy, urlopy oraz ewentualne zwolnienia lekarskie. Suma godzin powinna pokrywać nominał etatu.</li>

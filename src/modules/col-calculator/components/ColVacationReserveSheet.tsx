@@ -14,28 +14,18 @@ interface VacationReserveRow {
 }
 
 export const ColVacationReserveSheet: React.FC<ColVacationReserveSheetProps> = ({ managers }) => {
-  // Initial unused vacation days from sheet Rezerwa urlopowa rows 87..101
-  const initialDaysMap: Record<string, number> = {
-    'Dawid Szeluga': 2,
-    'Dawid Apel': 4,
-    'Zuzanna Makowska': 1,
-    'Weronika Bieńkowska': 4,
-    'Nikola Studzińska': 4,
-    'Kamil Kamiński': 0
-  };
-
   const [reserveRows, setReserveRows] = useState<VacationReserveRow[]>(() => {
     return managers
       .filter(m => !m.isSpecialRow && m.name)
       .map(m => ({
         id: m.id,
         name: m.name,
-        unusedDays: initialDaysMap[m.name] ?? 0,
+        unusedDays: 0,
         monthlySalary: m.baseSalary * m.contractRatio
       }));
   });
 
-  const [prevMonthReserveBrutto, setPrevMonthReserveBrutto] = useState<number>(-127);
+  const [prevMonthReserveBrutto, setPrevMonthReserveBrutto] = useState<number>(0);
 
   const updateDays = (id: string, days: number) => {
     setReserveRows(prev => prev.map(r => (r.id === id ? { ...r, unusedDays: days } : r)));

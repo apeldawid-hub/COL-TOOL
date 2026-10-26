@@ -10,6 +10,7 @@ import { ShiftPickerPopover } from './ShiftPickerPopover';
 import { LaborLawViolationDialog } from './LaborLawViolationDialog';
 import { ManagerScheduleEngine, formatManagerRole } from '../services/managerScheduleEngine';
 import { AlertTriangle, CheckCircle2, MessageSquare, Edit3, Calendar, Users, TrendingUp, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Columns, Eye, EyeOff } from 'lucide-react';
+import { useStore } from '../../../context/StoreContext';
 
 interface ManagerScheduleGridProps {
   data: ManagerScheduleMonthData;
@@ -44,6 +45,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
   isReadOnly: customIsReadOnly,
   onOpenTeamModal
 }) => {
+  const { currentStore } = useStore();
   const isReadOnly = Boolean(customIsReadOnly ?? data.isMonthClosed);
   const [activePicker, setActivePicker] = useState<{
     empId: number;
@@ -954,10 +956,13 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                     }
                     const empRcp = data.rcpLogs?.[row.employee.id]?.[d.day];
                     if (empRcp && empRcp.hours > 0) {
-                      if (empRcp.unitCode && empRcp.unitCode !== '384' && empRcp.unitCode !== '18120') {
+                      const isLocalStore = (currentStore.unitCode && empRcp.unitCode === currentStore.unitCode) ||
+                        (currentStore.mpk && empRcp.unitCode === currentStore.mpk) ||
+                        (!empRcp.unitCode);
+                      if (empRcp.unitCode && !isLocalStore) {
                         cellTitle += `\n\n📍 Zalogowano wsparcie MAPAL: ${empRcp.hours}h w ${empRcp.unitName || 'innym lokalu'} (kod: ${empRcp.unitCode})`;
                       } else {
-                        cellTitle += `\n\n📍 Zalogowano w MAPAL: ${empRcp.hours}h (108120 Janki)`;
+                        cellTitle += `\n\n📍 Zalogowano w MAPAL: ${empRcp.hours}h (${currentStore.shortName || currentStore.name || 'Lokal macierzysty'})`;
                       }
                     }
 

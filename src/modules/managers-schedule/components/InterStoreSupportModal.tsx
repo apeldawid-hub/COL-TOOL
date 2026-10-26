@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useStore } from '../../../context/StoreContext';
 import {
   X,
   Sparkles,
@@ -61,6 +62,7 @@ export const InterStoreSupportModal: React.FC<InterStoreSupportModalProps> = ({
   onApplySupportShifts,
   prevMonthShifts = []
 }) => {
+  const { currentStore: activeStore } = useStore();
   const daysInMonth = useMemo(() => new Date(data.year, data.month, 0).getDate(), [data.year, data.month]);
 
   // Formularz zapotrzebowania
@@ -169,7 +171,7 @@ export const InterStoreSupportModal: React.FC<InterStoreSupportModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-emerald-100/90 mt-0.5">
-                Starbucks 108120 Janki ➔ Oddawanie dyżurów do innych kawiarni bez naruszania bazy lokalu i Kodeksu Pracy
+                Starbucks {activeStore.shortName || activeStore.name || 'Lokal macierzysty'} ➔ Oddawanie dyżurów do innych kawiarni bez naruszania bazy lokalu i Kodeksu Pracy
               </p>
             </div>
           </div>

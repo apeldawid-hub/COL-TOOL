@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { ManagerScheduleMonthData, TorQuarterData } from '../../../types';
 import { formatManagerRole } from './managerScheduleEngine';
+import { StoreService } from '../../../services/storeService';
 
 export class ManagerExcelExport {
   public static exportToExcel(data: ManagerScheduleMonthData): void {
@@ -21,7 +22,9 @@ export class ManagerExcelExport {
 
     // Tytuł raportu
     rows.push([`GRAFIK MANAGERSKI - ${data.monthName.toUpperCase()} ${data.year}`]);
-    rows.push([`Kawiarnia: 108120 SBX Warszawa Janki (Unit: 384)`]);
+    const currentStore = StoreService.getCurrentStore();
+    const storeLabel = currentStore ? `Kawiarnia: ${currentStore.name}${currentStore.unitCode ? ` (Unit: ${currentStore.unitCode})` : ''}` : 'Kawiarnia: Starbucks';
+    rows.push([storeLabel]);
     rows.push([`Wygenerowano: ${new Date().toLocaleString('pl-PL')}`]);
     rows.push([]); // Pusty wiersz
 
@@ -118,7 +121,9 @@ export class ManagerExcelExport {
 
     // Tytuł
     rows.push([`Trzymiesięczny Okres Rozliczeniowy (TOR) — ${tor.quarterName} ${tor.year}`]);
-    rows.push([`Kawiarnia 108120 SBX Warszawa Janki (Unit 18120)`]);
+    const currentStoreTor = StoreService.getCurrentStore();
+    const storeLabelTor = currentStoreTor ? `Kawiarnia: ${currentStoreTor.name}${currentStoreTor.unitCode ? ` (Unit: ${currentStoreTor.unitCode})` : ''}` : 'Kawiarnia: Starbucks';
+    rows.push([storeLabelTor]);
     rows.push([]);
 
     // Wiersz nagłówków nadrzędnych miesięcy

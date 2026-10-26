@@ -378,7 +378,7 @@ class CloudNotificationService {
       </ul>
       <p style="font-size: 12px; color: #64748b; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">🛡️ <em>Baza danych SQLite (grafiki, normy, logowania MAPAL) pozostaje w 100% lokalna na Twoim komputerze.</em></p>
     </div>
-    <div class="footer">Starbucks Operations Suite © 2026 • Lokal 108120 SBX Warszawa Janki<br>System Operacyjny Zarządzania Robocizną & Grafikiem</div>
+    <div class="footer">Starbucks Operations Suite © 2026<br>System Operacyjny Zarządzania Robocizną & Grafikiem</div>
   </div>
 </body>
 </html>`;
@@ -574,7 +574,7 @@ class CloudNotificationService {
         </div>
         <div class="info-row">
           <span class="label">Jednostka / Kawiarnia:</span>
-          <span class="val">${data.unitCode || '18120'} ${data.storeName || 'SBX Warszawa Janki'}</span>
+          <span class="val">${data.unitCode ? `${data.unitCode} ` : ''}${data.storeName || 'Starbucks'}</span>
         </div>
         <div class="info-row">
           <span class="label">Profil Uruchomieniowy:</span>
@@ -619,7 +619,7 @@ class CloudNotificationService {
       <p>
         Adres docelowy: <span class="badge">${targetEmail}</span><br>
         Czas testu: <strong>${nowStr}</strong><br>
-        Lokal: <strong>108120 SBX Warszawa Janki</strong>
+        Lokal: <strong>${typeof localStorage !== 'undefined' ? (localStorage.getItem('sbx_store_name') || 'Lokal Aktywny') : 'Lokal Aktywny'}</strong>
       </p>
       <p style="color: #64748b; font-size: 12px; margin-top: 16px;">
         System automatycznie przesyła powiadomienia o publikacji grafików, alertach Kodeksu Pracy i statusie robocizny.
@@ -645,7 +645,8 @@ class CloudNotificationService {
     if (!this.preferences.emailEnabled || !this.preferences.schedulePublishedEmail) {
       return { success: false, error: 'Powiadomienia o publikacji grafiku są wyłączone' };
     }
-    const subject = `🗓️ Opublikowano Grafik Menedżerski na ${data.month} ${data.year} — Kawiarnia 108120 Janki`;
+    const storeLabel = typeof localStorage !== 'undefined' ? (localStorage.getItem('sbx_store_name') || 'Kawiarnia') : 'Kawiarnia';
+    const subject = `🗓️ Opublikowano Grafik Menedżerski na ${data.month} ${data.year} — ${storeLabel}`;
     const html = this.getSchedulePublishedHtml(data);
     return this.sendEmail({ to: data.userEmail, subject, html, type: 'schedule_published' });
   }
@@ -673,7 +674,8 @@ class CloudNotificationService {
       return { success: false, error: 'Powiadomienia o nowych instalacjach są wyłączone w preferencjach' };
     }
     const adminEmail = 'apeldawid@gmail.com';
-    const subject = `🎉 Nowa Instalacja Starbucks Operations Suite [${data.appVersion}] — ${data.unitCode || '18120'} Janki`;
+    const storeLabel = data.unitCode ? `${data.unitCode} ${data.storeName || ''}`.trim() : (data.storeName || 'Lokal');
+    const subject = `🎉 Nowa Instalacja Starbucks Operations Suite [${data.appVersion}] — ${storeLabel}`;
     const html = this.getAppInstalledHtml(data);
     return this.sendEmail({ to: adminEmail, subject, html, type: 'install_ping' });
   }
@@ -694,8 +696,8 @@ class CloudNotificationService {
         localStorage.setItem('sbx_installation_id', installId);
       }
 
-      const storeName = localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki';
-      const unitCode = localStorage.getItem('sbx_unit_code') || '18120';
+      const storeName = localStorage.getItem('sbx_store_name') || 'Starbucks Store';
+      const unitCode = localStorage.getItem('sbx_unit_code') || '';
       const userName = localStorage.getItem('sbx_user_name') || 'Store Manager';
       const userEmail = localStorage.getItem('sbx_user_email') || 'apeldawid@gmail.com';
       const platform = typeof navigator !== 'undefined'

@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Award, TrendingUp, Percent } from 'lucide-react';
 
 export const ColBonusSheet: React.FC = () => {
-  const [salesAop, setSalesAop] = useState<number>(310000);
-  const [salesActual, setSalesActual] = useState<number>(315000);
-  const [profitAop, setProfitAop] = useState<number>(45000);
-  const [profitActual, setProfitActual] = useState<number>(47000);
+  const [salesAop, setSalesAop] = useState<number>(0);
+  const [salesActual, setSalesActual] = useState<number>(0);
+  const [profitAop, setProfitAop] = useState<number>(0);
+  const [profitActual, setProfitActual] = useState<number>(0);
 
   const salesIndex = salesAop > 0 ? salesActual / salesAop : 0;
   const profitIndex = profitAop > 0 ? profitActual / profitAop : 0;

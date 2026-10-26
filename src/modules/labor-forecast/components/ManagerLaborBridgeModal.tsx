@@ -513,7 +513,7 @@ export const ManagerLaborBridgeModal: React.FC<ManagerLaborBridgeModalProps> = (
             <Info className="w-4 h-4 text-[#006241] shrink-0 mt-0.5" />
             <div className="space-y-1 text-[11px] leading-relaxed">
               <p>
-                <strong>Zasada podziału robocizny w kawiarni:</strong> Godziny dyżurów kierowniczych w lokalu Janki (18120) pokrywają część zapotrzebowania tygodniowego.
+                <strong>Zasada podziału robocizny w kawiarni:</strong> Godziny dyżurów kierowniczych w lokalu {currentStore.shortName || currentStore.name || 'kawiarni'}{currentStore.unitCode ? ` (${currentStore.unitCode})` : ''} pokrywają część zapotrzebowania tygodniowego.
               </p>
               <p>
                 Rekomendacja <strong>Puli Baristów ({baristaPool.toFixed(1)} h)</strong> to precyzyjny limit godzin, które Store Manager może rozpisać dla baristów na dany tydzień, aby utrzymać zgodność z celem AOP/HANW i TPLH.

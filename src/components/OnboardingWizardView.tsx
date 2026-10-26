@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useTutorial } from '../context/TutorialContext';
 import { useStore } from '../context/StoreContext';
+import { STARBUCKS_STORES_CATALOG } from '../constants/starbucksStores';
 import { StoreSwitcherModal } from './StoreSwitcherModal';
 
 interface OnboardingWizardViewProps {
@@ -82,18 +83,18 @@ interface AopMonthRow {
 }
 
 const INITIAL_AOP_TEMPLATE: AopMonthRow[] = [
-  { key: '2026_Styczeń', year: 2026, month: 'Styczeń', month_code: '2026-01', weeks_count: 5, plan_trx: 22600, target_tplh: 6.70, labor_budget: 3373.1, avg_weekly_hours: 674.6, plan_sales: 645000, plan_col_pln: 98000, plan_col_percent: 15.19 },
-  { key: '2026_Luty', year: 2026, month: 'Luty', month_code: '2026-02', weeks_count: 4, plan_trx: 19800, target_tplh: 6.70, labor_budget: 2955.2, avg_weekly_hours: 738.8, plan_sales: 580000, plan_col_pln: 87500, plan_col_percent: 15.09 },
-  { key: '2026_Marzec', year: 2026, month: 'Marzec', month_code: '2026-03', weeks_count: 4, plan_trx: 23100, target_tplh: 6.70, labor_budget: 3447.8, avg_weekly_hours: 861.9, plan_sales: 670000, plan_col_pln: 101000, plan_col_percent: 15.07 },
-  { key: '2026_Kwiecień', year: 2026, month: 'Kwiecień', month_code: '2026-04', weeks_count: 4, plan_trx: 22900, target_tplh: 6.70, labor_budget: 3417.9, avg_weekly_hours: 854.5, plan_sales: 665000, plan_col_pln: 100500, plan_col_percent: 15.11 },
-  { key: '2026_Maj', year: 2026, month: 'Maj', month_code: '2026-05', weeks_count: 5, plan_trx: 25800, target_tplh: 6.80, labor_budget: 3794.1, avg_weekly_hours: 758.8, plan_sales: 750000, plan_col_pln: 112000, plan_col_percent: 14.93 },
-  { key: '2026_Czerwiec', year: 2026, month: 'Czerwiec', month_code: '2026-06', weeks_count: 4, plan_trx: 24500, target_tplh: 6.80, labor_budget: 3602.9, avg_weekly_hours: 900.7, plan_sales: 710000, plan_col_pln: 106000, plan_col_percent: 14.93 },
-  { key: '2026_Lipiec', year: 2026, month: 'Lipiec', month_code: '2026-07', weeks_count: 5, plan_trx: 26200, target_tplh: 6.80, labor_budget: 3852.9, avg_weekly_hours: 770.6, plan_sales: 760000, plan_col_pln: 113500, plan_col_percent: 14.93 },
-  { key: '2026_Sierpień', year: 2026, month: 'Sierpień', month_code: '2026-08', weeks_count: 4, plan_trx: 25100, target_tplh: 6.80, labor_budget: 3691.2, avg_weekly_hours: 922.8, plan_sales: 730000, plan_col_pln: 109000, plan_col_percent: 14.93 },
-  { key: '2026_Wrzesień', year: 2026, month: 'Wrzesień', month_code: '2026-09', weeks_count: 4, plan_trx: 24200, target_tplh: 6.70, labor_budget: 3611.9, avg_weekly_hours: 903.0, plan_sales: 705000, plan_col_pln: 105500, plan_col_percent: 14.96 },
-  { key: '2026_Październik', year: 2026, month: 'Październik', month_code: '2026-10', weeks_count: 5, plan_trx: 24900, target_tplh: 6.70, labor_budget: 3716.4, avg_weekly_hours: 743.3, plan_sales: 720000, plan_col_pln: 108000, plan_col_percent: 15.00 },
-  { key: '2026_Listopad', year: 2026, month: 'Listopad', month_code: '2026-11', weeks_count: 4, plan_trx: 23800, target_tplh: 6.70, labor_budget: 3552.2, avg_weekly_hours: 888.1, plan_sales: 690000, plan_col_pln: 103500, plan_col_percent: 15.00 },
-  { key: '2026_Grudzień', year: 2026, month: 'Grudzień', month_code: '2026-12', weeks_count: 5, plan_trx: 28500, target_tplh: 6.90, labor_budget: 4130.4, avg_weekly_hours: 826.1, plan_sales: 830000, plan_col_pln: 124000, plan_col_percent: 14.94 }
+  { key: '2026_Styczeń', year: 2026, month: 'Styczeń', month_code: '2026-01', weeks_count: 5, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Luty', year: 2026, month: 'Luty', month_code: '2026-02', weeks_count: 4, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Marzec', year: 2026, month: 'Marzec', month_code: '2026-03', weeks_count: 4, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Kwiecień', year: 2026, month: 'Kwiecień', month_code: '2026-04', weeks_count: 4, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Maj', year: 2026, month: 'Maj', month_code: '2026-05', weeks_count: 5, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Czerwiec', year: 2026, month: 'Czerwiec', month_code: '2026-06', weeks_count: 4, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Lipiec', year: 2026, month: 'Lipiec', month_code: '2026-07', weeks_count: 5, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Sierpień', year: 2026, month: 'Sierpień', month_code: '2026-08', weeks_count: 4, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Wrzesień', year: 2026, month: 'Wrzesień', month_code: '2026-09', weeks_count: 4, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Październik', year: 2026, month: 'Październik', month_code: '2026-10', weeks_count: 5, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Listopad', year: 2026, month: 'Listopad', month_code: '2026-11', weeks_count: 4, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 },
+  { key: '2026_Grudzień', year: 2026, month: 'Grudzień', month_code: '2026-12', weeks_count: 5, plan_trx: 0, target_tplh: 0, labor_budget: 0, avg_weekly_hours: 0, plan_sales: 0, plan_col_pln: 0, plan_col_percent: 0 }
 ];
 
 function detectMonthAndYear(filename: string): { month: string; year: number } {
@@ -133,10 +134,20 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
   const [step, setStep] = useState<number>(1);
 
   // Krok 2: Kawiarnia i Profil
-  const [selectedStore, setSelectedStore] = useState({
-    name: currentStore.name || '108120 SBX Warszawa Janki',
-    unitCode: currentStore.unitCode || '18120',
-    district: currentStore.district || 'Dystrykt Warszawa',
+  const [selectedStore, setSelectedStore] = useState(() => {
+    if (currentStore?.name && currentStore?.unitCode) {
+      return {
+        name: currentStore.name,
+        unitCode: currentStore.unitCode,
+        district: currentStore.district || 'Dystrykt Starbucks',
+      };
+    }
+    const initialStore = STARBUCKS_STORES_CATALOG[0];
+    return {
+      name: initialStore?.name || '',
+      unitCode: initialStore?.unitCode || '',
+      district: initialStore?.district || '',
+    };
   });
   const [selectedRole, setSelectedRole] = useState<'SM' | 'ASM'>('SM');
   const [managerName, setManagerName] = useState<string>('');
@@ -146,7 +157,8 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onCo
   // Walidacja Krok 2
   const isNameValid = managerName.trim().length >= 3;
   const isEmailValid = /^[a-zA-Z0-9._%+-]+@amrest\.eu$/i.test(managerEmail.trim());
-  const isStep2Valid = isNameValid && isEmailValid;
+  const isStoreValid = Boolean(selectedStore.name && selectedStore.unitCode);
+  const isStep2Valid = isNameValid && isEmailValid && isStoreValid;
 
   // Krok 3: Opcje Danych Początkowych
   const [dataSourceOption, setDataSourceOption] = useState<'A' | 'B' | 'C'>('A');

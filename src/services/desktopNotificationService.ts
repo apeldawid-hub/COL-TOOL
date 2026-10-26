@@ -1,4 +1,5 @@
-// src/services/desktopNotificationService.ts
+import { StoreStorage } from './storeStorage';
+import { StoreService } from './storeService';
 
 export type NotificationSeverity = 'urgent' | 'warning' | 'info' | 'success';
 
@@ -21,16 +22,39 @@ export interface DesktopNotification {
   dateRef?: string;
 }
 
-const STORAGE_KEY = 'sbx_desktop_notifications_v1';
 const PERMISSION_KEY = 'sbx_desktop_native_enabled';
 
 class DesktopNotificationService {
   private notifications: DesktopNotification[] = [];
   private listeners: Array<() => void> = [];
+  private currentStoreId: string = '';
 
   constructor() {
+    this.currentStoreId = (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || '108120';
     this.loadFromStorage();
     this.initializeDefaultNotificationsIfEmpty();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sbx:store-switched', (e: any) => {
+        const newStoreId = e?.detail?.currentStore?.id || e?.detail?.id;
+        if (newStoreId && newStoreId !== this.currentStoreId) {
+          this.switchStore(newStoreId);
+        }
+      });
+      window.addEventListener('sbx-store-changed', (e: any) => {
+        const newStoreId = e?.detail?.id;
+        if (newStoreId && newStoreId !== this.currentStoreId) {
+          this.switchStore(newStoreId);
+        }
+      });
+    }
+  }
+
+  public switchStore(newStoreId: string) {
+    this.currentStoreId = newStoreId;
+    this.loadFromStorage();
+    this.initializeDefaultNotificationsIfEmpty();
+    this.notifyListeners();
   }
 
   public subscribe(listener: () => void): () => void {
@@ -52,10 +76,7 @@ class DesktopNotificationService {
 
   private loadFromStorage() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        this.notifications = JSON.parse(stored);
-      }
+      this.notifications = StoreStorage.getItem<DesktopNotification[]>('notifications', this.currentStoreId) || [];
     } catch {
       this.notifications = [];
     }
@@ -63,7 +84,7 @@ class DesktopNotificationService {
 
   private saveToStorage() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.notifications));
+      StoreStorage.setItem('notifications', this.notifications, this.currentStoreId);
     } catch {}
     this.notifyListeners();
   }
@@ -246,8 +267,9 @@ class DesktopNotificationService {
     }
 
     try {
+      const storeName = typeof localStorage !== 'undefined' ? (localStorage.getItem('sbx_store_name') || 'kawiarni') : 'kawiarni';
       new Notification('☕ Starbucks Operations Suite (macOS)', {
-        body: 'Natywne powiadomienia desktopowe działają prawidłowo dla lokalu 108120 Janki!',
+        body: `Natywne powiadomienia desktopowe działają prawidłowo dla ${storeName}!`,
         icon: '/favicon.ico',
       });
       return true;

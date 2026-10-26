@@ -33,8 +33,7 @@ export interface SyncStatus {
   message: string;
 }
 
-const STORAGE_OUTBOX_KEY = 'sbx_sync_outbox';
-const STORAGE_LAST_SYNC_KEY = 'sbx_sync_last_timestamp';
+import { StoreStorage } from '../storeStorage';
 
 export class SyncEngine {
   private static isSyncing = false;
@@ -52,8 +51,7 @@ export class SyncEngine {
    */
   public static getOutbox(): SyncOutboxEntry[] {
     try {
-      const raw = localStorage.getItem(STORAGE_OUTBOX_KEY);
-      return raw ? JSON.parse(raw) : [];
+      return StoreStorage.getItem<SyncOutboxEntry[]>('sync_outbox') || [];
     } catch {
       return [];
     }
@@ -66,7 +64,7 @@ export class SyncEngine {
     const outbox = this.getOutbox();
     const pendingCount = outbox.filter(item => item.status === 'PENDING').length;
     const online = this.isOnline();
-    const lastSync = localStorage.getItem(STORAGE_LAST_SYNC_KEY);
+    const lastSync = StoreStorage.getItem<string>('sync_last_ts');
 
     let syncState: SyncStatus['syncState'] = 'idle';
     let message = 'Synchronizacja aktualna';
@@ -146,7 +144,7 @@ export class SyncEngine {
     };
 
     outbox.push(newEntry);
-    localStorage.setItem(STORAGE_OUTBOX_KEY, JSON.stringify(outbox));
+    StoreStorage.setItem('sync_outbox', outbox);
     this.notifyListeners();
 
     // Jeśli jesteśmy online, zainicjuj próbę wypchnięcia zmian
@@ -176,8 +174,8 @@ export class SyncEngine {
 
       // Usuń pomyślnie zsynchronizowane wpisy, zachowując czystą bazę
       const remaining = outbox.filter(item => item.status !== 'SYNCED');
-      localStorage.setItem(STORAGE_OUTBOX_KEY, JSON.stringify(remaining));
-      localStorage.setItem(STORAGE_LAST_SYNC_KEY, new Date().toISOString());
+      StoreStorage.setItem('sync_outbox', remaining);
+      StoreStorage.setItem('sync_last_ts', new Date().toISOString());
     } catch (err) {
       console.error('Błąd podczas opróżniania kolejki synchronizacji:', err);
     } finally {

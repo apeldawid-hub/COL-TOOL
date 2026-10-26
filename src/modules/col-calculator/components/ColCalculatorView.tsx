@@ -30,6 +30,7 @@ import {
 
 import { ModuleDateBar, POLISH_MONTHS } from '../../../components/ModuleDateBar';
 import { SystemClock } from '../../../services/systemClock';
+import { useStore } from '../../../context/StoreContext';
 
 interface ColCalculatorViewProps {
   selectedYear?: number;
@@ -40,6 +41,7 @@ export const ColCalculatorView: React.FC<ColCalculatorViewProps> = ({
   selectedYear,
   selectedMonth
 }) => {
+  const { currentStore } = useStore();
   const currentNow = SystemClock.now();
   const [activeYear, setActiveYear] = useState<number>(selectedYear || currentNow.year);
   const [activeMonth, setActiveMonth] = useState<string>(selectedMonth || currentNow.monthName);
@@ -57,8 +59,8 @@ export const ColCalculatorView: React.FC<ColCalculatorViewProps> = ({
   }, [activeYear, monthNum]);
 
   const [storeInfo, setStoreInfo] = useState<ColStoreInfo>({
-    storeCode: '18120',
-    storeName: 'SBX Warszawa Janki',
+    storeCode: currentStore.unitCode || currentStore.mpk || '',
+    storeName: currentStore.name || 'Starbucks Store',
     month: activeMonth.toUpperCase(),
     year: activeYear,
     openDays: 30,
@@ -104,8 +106,8 @@ export const ColCalculatorView: React.FC<ColCalculatorViewProps> = ({
     setIsLoading(true);
     try {
       setStoreInfo({
-        storeCode: '18120',
-        storeName: 'SBX Warszawa Janki',
+        storeCode: currentStore.unitCode || currentStore.mpk || '',
+        storeName: currentStore.name || 'Starbucks Store',
         month: activeMonth.toUpperCase(),
         year: activeYear,
         openDays: 30,
@@ -122,8 +124,8 @@ export const ColCalculatorView: React.FC<ColCalculatorViewProps> = ({
           (window as any).api.getAopPlan ? (window as any).api.getAopPlan(activeYear, activeMonth) : Promise.resolve(null)
         ]);
 
-        const planSalesAop = aopPlan?.plan_sales || 280000;
-        const planTrxAop = aopPlan?.plan_trx || 10830;
+        const planSalesAop = aopPlan?.plan_sales || 0;
+        const planTrxAop = aopPlan?.plan_trx || 0;
         const targetTplhAop = aopPlan?.target_tplh || 6.70;
 
         if (scheduleData && scheduleData.employees) {
@@ -427,7 +429,7 @@ export const ColCalculatorView: React.FC<ColCalculatorViewProps> = ({
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-800 dark:text-zinc-100">
-                COL Calculator — Starbucks 18120 Janki
+                COL Calculator — {currentStore.shortName || currentStore.name || 'Starbucks'} {currentStore.unitCode ? `(${currentStore.unitCode})` : ''}
               </h1>
               <p className="text-[10px] text-slate-500 dark:text-zinc-400">
                 Kalkulacja i controlling kosztów pracy (Cost of Labor)

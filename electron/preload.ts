@@ -37,7 +37,10 @@ export interface IElectronAPI {
   getSystemTime: () => Promise<{ iso: string; timestamp: string; hours: number; minutes: number; seconds: number; day: number; month: number; year: number }>;
   getAppSettings: () => Promise<{ settings: Record<string, string>; hasCompletedOnboarding: boolean; hasExistingData: boolean }>;
   saveAppSettings: (settings: Record<string, string>) => Promise<boolean>;
-  switchStoreDatabase?: (payload: { storeId: string; storeInfo?: any }) => Promise<{ success: boolean; isNew: boolean; dbPath: string; storeId: string }>;
+  switchStoreDatabase?: (
+    storeIdOrPayload: string | { storeId: string; storeInfo?: any },
+    storeInfo?: any
+  ) => Promise<{ success: boolean; isNew: boolean; dbPath: string; storeId: string }>;
   getCurrentStoreDbInfo?: () => Promise<{ storeId: string; dbFilePath: string }>;
   getCustomStores?: () => Promise<any[]>;
   saveCustomStores?: (stores: any[]) => Promise<boolean>;
@@ -78,11 +81,11 @@ export interface IElectronAPI {
     hasActualRcpByMonth?: Record<number, boolean>;
   }>;
   // Backupy bazy danych SQLite
-  createDatabaseBackup: (reason?: string) => Promise<{ success: boolean; filename: string; filePath: string; sizeBytes: number; timestamp: string; reason: string; message: string }>;
-  getDatabaseBackups: () => Promise<Array<{ filename: string; filePath: string; sizeBytes: number; timestamp: string; formattedDate: string; reason: string }>>;
-  restoreDatabaseBackup: (filename: string) => Promise<{ success: boolean; message: string }>;
-  restoreDatabaseBackupBuffer: (buffer: ArrayBuffer) => Promise<{ success: boolean; message: string }>;
-  getDatabaseStatus: () => Promise<{ dbPath: string; exists: boolean; sizeBytes: number; lastModified: string; backupsCount: number; latestBackup?: any }>;
+  createDatabaseBackup: (reason?: string, explicitStoreId?: string) => Promise<{ success: boolean; filename: string; filePath: string; sizeBytes: number; timestamp: string; reason: string; message: string; storeId?: string; sha256?: string }>;
+  getDatabaseBackups: (filterStoreId?: string) => Promise<Array<{ filename: string; filePath: string; sizeBytes: number; timestamp: string; formattedDate: string; reason: string; storeId?: string; sha256?: string; isLegacy?: boolean }>>;
+  restoreDatabaseBackup: (filename: string, forceRestore?: boolean) => Promise<{ success: boolean; message: string; inspection?: any }>;
+  restoreDatabaseBackupBuffer: (buffer: ArrayBuffer, forceRestore?: boolean) => Promise<{ success: boolean; message: string; inspection?: any }>;
+  getDatabaseStatus: (filterStoreId?: string) => Promise<{ dbPath: string; exists: boolean; sizeBytes: number; lastModified: string; backupsCount: number; latestBackup?: any }>;
   checkDatabaseHealth: () => Promise<any>;
   optimizeDatabase: () => Promise<any>;
   // Moduł Centrum Danych & Paczek Historycznych (Clean Slate & Import Hub)
@@ -124,6 +127,17 @@ export interface IElectronAPI {
   saveBugReport: (payload: any) => Promise<{ success: boolean; filePath: string; reportId: string; message: string }>;
   exportDiagnosticPackage: (customTargetDir?: string) => Promise<{ success: boolean; filePath: string; message: string }>;
   submitGitHubIssue: (payload: any) => Promise<{ success: boolean; mode: 'api' | 'browser'; issueUrl?: string; issueNumber?: number; message: string }>;
+  // Feature F12: Bezpieczeństwo i szyfrowanie AES-256-GCM / safeStorage
+  cryptoIsSafeStorageAvailable?: () => Promise<boolean>;
+  cryptoGetMasterPassphrase?: () => Promise<string>;
+  cryptoDeriveStoreKey?: (storeId: string, unitCode: string) => Promise<string>;
+  cryptoSafeStorageEncrypt?: (plaintext: string) => Promise<{ success: boolean; data?: string; error?: string }>;
+  cryptoSafeStorageDecrypt?: (encryptedBase64: string) => Promise<{ success: boolean; data?: string; error?: string }>;
+  // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification
+  executeStoreMigration?: (options: any) => Promise<any>;
+  verifyStoreParity?: (storeId: string, options?: any) => Promise<any>;
+  extractStoreTables?: (storeId: string) => Promise<any>;
+  getMigrationReceipt?: (storeId: string) => Promise<any>;
 }
 
 const api: IElectronAPI = {
@@ -186,19 +200,26 @@ const api: IElectronAPI = {
   resetMonthlyNorm: (year, month) => ipcRenderer.invoke('db:reset-monthly-norm', year, month),
   getTorQuarterData: (year, quarter) => ipcRenderer.invoke('db:get-tor-quarter-data', year, quarter),
   // Backupy bazy danych SQLite
-  createDatabaseBackup: (reason) => ipcRenderer.invoke('db:create-backup', reason),
-  getDatabaseBackups: () => ipcRenderer.invoke('db:list-backups'),
-  restoreDatabaseBackup: (filename) => ipcRenderer.invoke('db:restore-backup', filename),
-  restoreDatabaseBackupBuffer: (buffer) => ipcRenderer.invoke('db:restore-backup-buffer', buffer),
-  getDatabaseStatus: () => ipcRenderer.invoke('db:get-database-status'),
+  createDatabaseBackup: (reason, explicitStoreId) => ipcRenderer.invoke('db:create-backup', reason, explicitStoreId),
+  getDatabaseBackups: (filterStoreId) => ipcRenderer.invoke('db:list-backups', filterStoreId),
+  restoreDatabaseBackup: (filename, forceRestore) => ipcRenderer.invoke('db:restore-backup', filename, forceRestore),
+  restoreDatabaseBackupBuffer: (buffer, forceRestore) => ipcRenderer.invoke('db:restore-backup-buffer', buffer, forceRestore),
+  getDatabaseStatus: (filterStoreId) => ipcRenderer.invoke('db:get-database-status', filterStoreId),
   checkDatabaseHealth: () => ipcRenderer.invoke('db:check-health'),
   optimizeDatabase: () => ipcRenderer.invoke('db:optimize'),
   // Moduł Centrum Danych & Paczek Historycznych (Clean Slate & Import Hub)
   exportHistoricalPackage: (customTargetDir?: string) => ipcRenderer.invoke('db:export-historical-package', customTargetDir),
   importHistoricalPackage: (customSourceDir?: string) => ipcRenderer.invoke('db:import-historical-package', customSourceDir),
   resetToCleanSlate: () => ipcRenderer.invoke('db:reset-to-clean-slate'),
-  // Zarządzanie Wielolokalowością i Bazami Danych Kawiarni
-  switchStoreDatabase: (payload: { storeId: string; storeInfo?: any }) => ipcRenderer.invoke('store:switch-database', payload),
+  switchStoreDatabase: (
+    arg1: string | { storeId: string; storeInfo?: any },
+    arg2?: any
+  ) => {
+    if (typeof arg1 === 'string') {
+      return ipcRenderer.invoke('store:switch-database', arg1, arg2);
+    }
+    return ipcRenderer.invoke('store:switch-database', arg1);
+  },
   getCurrentStoreDbInfo: () => ipcRenderer.invoke('store:get-current-db-info'),
   getCustomStores: () => ipcRenderer.invoke('store:get-custom-stores'),
   saveCustomStores: (stores: any[]) => ipcRenderer.invoke('store:save-custom-stores', stores),
@@ -248,6 +269,17 @@ const api: IElectronAPI = {
   saveBugReport: (payload) => ipcRenderer.invoke('logger:save-bug-report', payload),
   exportDiagnosticPackage: (customTargetDir) => ipcRenderer.invoke('logger:export-diagnostics', customTargetDir),
   submitGitHubIssue: (payload) => ipcRenderer.invoke('github:submit-issue', payload),
+  // Feature F12: Bezpieczeństwo i szyfrowanie AES-256-GCM / safeStorage
+  cryptoIsSafeStorageAvailable: () => ipcRenderer.invoke('crypto:is-safe-storage-available'),
+  cryptoGetMasterPassphrase: () => ipcRenderer.invoke('crypto:get-master-passphrase'),
+  cryptoDeriveStoreKey: (storeId, unitCode) => ipcRenderer.invoke('crypto:derive-store-key', storeId, unitCode),
+  cryptoSafeStorageEncrypt: (plaintext) => ipcRenderer.invoke('crypto:safe-storage-encrypt', plaintext),
+  cryptoSafeStorageDecrypt: (encryptedBase64) => ipcRenderer.invoke('crypto:safe-storage-decrypt', encryptedBase64),
+  // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification
+  executeStoreMigration: (options) => ipcRenderer.invoke('migration:execute-store-migration', options),
+  verifyStoreParity: (storeId, options) => ipcRenderer.invoke('migration:verify-store-parity', storeId, options),
+  extractStoreTables: (storeId) => ipcRenderer.invoke('migration:extract-store-tables', storeId),
+  getMigrationReceipt: (storeId) => ipcRenderer.invoke('migration:get-receipt', storeId),
 };
 
 contextBridge.exposeInMainWorld('api', api);

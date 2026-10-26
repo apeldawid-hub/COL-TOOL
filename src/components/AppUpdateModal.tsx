@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { APP_VERSION } from '../version';
 import { APP_CHANGELOG, ReleaseEntry } from '../constants/changelog';
+import { useStore } from '../context/StoreContext';
 
 interface AppUpdateModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ interface VersionInfo {
 }
 
 export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose, initialTab = 'update' }) => {
+  const { currentStore } = useStore();
   const [activeTab, setActiveTab] = useState<'update' | 'changelog'>(initialTab);
   const [changelogSearch, setChangelogSearch] = useState<string>('');
   const [changelogFilter, setChangelogFilter] = useState<'ALL' | 'feature' | 'enhancement' | 'compliance' | 'fix'>('ALL');
@@ -268,7 +270,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose,
             </div>
             <div>
               <h2 className="text-base font-black tracking-wide">Centrum Aktualizacji & Dziennik Zmian</h2>
-              <p className="text-xs text-emerald-200/90 font-medium">Starbucks Operations Suite • 108120 Janki</p>
+              <p className="text-xs text-emerald-200/90 font-medium">Starbucks Operations Suite • {currentStore.shortName || currentStore.name || 'Lokal Aktywny'}</p>
             </div>
           </div>
           <button

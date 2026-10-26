@@ -1,6 +1,18 @@
 import fs from 'fs';
 import path from 'path';
-import { app } from 'electron';
+import crypto from 'crypto';
+import initSqlJs, { Database } from 'sql.js';
+// Safe dynamic resolution of electron app in both packaged Electron and standalone Node/tsx test runners
+let app: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const electronModule = typeof require === 'function' ? require('electron') : undefined;
+  app = (typeof electronModule === 'object' && electronModule !== null && 'app' in electronModule)
+    ? electronModule.app
+    : undefined;
+} catch {
+  app = undefined;
+}
 import { DatabaseManager } from './db';
 
 export interface DatabaseBackupRecord {
@@ -10,6 +22,9 @@ export interface DatabaseBackupRecord {
   timestamp: string;
   formattedDate: string;
   reason: string;
+  storeId: string;
+  sha256?: string;
+  isLegacy?: boolean;
 }
 
 export interface DatabaseStatus {
@@ -21,12 +36,51 @@ export interface DatabaseStatus {
   latestBackup?: DatabaseBackupRecord;
 }
 
+export interface RestoreInspectionResult {
+  isValid: boolean;
+  isStoreMatch: boolean;
+  sha256: string;
+  sizeBytes: number;
+  targetStoreId: string;
+  backupStore: {
+    storeId: string;
+    storeName: string;
+    unitCode: string;
+    mpk: string;
+  };
+  warnings: string[];
+  error?: string;
+}
+
+/**
+ * Waliduje czy plik kopii zapasowej jest przypisany do docelowej kawiarni
+ */
+export function validateRestoreTarget(backupFilename: string, targetStoreId: string): boolean {
+  if (!backupFilename || !targetStoreId) return false;
+  const safeTarget = targetStoreId.toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '_');
+  // Wyodrębnij ID kawiarni z nazwy pliku za pomocą delimitera _backup_; fallback dla plików testowych/legacy
+  const match = backupFilename.match(/^store_(.+?)_backup_/) || backupFilename.match(/^store_([^_]+)_/);
+  if (!match) return false;
+  const parsedStoreId = match[1].toLowerCase();
+
+  if (parsedStoreId === safeTarget) return true;
+
+  // Równoważność aliasów kawiarni Warszawa Janki: 108120, 18120, 108120_janki
+  const isJankiAlias = (id: string) => id === '108120' || id === '18120' || id === '108120_janki';
+  if (isJankiAlias(parsedStoreId) && isJankiAlias(safeTarget)) {
+    return true;
+  }
+
+  return false;
+}
+
 export class BackupManager {
   private static instance: BackupManager;
   private backupDir: string;
-  private maxKeep: number = 15;
+  private maxKeepPerStore: number = 15;
+  private SQL: any = null;
 
-  private constructor(customBackupDir?: string) {
+  public constructor(customBackupDir?: string) {
     if (customBackupDir) {
       this.backupDir = customBackupDir;
     } else if (typeof app !== 'undefined' && app && app.isPackaged) {
@@ -40,8 +94,15 @@ export class BackupManager {
   public static getInstance(customBackupDir?: string): BackupManager {
     if (!BackupManager.instance) {
       BackupManager.instance = new BackupManager(customBackupDir);
+    } else if (customBackupDir && BackupManager.instance.backupDir !== customBackupDir) {
+      BackupManager.instance.backupDir = customBackupDir;
+      BackupManager.instance.ensureDirExists();
     }
     return BackupManager.instance;
+  }
+
+  public static resetInstanceForTesting(): void {
+    BackupManager.instance = null as any;
   }
 
   private ensureDirExists(): void {
@@ -50,88 +111,140 @@ export class BackupManager {
     }
   }
 
+  private sanitizeId(id: string): string {
+    return (id || 'default').trim().replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+  }
+
   /**
-   * Tworzy kopię zapasową bazy SQLite wraz z automatyczną rotacją
+   * Generuje unikalną nazwę pliku kopii zapasowej dedykowaną dla danej kawiarni
    */
-  public createBackup(reason: string = 'manual'): {
+  public generateBackupFilename(storeId: string, reason: string = 'manual'): string {
+    const safeStoreId = this.sanitizeId(storeId);
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const timestampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+    const safeReason = reason.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const subMs = String(now.getMilliseconds()).padStart(3, '0');
+    return `store_${safeStoreId}_backup_${timestampStr}_${subMs}_${safeReason}.db`;
+  }
+
+  /**
+   * Tworzy kopię zapasową bazy SQLite dedykowaną dla aktywnej kawiarni
+   */
+  public createBackup(reason: string = 'manual', explicitStoreId?: string): {
     success: boolean;
     filename: string;
     filePath: string;
     sizeBytes: number;
     timestamp: string;
     reason: string;
+    storeId: string;
+    sha256: string;
     message: string;
   } {
     this.ensureDirExists();
     const dbManager = DatabaseManager.getInstance();
 
-    // 1. Wymuszenie zapisu aktualnego stanu bazy na dysk
+    // 1. Zapis stanu pamięci na dysk
     dbManager.persist();
 
     const dbFilePath = dbManager.getDbFilePath();
     if (!fs.existsSync(dbFilePath)) {
-      throw new Error(`Plik bazy danych nie istnieje: ${dbFilePath}`);
+      throw new Error(`Plik bazy danych nie istnieje na dysku: ${dbFilePath}`);
     }
 
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const timestampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-    const safeReason = reason.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    const filename = `tplh_forecast_${timestampStr}_${safeReason}.db`;
+    const storeId = explicitStoreId || dbManager.getCurrentStoreId() || '108120';
+    const filename = this.generateBackupFilename(storeId, reason);
     const targetPath = path.join(this.backupDir, filename);
 
     // 2. Kopiowanie pliku
     fs.copyFileSync(dbFilePath, targetPath);
 
+    const fileBuf = fs.readFileSync(targetPath);
     const stat = fs.statSync(targetPath);
+    const sha256 = crypto.createHash('sha256').update(fileBuf).digest('hex');
 
-    // 3. Rotacja starych kopii
-    this.rotateBackups(this.maxKeep);
+    // 3. Niezależna rotacja per-store (nie dotyka innych lokali!)
+    this.rotateBackupsForStore(storeId, this.maxKeepPerStore);
 
-    console.log(`💾 Utworzono kopię zapasową bazy danych: ${filename} (${(stat.size / 1024).toFixed(1)} KB, powód: ${reason})`);
+    console.log(`💾 [BackupManager] Utworzono kopię zapasową dla kawiarni [${storeId}]: ${filename} (${(stat.size / 1024).toFixed(1)} KB, SHA: ${sha256.substring(0, 8)})`);
 
     return {
       success: true,
       filename,
       filePath: targetPath,
       sizeBytes: stat.size,
-      timestamp: now.toISOString(),
+      timestamp: new Date().toISOString(),
       reason,
-      message: `Pomyślnie utworzono kopię zapasową bazy (${(stat.size / 1024).toFixed(1)} KB).`
+      storeId,
+      sha256,
+      message: `Pomyślnie utworzono kopię zapasową lokalu (${(stat.size / 1024).toFixed(1)} KB).`,
     };
   }
 
   /**
-   * Zwraca listę wszystkich kopii zapasowych posortowanych od najnowszych
+   * Zwraca listę kopii zapasowych dla wskazanej kawiarni (lub aktywnej)
    */
-  public listBackups(): DatabaseBackupRecord[] {
+  public listBackups(filterStoreId?: string): DatabaseBackupRecord[] {
     this.ensureDirExists();
+    const dbManager = DatabaseManager.getInstance();
+    const activeStoreId = filterStoreId || dbManager.getCurrentStoreId() || '108120';
+    const safeActiveId = this.sanitizeId(activeStoreId);
+    const isJanki = safeActiveId === '108120' || safeActiveId === '18120' || safeActiveId === '108120_janki';
+
     const files = fs.readdirSync(this.backupDir);
     const backups: DatabaseBackupRecord[] = [];
 
     for (const file of files) {
-      if (!file.endsWith('.db') || !file.startsWith('tplh_forecast_')) continue;
+      if (!file.endsWith('.db')) continue;
+
+      let belongsToStore = false;
+      let isLegacy = false;
+      let parsedStoreId = '';
+
+      // Wyodrębnij ID kawiarni z nazwy pliku za pomocą delimitera _backup_
+      const storeMatch = file.match(/^store_(.+?)_backup_/);
+      if (storeMatch) {
+        const fileStoreId = storeMatch[1].toLowerCase();
+        const isFileJanki = fileStoreId === '108120' || fileStoreId === '18120' || fileStoreId === '108120_janki';
+
+        if (fileStoreId === safeActiveId || (isJanki && isFileJanki)) {
+          belongsToStore = true;
+          parsedStoreId = fileStoreId;
+        }
+      } else if (isJanki && file.startsWith('tplh_forecast_')) {
+        // Wsteczna kompatybilność: stare kopie tplh_forecast_ przypisujemy do Janki (108120)
+        belongsToStore = true;
+        isLegacy = true;
+        parsedStoreId = '108120';
+      } else if (file.startsWith('store_')) {
+        // Fallback dla starszych lub testowych plików bez członu _backup_
+        const fallbackMatch = file.match(/^store_([^_]+)_/);
+        if (fallbackMatch) {
+          const fileStoreId = fallbackMatch[1].toLowerCase();
+          const isFileJanki = fileStoreId === '108120' || fileStoreId === '18120' || fileStoreId === '108120_janki';
+          if (fileStoreId === safeActiveId || (isJanki && isFileJanki)) {
+            belongsToStore = true;
+            parsedStoreId = fileStoreId;
+          }
+        }
+      }
+
+      if (!belongsToStore) continue;
 
       const fullPath = path.join(this.backupDir, file);
       try {
         const stat = fs.statSync(fullPath);
-
-        // Parsowanie powodu z nazwy pliku: tplh_forecast_YYYY-MM-DD_HH-mm-ss_reason.db
-        let reason = 'ręczna';
-        const parts = file.replace('.db', '').split('_');
-        if (parts.length >= 4) {
-          const rawReason = parts.slice(3).join('_');
-          reason = this.formatReason(rawReason);
-        }
-
+        const reason = this.parseReasonFromFilename(file);
         const date = stat.mtime;
+
         const formattedDate = date.toLocaleString('pl-PL', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
           hour: '2-digit',
           minute: '2-digit',
-          second: '2-digit'
+          second: '2-digit',
         });
 
         backups.push({
@@ -140,21 +253,114 @@ export class BackupManager {
           sizeBytes: stat.size,
           timestamp: date.toISOString(),
           formattedDate,
-          reason
+          reason,
+          storeId: parsedStoreId,
+          isLegacy,
         });
       } catch (err) {
         console.warn('Nie udało się odczytać pliku backupu:', file, err);
       }
     }
 
-    // Sortowanie od najnowszych do najstarszych
     return backups.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 
   /**
-   * Przywraca wskazaną kopię zapasową (z automatyczną kopią ratunkową stanu bieżącego)
+   * Głęboka inspekcja bufora bazy przed restore w celu wykrycia niezgodności kawiarni
    */
-  public restoreBackup(filename: string): { success: boolean; message: string } {
+  public async inspectBackupBuffer(buffer: Buffer | ArrayBuffer, targetStoreId: string): Promise<RestoreInspectionResult> {
+    const nodeBuf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+    const warnings: string[] = [];
+
+    // 1. Walidacja formatu SQLite
+    if (nodeBuf.length < 100 || !nodeBuf.subarray(0, 16).toString('utf-8').startsWith('SQLite format 3')) {
+      return {
+        isValid: false,
+        isStoreMatch: false,
+        sha256: '',
+        sizeBytes: nodeBuf.length,
+        targetStoreId,
+        backupStore: { storeId: '', storeName: '', unitCode: '', mpk: '' },
+        warnings: ['Plik nie jest poprawną bazą danych SQLite format 3 lub został obcięty.'],
+        error: 'Nieprawidłowy nagłówek SQLite format 3.',
+      };
+    }
+
+    const sha256 = crypto.createHash('sha256').update(nodeBuf).digest('hex');
+
+    // 2. Inicjalizacja sql.js w pamięci do inspekcji
+    if (!this.SQL) {
+      this.SQL = await initSqlJs();
+    }
+
+    let inspectDb: Database | null = null;
+    const backupStore = { storeId: '', storeName: '', unitCode: '', mpk: '' };
+
+    try {
+      inspectDb = new this.SQL.Database(nodeBuf);
+
+      // Odczyt tabeli app_settings
+      try {
+        const stmt = inspectDb!.prepare("SELECT key, value FROM app_settings WHERE key IN ('store_name', 'unit_code', 'store_mpk', 'store_id')");
+        while (stmt.step()) {
+          const row = stmt.getAsObject();
+          if (row.key === 'store_name') backupStore.storeName = String(row.value);
+          if (row.key === 'unit_code') backupStore.unitCode = String(row.value);
+          if (row.key === 'store_mpk') backupStore.mpk = String(row.value);
+          if (row.key === 'store_id') backupStore.storeId = String(row.value);
+        }
+        stmt.free();
+      } catch (_) {}
+
+      // Fallback: sprawdź tabelę stores
+      if (!backupStore.storeName || !backupStore.unitCode) {
+        try {
+          const stmtStores = inspectDb!.prepare('SELECT store_code, store_name FROM stores LIMIT 1');
+          if (stmtStores.step()) {
+            const row = stmtStores.getAsObject();
+            if (!backupStore.unitCode) backupStore.unitCode = String(row.store_code);
+            if (!backupStore.storeName) backupStore.storeName = String(row.store_name);
+          }
+          stmtStores.free();
+        } catch (_) {}
+      }
+
+      if (!backupStore.storeId) {
+        backupStore.storeId = backupStore.mpk || backupStore.unitCode || 'unknown';
+      }
+    } catch (err: any) {
+      warnings.push(`Ostrzeżenie: Nie udało się w pełni sparsować tabel wewnętrznych kopii: ${err.message}`);
+    } finally {
+      if (inspectDb) {
+        try { inspectDb.close(); } catch (_) {}
+      }
+    }
+
+    const safeTarget = this.sanitizeId(targetStoreId);
+    const safeBackup = this.sanitizeId(backupStore.storeId);
+    const isJankiAlias = (id: string) => id === '108120' || id === '18120' || id === '108120_janki';
+    const isMatch = safeTarget === safeBackup ||
+      (isJankiAlias(safeTarget) && (isJankiAlias(safeBackup) || backupStore.unitCode === '18120' || backupStore.mpk === '108120'));
+
+    if (!isMatch && backupStore.storeId && backupStore.storeId !== 'unknown') {
+      warnings.push(`Kopia zapasowa pochodzi z kawiarni [${backupStore.storeName || backupStore.storeId}], natomiast docelowa kawiarnia to [${targetStoreId}].`);
+    }
+
+    return {
+      isValid: true,
+      isStoreMatch: isMatch,
+      sha256,
+      sizeBytes: nodeBuf.length,
+      targetStoreId,
+      backupStore,
+      warnings,
+    };
+  }
+
+  /**
+   * Przywraca kopię zapasową z pliku z walidacją tożsamości kawiarni
+   */
+  public async restoreBackup(filename: string, forceRestore: boolean = false): Promise<{ success: boolean; message: string; inspection?: RestoreInspectionResult }> {
     this.ensureDirExists();
     const backupPath = path.join(this.backupDir, filename);
 
@@ -163,72 +369,93 @@ export class BackupManager {
     }
 
     const dbManager = DatabaseManager.getInstance();
+    const currentStoreId = dbManager.getCurrentStoreId() || '108120';
     const dbFilePath = dbManager.getDbFilePath();
 
-    // 1. Bezpieczeństwo: Kopia ratunkowa aktualnej bazy przed nadpisaniem
+    const buffer = fs.readFileSync(backupPath);
+    const inspection = await this.inspectBackupBuffer(buffer, currentStoreId);
+
+    if (!inspection.isValid) {
+      throw new Error(`Walidacja pliku nie powiodła się: ${inspection.error || inspection.warnings.join('; ')}`);
+    }
+
+    if (!inspection.isStoreMatch && !forceRestore) {
+      return {
+        success: false,
+        message: `Odcięcie bezpieczeństwa: Kopia pochodzi z lokalu [${inspection.backupStore.storeName || inspection.backupStore.storeId}], a aktywny lokal to [${currentStoreId}]. Użyj opcji wymuszenia (forceRestore: true) aby nadpisać.`,
+        inspection,
+      };
+    }
+
+    // Kopia ratunkowa przed nadpisaniem
     if (fs.existsSync(dbFilePath)) {
       try {
-        this.createBackup('pre_restore_safety');
+        this.createBackup('pre_restore_safety', currentStoreId);
       } catch (e) {
         console.warn('Ostrzeżenie: Nie udało się utworzyć kopii ratunkowej przed przywracaniem:', e);
       }
     }
 
-    // 2. Nadpisanie bazy plikiem z kopii
     fs.copyFileSync(backupPath, dbFilePath);
-
-    // 3. Przeładowanie bazy w silniku SQLite
     dbManager.reloadFromDisk();
 
-    console.log(`🔄 Przywrócono bazę danych z pliku: ${filename}`);
+    console.log(`🔄 [BackupManager] Przywrócono bazę kawiarni [${currentStoreId}] z pliku: ${filename}`);
 
     return {
       success: true,
-      message: `Pomyślnie przywrócono bazę danych z kopii: ${filename}. Dane zostały odświeżone.`
+      message: `Pomyślnie przywrócono bazę danych z kopii: ${filename}. Dane zostały odświeżone.`,
+      inspection,
     };
   }
 
   /**
-   * Przywraca bazę danych bezpośrednio z bufora binarnego (np. z pliku wgrany w kreatorze Onboarding)
+   * Przywraca bazę danych bezpośrednio z bufora binarnego (np. wgrany w Onboardingu)
    */
-  public restoreFromBuffer(buffer: ArrayBuffer | Buffer): { success: boolean; message: string } {
+  public async restoreFromBuffer(buffer: ArrayBuffer | Buffer, forceRestore: boolean = false): Promise<{ success: boolean; message: string; inspection?: RestoreInspectionResult }> {
     const dbManager = DatabaseManager.getInstance();
+    const currentStoreId = dbManager.getCurrentStoreId() || '108120';
     const dbFilePath = dbManager.getDbFilePath();
 
     const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+    const inspection = await this.inspectBackupBuffer(nodeBuffer, currentStoreId);
 
-    // Walidacja nagłówka SQLite (SQLite format 3)
-    if (nodeBuffer.length < 16 || !nodeBuffer.subarray(0, 16).toString('utf-8').startsWith('SQLite format 3')) {
-      throw new Error('Przekazany plik nie jest poprawną bazą danych SQLite format 3.');
+    if (!inspection.isValid) {
+      throw new Error(`Walidacja pliku nie powiodła się: ${inspection.error || inspection.warnings.join('; ')}`);
     }
 
-    // 1. Bezpieczeństwo: Kopia ratunkowa aktualnej bazy przed nadpisaniem
+    if (!inspection.isStoreMatch && !forceRestore) {
+      return {
+        success: false,
+        message: `Odcięcie bezpieczeństwa: Kopia pochodzi z lokalu [${inspection.backupStore.storeName || inspection.backupStore.storeId}], a aktywny lokal to [${currentStoreId}]. Użyj opcji wymuszenia (forceRestore: true) aby nadpisać.`,
+        inspection,
+      };
+    }
+
+    // Kopia ratunkowa przed nadpisaniem
     if (fs.existsSync(dbFilePath)) {
       try {
-        this.createBackup('pre_restore_safety');
+        this.createBackup('pre_restore_safety', currentStoreId);
       } catch (e) {
         console.warn('Ostrzeżenie: Nie udało się utworzyć kopii ratunkowej przed przywracaniem:', e);
       }
     }
 
-    // 2. Zapisz bufor do pliku docelowego bazy SQLite
     fs.writeFileSync(dbFilePath, nodeBuffer);
-
-    // 3. Przeładuj bazę w silniku SQLite
     dbManager.reloadFromDisk();
 
-    console.log(`🔄 Pomyślnie przywrócono bazę danych z bufora (${(nodeBuffer.length / (1024 * 1024)).toFixed(2)} MB).`);
+    console.log(`🔄 [BackupManager] Przywrócono bazę kawiarni [${currentStoreId}] z bufora (${(nodeBuffer.length / (1024 * 1024)).toFixed(2)} MB).`);
 
     return {
       success: true,
-      message: `Pomyślnie przywrócono bazę danych ze wskazanego pliku (${(nodeBuffer.length / (1024 * 1024)).toFixed(2)} MB).`
+      message: `Pomyślnie przywrócono bazę danych ze wskazanego pliku (${(nodeBuffer.length / (1024 * 1024)).toFixed(2)} MB).`,
+      inspection,
     };
   }
 
   /**
    * Pobiera aktualny status bazy danych i podsumowanie kopii zapasowych
    */
-  public getDatabaseStatus(): DatabaseStatus {
+  public getDatabaseStatus(filterStoreId?: string): DatabaseStatus {
     const dbManager = DatabaseManager.getInstance();
     const dbFilePath = dbManager.getDbFilePath();
     const exists = fs.existsSync(dbFilePath);
@@ -242,7 +469,7 @@ export class BackupManager {
       lastModified = stat.mtime.toLocaleString('pl-PL');
     }
 
-    const backups = this.listBackups();
+    const backups = this.listBackups(filterStoreId);
 
     return {
       dbPath: dbFilePath,
@@ -250,18 +477,18 @@ export class BackupManager {
       sizeBytes,
       lastModified,
       backupsCount: backups.length,
-      latestBackup: backups[0]
+      latestBackup: backups[0],
     };
   }
 
   /**
-   * Rotacja: usuwa najstarsze kopie zapasowe, jeśli przekraczają limit maxKeep
+   * Niezależna rotacja kopii zapasowych dla konkretnej kawiarni (max 15)
    */
-  private rotateBackups(maxKeep: number): number {
-    const backups = this.listBackups();
-    if (backups.length <= maxKeep) return 0;
+  public rotateBackupsForStore(storeId: string, maxKeep: number = 15): number {
+    const storeBackups = this.listBackups(storeId);
+    if (storeBackups.length <= maxKeep) return 0;
 
-    const toDelete = backups.slice(maxKeep);
+    const toDelete = storeBackups.slice(maxKeep);
     let deletedCount = 0;
 
     for (const b of toDelete) {
@@ -274,7 +501,7 @@ export class BackupManager {
     }
 
     if (deletedCount > 0) {
-      console.log(`🧹 Usunięto ${deletedCount} najstarszych kopii zapasowych (limit: ${maxKeep}).`);
+      console.log(`🧹 [BackupManager] Usunięto ${deletedCount} najstarszych kopii dla lokalu [${storeId}] (limit: ${maxKeep}).`);
     }
 
     return deletedCount;
@@ -285,18 +512,47 @@ export class BackupManager {
    */
   public checkAndPerformStartupBackup(): void {
     try {
-      const backups = this.listBackups();
+      const dbManager = DatabaseManager.getInstance();
+      const currentStoreId = dbManager.getCurrentStoreId() || '108120';
+      const backups = this.listBackups(currentStoreId);
       const now = Date.now();
       const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
       const shouldBackup = backups.length === 0 || (now - new Date(backups[0].timestamp).getTime() > SIX_HOURS_MS);
 
       if (shouldBackup) {
-        this.createBackup('auto_startup');
+        this.createBackup('auto_startup', currentStoreId);
       }
     } catch (err) {
       console.error('Błąd podczas wykonywania automatycznego backupu startowego:', err);
     }
+  }
+
+  private parseReasonFromFilename(filename: string): string {
+    // 1. Dopasowanie ze standardowego wzorca: store_<storeId>_backup_<timestamp>_<reason>.db
+    const storeMatch = filename.match(/^store_.+?_backup_\d{4}-\d{2}-\d{2}(?:_\d{2}-\d{2}-\d{2})?(?:_\d{3})?_(.+?)\.db$/);
+    if (storeMatch) {
+      return this.formatReason(storeMatch[1]);
+    }
+
+    // 2. Wzorzec dla plików legacy: tplh_forecast_<timestamp>_<reason>.db
+    const tplhMatch = filename.match(/^tplh_forecast_\d{4}-\d{2}-\d{2}(?:_\d{2}-\d{2}-\d{2})?(?:_\d{3})?_(.+?)\.db$/);
+    if (tplhMatch) {
+      return this.formatReason(tplhMatch[1]);
+    }
+
+    // 3. Fallback dla nietypowych nazw
+    const name = filename.replace('.db', '');
+    const parts = name.split('_');
+    if (name.startsWith('tplh_forecast_') && parts.length >= 4) {
+      const raw = parts.slice(3).join('_');
+      return this.formatReason(raw);
+    }
+    if (name.startsWith('store_') && parts.length >= 6) {
+      const raw = parts.slice(5).join(' ');
+      return this.formatReason(raw);
+    }
+    return 'ręczna';
   }
 
   private formatReason(raw: string): string {
@@ -311,6 +567,20 @@ export class BackupManager {
       case 'pre_import':
       case 'pre_import_mapal':
         return 'Przed importem MAPAL Fichajes';
+      case 'post_import_mapal':
+        return 'Po imporcie MAPAL Fichajes';
+      case 'pre_import_aop':
+        return 'Przed importem planu AOP';
+      case 'post_import_aop':
+        return 'Po imporcie planu AOP';
+      case 'pre_import_schedules':
+        return 'Przed importem grafików';
+      case 'post_import_schedules':
+        return 'Po imporcie grafików';
+      case 'pre_import_daily_kpi':
+        return 'Przed importem dziennych KPI';
+      case 'post_import_daily_kpi':
+        return 'Po imporcie dziennych KPI';
       case 'pre_restore_safety':
         return 'Kopia ratunkowa przed przywracaniem';
       case 'pre_vacuum':

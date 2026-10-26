@@ -95,19 +95,21 @@ export class AuthService {
   }
 
   /**
-   * Szybkie logowanie Store Managera (Dawid Apel) na zapleczu
+   * Szybkie logowanie Store Managera na stacji roboczej zaplecza
    */
-  public static quickLoginStoreManager(storeUnitCode: string = '18120'): AuthUserSession {
-    const smEmail = 'dawid.apel@amrest.eu';
-    let user = AdminService.getUserByEmail(smEmail);
-    
-    if (!user) {
-      // Rejestrujemy domyślnego SM jeśli brak
-      user = {
-        id: 'usr_sm_dawid_apel',
+  public static quickLoginStoreManager(storeUnitCode: string = ''): AuthUserSession {
+    const users = AdminService.getUsers();
+    let smUser = users.find(u => u.role === 'STORE_MANAGER' && u.isActive);
+
+    const storedName = localStorage.getItem('sbx_user_name') || 'Store Manager';
+    const storedEmail = localStorage.getItem('sbx_user_email') || (storeUnitCode ? `manager.${storeUnitCode}@amrest.eu` : 'manager@amrest.eu');
+
+    if (!smUser) {
+      smUser = {
+        id: `usr_sm_${Date.now()}`,
         storeUnitCode,
-        fullName: 'Dawid Apel',
-        email: smEmail,
+        fullName: storedName,
+        email: storedEmail,
         role: 'STORE_MANAGER',
         isActive: true,
         permissions: ROLE_DEFAULT_PERMISSIONS.STORE_MANAGER,
@@ -116,33 +118,35 @@ export class AuthService {
         sessionVersion: 1,
         createdAt: new Date().toISOString(),
       };
+      users.push(smUser);
+      localStorage.setItem('sbx_admin_managed_users', JSON.stringify(users));
     }
 
     const session: AuthUserSession = {
-      userId: user.id,
-      storeUnitCode: user.storeUnitCode || storeUnitCode,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-      permissions: user.permissions,
+      userId: smUser.id,
+      storeUnitCode: smUser.storeUnitCode || storeUnitCode,
+      fullName: smUser.fullName,
+      email: smUser.email,
+      role: smUser.role,
+      permissions: smUser.permissions,
       sessionToken: `tok_sm_${Date.now()}`,
-      sessionVersion: user.sessionVersion,
+      sessionVersion: smUser.sessionVersion,
       deviceName: this.getDeviceName(),
       deviceFingerprint: this.getDeviceFingerprint(),
       loginAt: new Date().toISOString(),
     };
 
     localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
-    localStorage.setItem('sbx_user_name', user.fullName);
-    localStorage.setItem('sbx_user_email', user.email);
+    localStorage.setItem('sbx_user_name', smUser.fullName);
+    localStorage.setItem('sbx_user_email', smUser.email);
     localStorage.setItem('sbx_user_role', 'Store Manager (SM)');
 
     AdminService.addAuditLog({
-      actorName: user.fullName,
+      actorName: smUser.fullName,
       actorRole: 'STORE_MANAGER',
       actionType: 'LOGIN_2FA',
       targetResource: 'system:root_admin',
-      details: `Szybkie uwierzytelnienie Store Managera na zapleczu kawiarni ${storeUnitCode}`,
+      details: `Uwierzytelnienie Store Managera na zapleczu kawiarni ${storeUnitCode || ''}`,
       deviceName: this.getDeviceName(),
     });
 
@@ -152,7 +156,7 @@ export class AuthService {
   /**
    * Żądanie wysłania 6-cyfrowego kodu 2FA na adres e-mail
    */
-  public static async request2FaOtp(email: string, storeUnitCode: string = '18120'): Promise<{
+  public static async request2FaOtp(email: string, storeUnitCode: string = ''): Promise<{
     success: boolean;
     message: string;
     isPendingApproval?: boolean;
@@ -174,10 +178,12 @@ export class AuthService {
       // Sprawdź czy jest w kolejce oczekujących
       const pendingReq = AdminService.getRequestByEmail(cleanEmail);
       if (pendingReq) {
+        const smUser = AdminService.getUsers().find(u => u.role === 'STORE_MANAGER' && u.isActive);
+        const smName = smUser ? ` (${smUser.fullName})` : '';
         return {
           success: false,
           isPendingApproval: true,
-          message: `Twój wniosek z dnia ${new Date(pendingReq.createdAt).toLocaleDateString('pl-PL')} oczekuje na zatwierdzenie przez Store Managera (Dawid Apel).`,
+          message: `Twój wniosek z dnia ${new Date(pendingReq.createdAt).toLocaleDateString('pl-PL')} oczekuje na zatwierdzenie przez Store Managera${smName}.`,
         };
       }
 
@@ -322,9 +328,11 @@ export class AuthService {
       requestNote: payload.requestNote,
     });
 
+    const smUser = AdminService.getUsers().find(u => u.role === 'STORE_MANAGER' && u.isActive);
+    const smName = smUser ? ` (${smUser.fullName})` : '';
     return {
       success: true,
-      message: 'Wniosek o dostęp został przekazany do Store Managera (Dawid Apel). Po zatwierdzeniu będziesz mógł zalogować się do aplikacji.',
+      message: `Wniosek o dostęp został przekazany do Store Managera${smName}. Po zatwierdzeniu będziesz mógł zalogować się do aplikacji.`,
       request,
     };
   }

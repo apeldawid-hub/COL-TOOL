@@ -21,6 +21,7 @@ import { APP_VERSION, APP_SHORT_NAME } from '../version';
 import { useStore } from '../context/StoreContext';
 import { StoreSwitcherModal } from './StoreSwitcherModal';
 import { AuthService, AuthUserSession } from '../services/auth/authService';
+import { AdminService } from '../services/admin/adminService';
 import { AppUserRole } from '../types/admin';
 
 interface LoginViewProps {
@@ -51,6 +52,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [regSuccess, setRegSuccess] = useState(false);
 
   const deviceName = AuthService.getDeviceName();
+  const smUser = AdminService.getUsers().find(u => u.role === 'STORE_MANAGER' && u.isActive);
+  const smDisplayName = smUser?.fullName || localStorage.getItem('sbx_user_name') || 'Store Manager';
+  const smDisplayEmail = smUser?.email || localStorage.getItem('sbx_user_email') || (currentStore.unitCode ? `manager.${currentStore.unitCode}@amrest.eu` : 'manager@amrest.eu');
 
   // Czyszczenie komunikatów przy zmianie zakładki
   useEffect(() => {
@@ -276,7 +280,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                   <span className="text-stone-500 font-medium">Kierownik Kawiarni:</span>
                   <span className="font-bold text-stone-900 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-stone-500" />
-                    Dawid Apel
+                    {smDisplayName}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -297,7 +301,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                   <span className="text-stone-500 font-medium">E-mail służbowy:</span>
                   <span className="font-mono text-stone-600 text-[11px] flex items-center gap-1.5">
                     <Mail className="w-3.5 h-3.5 text-stone-400" />
-                    dawid.apel@amrest.eu
+                    {smDisplayEmail}
                   </span>
                 </div>
               </div>

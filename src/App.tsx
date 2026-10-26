@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { LoginView } from './components/LoginView';
@@ -14,6 +14,7 @@ import { AdminConsoleModal } from './components/admin/AdminConsoleModal';
 import { AdminService } from './services/admin/adminService';
 import { AuthService } from './services/auth/authService';
 import { useStore } from './context/StoreContext';
+import { StoreService } from './services/storeService';
 import {
   LaborForecastView,
   ImportModal,
@@ -58,7 +59,7 @@ export const App: React.FC = () => {
   // null = trwa weryfikacja z bazą SQLite / ustawieniami, true = ukończono, false = nowe uruchomienie
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(() => {
     try {
-      if (localStorage.getItem('sbx_onboarding_completed') === 'true') {
+      if (StoreService.hasConfiguredStore()) {
         return true;
       }
     } catch {}
@@ -75,8 +76,7 @@ export const App: React.FC = () => {
           const res = await apiObj.getAppSettings();
           if (res && isMounted) {
             const { settings, hasCompletedOnboarding: isCompleted, hasExistingData } = res;
-            if (isCompleted || hasExistingData) {
-              setHasCompletedOnboarding(true);
+            if (isCompleted) {
               try {
                 localStorage.setItem('sbx_onboarding_completed', 'true');
                 if (settings?.store_name) localStorage.setItem('sbx_store_name', settings.store_name);
@@ -87,10 +87,15 @@ export const App: React.FC = () => {
                 if (settings?.sbx_tutorial_mode !== undefined) localStorage.setItem('sbx_tutorial_mode', settings.sbx_tutorial_mode);
               } catch {}
 
-              if (settings?.user_name && settings?.user_role) {
-                setLoggedInUser(`${settings.user_name} (${settings.user_role.replace(/[^A-Z]/g, '')})`);
-              } else if (settings?.user_role) {
-                setLoggedInUser(settings.user_role);
+              const isStoreConfigured = StoreService.hasConfiguredStore();
+              setHasCompletedOnboarding(isStoreConfigured);
+
+              if (isStoreConfigured) {
+                if (settings?.user_name && settings?.user_role) {
+                  setLoggedInUser(`${settings.user_name} (${settings.user_role.replace(/[^A-Z]/g, '')})`);
+                } else if (settings?.user_role) {
+                  setLoggedInUser(settings.user_role);
+                }
               }
               return;
             } else {
@@ -105,7 +110,7 @@ export const App: React.FC = () => {
 
       if (isMounted) {
         try {
-          setHasCompletedOnboarding(localStorage.getItem('sbx_onboarding_completed') === 'true');
+          setHasCompletedOnboarding(StoreService.hasConfiguredStore());
         } catch {
           setHasCompletedOnboarding(false);
         }
@@ -297,90 +302,11 @@ export const App: React.FC = () => {
           if (mgrData.employees) setManagerEmployees(mgrData.employees);
         }
       } else {
-        // Mock fallback do testów w przeglądarce
-        console.warn('Uruchomiono poza Electronem - używanie mockowych danych demonstracyjnych.');
-        const mockPlan: AopPlanRecord = {
-          key: `${selectedYear}_${selectedMonth}`,
-          year: selectedYear,
-          month: selectedMonth,
-          month_code: 'M09',
-          weeks_count: 5,
-          plan_trx: 10830,
-          target_tplh: 6.7,
-          labor_budget: 1616.4,
-          avg_weekly_hours: 323.3,
-        };
-        const mockWeeks: WeekRecord[] = [
-          {
-            week_key: `${selectedYear}_${selectedMonth}_W1`,
-            year: selectedYear,
-            month_name: selectedMonth,
-            week_num_in_month: 'W1',
-            days_count: 7,
-            week_type: 'Pełny (7 dni)',
-            date_from: '01.09',
-            date_to: '07.09',
-            floor_hours: 272.0,
-            day_weight: 0.23333,
-          },
-          {
-            week_key: `${selectedYear}_${selectedMonth}_W2`,
-            year: selectedYear,
-            month_name: selectedMonth,
-            week_num_in_month: 'W2',
-            days_count: 7,
-            week_type: 'Pełny (7 dni)',
-            date_from: '08.09',
-            date_to: '14.09',
-            floor_hours: 272.0,
-            day_weight: 0.23333,
-          },
-          {
-            week_key: `${selectedYear}_${selectedMonth}_W3`,
-            year: selectedYear,
-            month_name: selectedMonth,
-            week_num_in_month: 'W3',
-            days_count: 7,
-            week_type: 'Pełny (7 dni)',
-            date_from: '15.09',
-            date_to: '21.09',
-            floor_hours: 272.0,
-            day_weight: 0.23333,
-          },
-          {
-            week_key: `${selectedYear}_${selectedMonth}_W4`,
-            year: selectedYear,
-            month_name: selectedMonth,
-            week_num_in_month: 'W4',
-            days_count: 7,
-            week_type: 'Pełny (7 dni)',
-            date_from: '22.09',
-            date_to: '28.09',
-            floor_hours: 272.0,
-            day_weight: 0.23333,
-          },
-          {
-            week_key: `${selectedYear}_${selectedMonth}_W5`,
-            year: selectedYear,
-            month_name: selectedMonth,
-            week_num_in_month: 'W5',
-            days_count: 2,
-            week_type: 'Niepełny (2 dni)',
-            date_from: '29.09',
-            date_to: '30.09',
-            floor_hours: 80.0,
-            day_weight: 0.06667,
-          },
-        ];
-        setAopPlan(mockPlan);
-        setWeeks(mockWeeks);
-        setActualHoursMap({
-          [`${selectedYear}_${selectedMonth}_W1`]: 333.9,
-          [`${selectedYear}_${selectedMonth}_W2`]: 43.4,
-        });
-        setWeeklyTrxMap({
-          [`${selectedYear}_${selectedMonth}_W1`]: 2050,
-        });
+        // Poza Electronem — czysty stan początkowy
+        setAopPlan(null);
+        setWeeks([]);
+        setActualHoursMap({});
+        setWeeklyTrxMap({});
       }
     } catch (err) {
       console.error('Błąd ładowania danych miesiąca:', err);
@@ -388,6 +314,49 @@ export const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [selectedYear, selectedMonth]);
+
+  const pendingTrxTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSchedTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeStoreIdRef = useRef<string>(currentStore.id);
+
+  useEffect(() => {
+    activeStoreIdRef.current = currentStore.id;
+  }, [currentStore.id]);
+
+  // Resetowanie stanu App.tsx na zdarzenie 'sbx:store-switching' oraz przeładowanie na 'sbx:store-switched'
+  useEffect(() => {
+    const onSwitching = () => {
+      // 1. Skasuj oczekujące debouncowane zapisy
+      if (pendingTrxTimerRef.current) {
+        clearTimeout(pendingTrxTimerRef.current);
+        pendingTrxTimerRef.current = null;
+      }
+      if (pendingSchedTimerRef.current) {
+        clearTimeout(pendingSchedTimerRef.current);
+        pendingSchedTimerRef.current = null;
+      }
+      // 2. Wyczyść dane pamięci podręcznej, aby nie mignęły dane poprzedniego lokalu
+      setAopPlan(null);
+      setWeeks([]);
+      setActualHoursMap({});
+      setWeeklyTrxMap({});
+      setScheduledHoursMap({});
+      setManagerShifts([]);
+      setManagerEmployees([]);
+      setIsLoading(true);
+    };
+
+    const onSwitched = () => {
+      loadMonthData();
+    };
+
+    window.addEventListener('sbx:store-switching', onSwitching);
+    window.addEventListener('sbx:store-switched', onSwitched);
+    return () => {
+      window.removeEventListener('sbx:store-switching', onSwitching);
+      window.removeEventListener('sbx:store-switched', onSwitched);
+    };
+  }, [loadMonthData]);
 
   useEffect(() => {
     loadMonthData();
@@ -400,24 +369,34 @@ export const App: React.FC = () => {
     }
   }, [loadMonthData, activeModule]);
 
-  // Zapisanie wprowadzonych przez Store Managera transakcji TRX
+  // Zapisanie wprowadzonych przez Store Managera transakcji TRX (SaveShield)
   const handleSaveTrx = async (weekKey: string, trx: number | null) => {
+    const capturedStoreId = activeStoreIdRef.current;
     setWeeklyTrxMap((prev) => ({
       ...prev,
       [weekKey]: trx,
     }));
 
-    if ((window as any).api?.saveWeeklyTrx) {
-      try {
-        await (window as any).api.saveWeeklyTrx(weekKey, trx);
-      } catch (err) {
-        console.error('Błąd zapisu TRX:', err);
+    if (pendingTrxTimerRef.current) clearTimeout(pendingTrxTimerRef.current);
+
+    pendingTrxTimerRef.current = setTimeout(async () => {
+      if (activeStoreIdRef.current !== capturedStoreId) {
+        console.warn(`[SaveShield] Odrzucono zapis TRX: sklep zmienił się z ${capturedStoreId} na ${activeStoreIdRef.current}`);
+        return;
       }
-    }
+      if ((window as any).api?.saveWeeklyTrx) {
+        try {
+          await (window as any).api.saveWeeklyTrx(weekKey, trx);
+        } catch (err) {
+          console.error('Błąd zapisu TRX:', err);
+        }
+      }
+    }, 400);
   };
 
-  // Zapisanie wprowadzonych przez Store Managera zaplanowanych godzin (Scheduled Hours)
+  // Zapisanie wprowadzonych przez Store Managera zaplanowanych godzin (SaveShield)
   const handleSaveScheduledHours = async (weekKey: string, hours: number | null) => {
+    const capturedStoreId = activeStoreIdRef.current;
     setScheduledHoursMap((prev) => {
       const copy = { ...prev };
       if (hours === null || hours <= 0) {
@@ -428,13 +407,21 @@ export const App: React.FC = () => {
       return copy;
     });
 
-    if ((window as any).api?.saveWeeklyScheduledHours) {
-      try {
-        await (window as any).api.saveWeeklyScheduledHours(weekKey, hours);
-      } catch (err) {
-        console.error('Błąd zapisu zaplanowanych godzin:', err);
+    if (pendingSchedTimerRef.current) clearTimeout(pendingSchedTimerRef.current);
+
+    pendingSchedTimerRef.current = setTimeout(async () => {
+      if (activeStoreIdRef.current !== capturedStoreId) {
+        console.warn(`[SaveShield] Odrzucono zapis Scheduled Hours: sklep zmienił się z ${capturedStoreId} na ${activeStoreIdRef.current}`);
+        return;
       }
-    }
+      if ((window as any).api?.saveWeeklyScheduledHours) {
+        try {
+          await (window as any).api.saveWeeklyScheduledHours(weekKey, hours);
+        } catch (err) {
+          console.error('Błąd zapisu zaplanowanych godzin:', err);
+        }
+      }
+    }, 400);
   };
 
   // Wyliczanie metryk
@@ -483,7 +470,26 @@ export const App: React.FC = () => {
     return (
       <>
         <OnboardingWizardView
-          onComplete={(config) => {
+          onComplete={async (config) => {
+            // 1. Zidentyfikuj i przełącz aktywną kawiarnię (co inicjalizuje dedykowaną bazę store_${id}.db)
+            const allStores = StoreService.getAllStores();
+            const chosenStore = allStores.find(
+              (s) => s.unitCode === config.unitCode || s.name === config.storeName
+            ) || {
+              id: config.unitCode || 'custom_store',
+              name: config.storeName,
+              shortName: config.storeName.replace(/^108\d{3}\s*/, '').replace(/^SBX\s*/, ''),
+              unitCode: config.unitCode,
+              mpk: config.unitCode,
+              city: 'Polska',
+              district: 'Dystrykt Starbucks',
+              address: '',
+              type: 'Mall',
+            };
+
+            await StoreService.setCurrentStore(chosenStore);
+
+            // 2. Trwale zapisz flagę zakończenia onboardingu i dane użytkownika
             try {
               localStorage.setItem('sbx_onboarding_completed', 'true');
               localStorage.setItem('sbx_store_name', config.storeName);
@@ -495,11 +501,14 @@ export const App: React.FC = () => {
 
             const apiObj = (window as any).api || (window as any).electronAPI;
             if (apiObj?.saveAppSettings) {
-              apiObj.saveAppSettings({
+              await apiObj.saveAppSettings({
                 sbx_onboarding_completed: 'true',
                 onboarding_completed: 'true',
                 store_name: config.storeName,
                 unit_code: config.unitCode,
+                store_mpk: chosenStore.mpk,
+                store_city: chosenStore.city,
+                store_district: chosenStore.district,
                 user_name: config.userName,
                 user_role: config.role,
                 user_email: config.userEmail,
@@ -597,6 +606,7 @@ export const App: React.FC = () => {
           {activeModule === 'dashboard' && (
             <ErrorBoundary moduleName="Dashboard" fallbackTitle="Błąd w pulpicie głównym">
               <DashboardView
+                key={`dashboard-${currentStore.id}-${selectedYear}-${selectedMonth}`}
                 onNavigate={setActiveModule}
                 selectedYear={selectedYear}
                 selectedMonth={selectedMonth}
@@ -608,6 +618,7 @@ export const App: React.FC = () => {
           {activeModule === 'managers_schedule' && (
             <ErrorBoundary moduleName="Managers Schedule" fallbackTitle="Błąd w module Grafiku Managerskiego">
               <ManagerScheduleView
+                key={`mgr-sched-${currentStore.id}-${selectedYear}-${selectedMonth}`}
                 currentYear={selectedYear}
                 currentMonthName={selectedMonth}
               />
@@ -618,6 +629,7 @@ export const App: React.FC = () => {
           {activeModule === 'labor_forecast' && (
             <ErrorBoundary moduleName="Labor Forecast" fallbackTitle="Błąd w module TPLH Forecast & Labor">
               <LaborForecastView
+                key={`labor-forecast-${currentStore.id}-${selectedYear}-${selectedMonth}`}
                 currentYear={selectedYear}
                 currentMonthName={selectedMonth}
                 aopPlan={aopPlan}
@@ -660,6 +672,7 @@ export const App: React.FC = () => {
                 onNavigate={setActiveModule}
               >
                 <TrainingsView
+                  key={`trainings-${currentStore.id}-${selectedYear}-${selectedMonth}`}
                   selectedYear={selectedYear}
                   selectedMonth={DEFAULT_MONTHS.indexOf(selectedMonth) + 1}
                 />
@@ -684,6 +697,7 @@ export const App: React.FC = () => {
                 onNavigate={setActiveModule}
               >
                 <ColCalculatorView
+                  key={`col-calc-${currentStore.id}-${selectedYear}-${selectedMonth}`}
                   selectedYear={selectedYear}
                   selectedMonth={selectedMonth}
                 />
@@ -715,6 +729,7 @@ export const App: React.FC = () => {
                 onNavigate={setActiveModule}
               >
                 <ModulePlaceholderView
+                  key={`placeholder-${currentStore.id}-${activeModule}-${selectedYear}-${selectedMonth}`}
                   module={activeModule}
                   onNavigate={setActiveModule}
                 />
@@ -814,7 +829,7 @@ export const App: React.FC = () => {
           setPendingRequestsCount(AdminService.getPendingRequests().length);
         }}
         adminName={loggedInUser}
-        storeUnitCode={currentStore?.unitCode || '18120'}
+        storeUnitCode={currentStore?.unitCode || ''}
       />
 
       {/* Okno Interaktywnego Animowanego Samouczka Modelowego */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Target, Save, CheckCircle2, RotateCcw, Sparkles, TrendingUp, Calendar } from 'lucide-react';
 import { AopPlanRecord } from '../../../types';
+import { useStore } from '../../../context/StoreContext';
 
 interface AopManagerModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const AopManagerModal: React.FC<AopManagerModalProps> = ({
   onYearChange,
   onSaveSuccess,
 }) => {
+  const { currentStore } = useStore();
   const [aopYear, setAopYear] = useState<number>(selectedYear);
   const [plans, setPlans] = useState<AopPlanRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,10 +62,10 @@ export const AopManagerModal: React.FC<AopManagerModalProps> = ({
         month: m,
         month_code: `M${String(idx + 1).padStart(2, '0')}`,
         weeks_count: [2, 5, 8, 11].includes(idx) ? 6 : 5,
-        plan_trx: 10800,
-        target_tplh: 6.70,
-        labor_budget: Number((10800 / 6.70).toFixed(1)),
-        avg_weekly_hours: Number(((10800 / 6.70) / 5).toFixed(1)),
+        plan_trx: 0,
+        target_tplh: 0,
+        labor_budget: 0,
+        avg_weekly_hours: 0,
       }));
       setPlans(mock);
     } catch (err) {
@@ -153,7 +155,7 @@ export const AopManagerModal: React.FC<AopManagerModalProps> = ({
               <h3 className="text-lg font-black text-[#1E3932] flex items-center gap-2">
                 Moduł Planowania AOP (Annual Operating Plan)
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E8F5E9] text-[#006241] border border-[#C8E6C9]">
-                  Lokal 18120
+                  Lokal {currentStore.unitCode || currentStore.shortName || 'Aktywny'}
                 </span>
               </h3>
               <p className="text-xs text-[#5C6F68]">

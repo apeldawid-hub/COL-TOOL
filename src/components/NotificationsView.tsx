@@ -29,12 +29,14 @@ import {
   NotificationSeverity,
 } from '../services/desktopNotificationService';
 import { AppModule } from '../types';
+import { useStore } from '../context/StoreContext';
 
 interface NotificationsViewProps {
   onNavigate: (module: AppModule) => void;
 }
 
 export const NotificationsView: React.FC<NotificationsViewProps> = ({ onNavigate }) => {
+  const { currentStore } = useStore();
   const [notifications, setNotifications] = useState<DesktopNotification[]>(() =>
     desktopNotificationService.getNotifications()
   );
@@ -177,7 +179,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({ onNavigate
             <div className="flex items-center gap-2.5">
               <h2 className="text-xl font-black tracking-tight">Centrum Powiadomień Desktop</h2>
               <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#CBA258] text-[#1E3932] font-black uppercase tracking-wider">
-                108120 Janki
+                {currentStore.shortName || currentStore.name || 'Lokal Aktywny'}
               </span>
             </div>
             <p className="text-xs text-emerald-100/80 mt-1">

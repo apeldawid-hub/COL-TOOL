@@ -52,6 +52,7 @@ import {
   DesktopNotification,
 } from '../services/desktopNotificationService';
 import { APP_VERSION } from '../version';
+import { useStore } from '../context/StoreContext';
 
 export type NotificationCategoryMode = 'desktop' | 'email';
 type TemplateType = 'welcome' | 'schedule_published' | 'labor_law_alert' | 'tplh_weekly' | 'install_ping' | 'test';
@@ -65,6 +66,7 @@ export const NotificationsSettingsTab: React.FC<NotificationsSettingsTabProps> =
   initialMode = 'desktop',
   onRefreshData,
 }) => {
+  const { currentStore } = useStore();
   // GŁÓWNY PODZIAŁ: POWIADOMIENIA W APLIKACJI VS POWIADOMIENIA EMAIL
   const [activeCategory, setActiveCategory] = useState<NotificationCategoryMode>(initialMode);
 
@@ -270,8 +272,8 @@ export const NotificationsSettingsTab: React.FC<NotificationsSettingsTabProps> =
 
   // Generowanie HTML dla wybranego szablonu e-mail
   const getPreviewHtml = (): string => {
-    const storeName = localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki';
-    const unitCode = localStorage.getItem('sbx_unit_code') || '18120';
+    const storeName = currentStore.name || localStorage.getItem('sbx_store_name') || 'Starbucks Store';
+    const unitCode = currentStore.unitCode || currentStore.mpk || localStorage.getItem('sbx_unit_code') || '';
 
     switch (selectedTemplate) {
       case 'welcome': {
@@ -356,8 +358,8 @@ export const NotificationsSettingsTab: React.FC<NotificationsSettingsTabProps> =
 
     setIsSendingTest(true);
     try {
-      const storeName = localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki';
-      const unitCode = localStorage.getItem('sbx_unit_code') || '18120';
+      const storeName = currentStore.name || localStorage.getItem('sbx_store_name') || 'Starbucks Store';
+      const unitCode = currentStore.unitCode || currentStore.mpk || localStorage.getItem('sbx_unit_code') || '';
       let res: { success: boolean; id?: string; error?: string };
 
       switch (selectedTemplate) {
@@ -879,7 +881,7 @@ export const NotificationsSettingsTab: React.FC<NotificationsSettingsTabProps> =
                     <h4 className="text-sm font-black text-stone-900">Profil Odbiorcy E-mail</h4>
                   </div>
                   <span className="text-[10px] px-2.5 py-1 bg-emerald-100 text-[#006241] font-bold rounded-full">
-                    Kawiarnia 108120 Janki
+                    {currentStore.shortName || currentStore.name || 'Lokal Aktywny'} {currentStore.unitCode ? `(${currentStore.unitCode})` : ''}
                   </span>
                 </div>
 

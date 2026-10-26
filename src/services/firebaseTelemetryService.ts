@@ -106,57 +106,7 @@ class FirebaseTelemetryService {
   }
 
   private getDefaultLocalData(): FirebaseInstallationRecord[] {
-    const now = new Date().toISOString();
-    return [
-      {
-        id: 'SBX-MAC-JANKI-01',
-        installId: 'SBX-MAC-JANKI-01',
-        appVersion: APP_VERSION,
-        installedAt: '2026-09-01T08:30:00.000Z',
-        lastSeenAt: now,
-        platform: 'macOS 15.0 (Apple M3 Max)',
-        storeName: '108120 SBX Warszawa Janki',
-        unitCode: '18120',
-        userName: 'Dawid Apel',
-        userRole: 'Store Manager (SM)',
-        userEmail: 'apeldawid@gmail.com',
-        launchCount: 48,
-        status: 'active',
-        notes: 'Główna stacja Store Managera',
-      },
-      {
-        id: 'SBX-MAC-ARKADIA-02',
-        installId: 'SBX-MAC-ARKADIA-02',
-        appVersion: 'v2.8.35',
-        installedAt: '2026-09-15T10:15:00.000Z',
-        lastSeenAt: '2026-09-26T19:40:00.000Z',
-        platform: 'macOS 14.6 (Apple M2)',
-        storeName: '108327 SBX Westfield Arkadia',
-        unitCode: '18327',
-        userName: 'Katarzyna Nowak',
-        userRole: 'Assistant Store Manager (ASM)',
-        userEmail: 'katarzyna.nowak@amrest.eu',
-        launchCount: 19,
-        status: 'outdated',
-        notes: 'Dostęp operacyjny ASM',
-      },
-      {
-        id: 'SBX-MAC-SADYBA-03',
-        installId: 'SBX-MAC-SADYBA-03',
-        appVersion: 'v2.8.36',
-        installedAt: '2026-09-20T12:00:00.000Z',
-        lastSeenAt: '2026-09-27T11:20:00.000Z',
-        platform: 'macOS 15.0 (Apple M1 Pro)',
-        storeName: '108341 SBX Sadyba Best Mall',
-        unitCode: '18341',
-        userName: 'Michał Wiśniewski',
-        userRole: 'Store Manager (SM)',
-        userEmail: 'michal.wisniewski@amrest.eu',
-        launchCount: 12,
-        status: 'active',
-        notes: 'Wdrożenie pilotażowe TPLH',
-      },
-    ];
+    return [];
   }
 
   public getOrCreateInstallId(): string {
@@ -192,11 +142,11 @@ class FirebaseTelemetryService {
     const launchCount = this.incrementLaunchCount();
     const now = new Date().toISOString();
 
-    const storeName = localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki';
-    const unitCode = localStorage.getItem('sbx_unit_code') || '18120';
-    const userName = localStorage.getItem('sbx_user_name') || 'Dawid Apel';
-    const userRole = localStorage.getItem('sbx_user_role') || 'SM';
-    const userEmail = localStorage.getItem('sbx_user_email') || 'apeldawid@gmail.com';
+    const storeName = localStorage.getItem('sbx_store_name') || '';
+    const unitCode = localStorage.getItem('sbx_unit_code') || '';
+    const userName = localStorage.getItem('sbx_user_name') || 'Użytkownik';
+    const userRole = localStorage.getItem('sbx_user_role') || 'Partner';
+    const userEmail = localStorage.getItem('sbx_user_email') || '';
     const platform = typeof navigator !== 'undefined'
       ? `${navigator.platform || 'macOS'} (${navigator.userAgent.includes('Macintosh') ? 'Apple Mac' : 'Desktop'})`
       : 'macOS Apple Mac';
@@ -307,7 +257,7 @@ class FirebaseTelemetryService {
             lastSeenAt: f.lastSeenAt?.stringValue || new Date().toISOString(),
             platform: f.platform?.stringValue || 'macOS',
             storeName: f.storeName?.stringValue || 'SBX Store',
-            unitCode: f.unitCode?.stringValue || '18120',
+            unitCode: f.unitCode?.stringValue || '',
             userName: f.userName?.stringValue || 'Manager',
             userRole: f.userRole?.stringValue || 'SM',
             userEmail: f.userEmail?.stringValue || '',

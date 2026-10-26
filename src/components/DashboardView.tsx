@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
+import { useStore } from '../context/StoreContext';
 
 interface DashboardViewProps {
   onNavigate: (module: AppModule) => void;
@@ -29,6 +30,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   selectedYear,
   selectedMonth,
 }) => {
+  const { currentStore } = useStore();
   const currentDateFormatted = new Intl.DateTimeFormat('pl-PL', {
     weekday: 'long',
     day: 'numeric',
@@ -56,9 +58,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <p className="text-emerald-100/80 text-sm mt-1.5 flex items-center gap-2">
               <Store className="w-4 h-4 text-[#CBA258]" />
-              <span className="font-bold">108120 SBX Warszawa Janki</span>
-              <span>•</span>
-              <span>Kod jednostki: <strong>18120</strong></span>
+              <span className="font-bold">{currentStore.name || 'Wybierz kawiarnię'}</span>
+              {currentStore.unitCode && (
+                <>
+                  <span>•</span>
+                  <span>Kod jednostki: <strong>{currentStore.unitCode}</strong></span>
+                </>
+              )}
               <span>•</span>
               <span className="capitalize">{currentDateFormatted}</span>
             </p>
@@ -252,10 +258,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#E2E8E5]">
           <div>
             <h3 className="text-base font-black text-[#1E3932] tracking-tight">
-              Podsumowanie Operacyjne Kawiarni 108120 Janki
+              Podsumowanie Operacyjne: {currentStore.shortName || currentStore.name || 'Kawiarnia Starbucks'}
             </h3>
             <p className="text-xs text-[#5C6F68] mt-0.5">
-              Główny ekran podsumowania przygotowany na integrację widżetów operacyjnych Store Managera
+              Centrum dowodzenia i kluczowe wskaźniki operacyjne wybranego lokalu
             </p>
           </div>
 
@@ -272,10 +278,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <h4 className="text-sm font-bold text-[#1E3932]">
-            Przestrzeń Pulpitu Podsumowania
+            Centrum Operacyjne Lokalu
           </h4>
           <p className="text-xs text-[#5C6F68] mt-1.5 leading-relaxed">
-            Tutaj pojawią się skrócone widżety dobowe: status realizacji TPLH za dzisiaj, najbliższe dyżury kierowników oraz kluczowe alerty operacyjne kawiarni Janki.
+            Wybierz moduł operacyjny poniżej, aby zarządzać planem AOP, barierą Floor Hours (32h/d) lub zweryfikować zgodność grafiku menedżerskiego z Kodeksem Pracy.
           </p>
 
           <div className="mt-6 flex items-center justify-center gap-2">

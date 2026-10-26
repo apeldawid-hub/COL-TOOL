@@ -17,6 +17,7 @@ import { WeeklyCalculatedRow, CrossMonthBridge, MonthlyCalculationSummary } from
 import { MondayProjectionModal } from './MondayProjectionModal';
 import { useSystemClock } from '../../../hooks/useSystemClock';
 import { CalculationEngine } from '../services/calculationEngine';
+import { StoreStorage } from '../../../services/storeStorage';
 
 interface WeeklyScheduleTableProps {
   rows: WeeklyCalculatedRow[];
@@ -61,21 +62,12 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
   // Stan wprowadzonych godzin dobowych baristów per tydzień i per dzień
   // klucz: `${weekKey}_${day}` -> number
   const [dailyBaristaHours, setDailyBaristaHours] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('sbux_daily_barista_hours');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+    return StoreStorage.getItem<Record<string, number>>('daily_barista_hours') || {};
   });
 
   const saveDailyBaristaHours = (newMap: Record<string, number>) => {
     setDailyBaristaHours(newMap);
-    try {
-      localStorage.setItem('sbux_daily_barista_hours', JSON.stringify(newMap));
-    } catch (e) {
-      console.error(e);
-    }
+    StoreStorage.setItem('daily_barista_hours', newMap);
   };
 
   const handleStartEditTrx = (weekKey: string, currentVal: number | null) => {

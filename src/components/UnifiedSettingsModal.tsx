@@ -511,7 +511,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                   Konfiguracja Platformy Operacyjnej
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
-                  108120 Janki (18120)
+                  {currentStore.shortName || currentStore.name || 'Starbucks'} {currentStore.unitCode ? `(${currentStore.unitCode})` : ''}
                 </span>
               </div>
               <p className="text-xs text-emerald-200/80">
@@ -771,7 +771,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
             <div className="p-3 bg-white rounded-2xl border border-stone-200 text-[11px] text-stone-500 space-y-1">
               <div className="font-bold text-stone-800 flex items-center gap-1.5">
                 <Store className="w-3.5 h-3.5 text-[#CBA258]" />
-                108120 Warszawa Janki
+                {currentStore.name || 'Kawiarnia Starbucks'}
               </div>
               <div>Baza: SQLite (WASM)</div>
               <div className="text-[10px] text-emerald-700 font-bold">Wszystkie moduły zsynchronizowane</div>
@@ -1044,7 +1044,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                         <h4 className="text-sm font-bold text-stone-900">Standard Ochrony Floor Hours</h4>
                       </div>
                       <p className="text-xs text-stone-600 leading-relaxed">
-                        Kawiarnia 108120 Janki posiada nienaruszalną bazę Floor: <strong>32.0h na dobę</strong> (1 MGR + 1 Barista rano / AM + 1 MGR + 1 Barista wieczorem / PM), co stanowi <strong>224.0h w pełnym tygodniu 7-dniowym</strong>.
+                        Kawiarnia {currentStore.shortName || currentStore.name || 'Starbucks'} posiada nienaruszalną bazę Floor: <strong>32.0h na dobę</strong> (1 MGR + 1 Barista rano / AM + 1 MGR + 1 Barista wieczorem / PM), co stanowi <strong>224.0h w pełnym tygodniu 7-dniowym</strong>.
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
                         <div className="p-2.5 bg-white rounded-xl border border-stone-200">
@@ -1702,8 +1702,8 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                       <h3 className="text-lg font-black text-stone-900">
                         Samouczek & Przewodnik Pilotażu Kawiarni
                       </h3>
-                      <span className="px-2 py-0.5 text-[10px] font-black bg-amber-400 text-amber-950 rounded-full uppercase">
-                        Pilotaż Janki
+                      <span className="px-2 py-0.5 text-[10px] font-black bg-emerald-100 text-[#006241] border border-emerald-300 rounded-full uppercase">
+                        Przewodnik
                       </span>
                     </div>
                     <p className="text-xs text-stone-500 mt-0.5">
@@ -2113,10 +2113,10 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
             {/* ======================================================== */}
             {activeTab === 'system' && (() => {
               const currentStoreName = (() => {
-                try { return localStorage.getItem('sbx_store_name') || '108120 SBX Warszawa Janki'; } catch { return '108120 SBX Warszawa Janki'; }
+                try { return localStorage.getItem('sbx_store_name') || currentStore.name || 'Brak skonfigurowanej kawiarni'; } catch { return currentStore.name || 'Brak skonfigurowanej kawiarni'; }
               })();
               const currentUnitCode = (() => {
-                try { return localStorage.getItem('sbx_unit_code') || '18120'; } catch { return '18120'; }
+                try { return localStorage.getItem('sbx_unit_code') || currentStore.unitCode || 'Brak'; } catch { return currentStore.unitCode || 'Brak'; }
               })();
               const currentUserName = (() => {
                 try { return localStorage.getItem('sbx_user_name') || 'Nie podano'; } catch { return 'Nie podano'; }

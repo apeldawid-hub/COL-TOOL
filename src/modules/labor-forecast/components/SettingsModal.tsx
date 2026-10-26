@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useStore } from '../../../context/StoreContext';
 import {
   X,
   Settings,
@@ -43,6 +44,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onYearChange,
   onSaveSuccess,
 }) => {
+  const { currentStore } = useStore();
   const [activeTab, setActiveTab] = useState<'aop' | 'nc'>(initialTab);
   // Tryb wpisywania godzin NC: miesięcznie lub tygodniowo
   const [ncInputMode, setNcInputMode] = useState<'monthly' | 'weekly'>('monthly');
@@ -229,7 +231,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="text-lg font-black text-[#1E3932] flex items-center gap-2">
                 Konfiguracja Parametrów Kawiarni
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E8F5E9] text-[#006241] border border-[#C8E6C9]">
-                  108120 Janki (18120)
+                  {currentStore.shortName || currentStore.name || 'Lokal Aktywny'} {currentStore.unitCode ? `(${currentStore.unitCode})` : ''}
                 </span>
               </h3>
               <p className="text-xs text-[#5C6F68]">

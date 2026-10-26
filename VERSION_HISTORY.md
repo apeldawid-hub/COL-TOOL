@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.8.68](#v2.8.68--2026-10-26)** | 2026-10-26 | Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji | `minor` | 🚀 Przygotowana |
 | **[v2.8.67](#v2.8.67--2026-10-24)** | 2026-10-24 | Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync | `patch` | 🚀 Opublikowana |
 | **[v2.8.65](#v2.8.65--2026-10-24)** | 2026-10-24 | Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC | `feature` | 🚀 Opublikowana |
 | **[v2.8.63](#v2.8.63--2026-10-24)** | 2026-10-24 | Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4) | `patch` | 🚀 Opublikowana |
@@ -36,6 +37,30 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.68] — 2026-10-26
+**Tytuł:** Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+1. **Pełne Oczyszczenie Kodu (Mock & AI Text Purge):**
+   - Trwałe usunięcie zahardkodowanych wartości domyślnych (`18120`, `108120`, `384`, `Janki`) z logiki biznesowej, zapytań SQL i widoków.
+   - Nowy czysty start (Clean Launch) uruchamiający Onboarding Wizard dla nowo instalowanych instancji.
+   - Likwidacja fikcyjnych stawek i przykładowych pracowników.
+2. **Architektura dla 100+ Kawiarni (Multi-Store Fleet):**
+   - Fizyczna separacja baz `store_${id}.db` per kawiarnia.
+   - Pula połączeń `StoreConnectionPool` z buforem LRU (8 slotów) i asynchronicznym muteksem (`AsyncMutex`).
+   - Certyfikowany katalog 132 lokali Starbucks w Polsce z wyszukiwaniem diakrytycznym.
+3. **Klienckie Szyfrowanie AES-256-GCM w Chmurze Firebase:**
+   - Szyfrowanie wrażliwych danych (P&L, stawki, absencje L4) przed opuszczeniem komputera.
+   - Wyprowadzanie kluczy PBKDF2 (600k iteracji), tagi AAD i natychmiastowe zerowanie buforów RAM (`key.fill(0)`).
+   - Produkcyjne reguły `firestore.rules` zabezpieczające skarbce kawiarni.
+4. **Bezstratny Most Migracji do Chmury (Zero Data Loss):**
+   - 6-fazowy atomowy rurociąg migracji (`cloudMigrationService.ts`) z pre-flight backupem.
+   - Kryptograficzny silnik weryfikacji parzystości danych (`parityVerificationService.ts`) z cyfrowym certyfikatem HMAC-SHA256.
+   - Dedykowany przycisk *"Migruj do Chmury"* w oknie Kopii Zapasowych i Zarządzania Bazą.
+
+---
 
 ### [v2.8.67] — 2026-10-24
 **Tytuł:** Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync  

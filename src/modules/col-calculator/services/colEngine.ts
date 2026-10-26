@@ -299,7 +299,7 @@ export class ColEngine {
     const improvedTplh = kpis.whatIfTplhImprovement || 7.0;
     const hoursWithImprovedTplh = improvedTplh > 0 ? kpis.trxTarget / improvedTplh : 0;
     const hoursSaved = Math.max(0, totalWorkingHoursPlan - hoursWithImprovedTplh);
-    const avgCrewHourlyCost = totalWorkingHoursPlan > 0 ? totalCrewPlan / crewHoursPlan : 32.5;
+    const avgCrewHourlyCost = crewHoursPlan > 0 ? totalCrewPlan / crewHoursPlan : 32.5;
     const whatIfColSavings = hoursSaved * avgCrewHourlyCost;
     const whatIfColPctInfluence = kpis.salesTarget > 0 ? (whatIfColSavings / kpis.salesTarget) * 100 : 0;
 

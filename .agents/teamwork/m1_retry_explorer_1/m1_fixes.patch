@@ -1,0 +1,51 @@
+--- a/src/modules/col-calculator/services/colEngine.ts
++++ b/src/modules/col-calculator/services/colEngine.ts
+@@ -299,7 +299,7 @@ export class ColEngine {
+     const improvedTplh = kpis.whatIfTplhImprovement || 7.0;
+     const hoursWithImprovedTplh = improvedTplh > 0 ? kpis.trxTarget / improvedTplh : 0;
+     const hoursSaved = Math.max(0, totalWorkingHoursPlan - hoursWithImprovedTplh);
+-    const avgCrewHourlyCost = totalWorkingHoursPlan > 0 ? totalCrewPlan / crewHoursPlan : 32.5;
++    const avgCrewHourlyCost = crewHoursPlan > 0 ? totalCrewPlan / crewHoursPlan : 32.5;
+     const whatIfColSavings = hoursSaved * avgCrewHourlyCost;
+     const whatIfColPctInfluence = kpis.salesTarget > 0 ? (whatIfColSavings / kpis.salesTarget) * 100 : 0;
+ 
+--- a/src/modules/col-calculator/components/ColBonusSheet.tsx
++++ b/src/modules/col-calculator/components/ColBonusSheet.tsx
+@@ -2,10 +2,10 @@ import React, { useState } from 'react';
+ import { Award, TrendingUp, Percent } from 'lucide-react';
+ 
+ export const ColBonusSheet: React.FC = () => {
+-  const [salesAop, setSalesAop] = useState<number>(310000);
+-  const [salesActual, setSalesActual] = useState<number>(315000);
+-  const [profitAop, setProfitAop] = useState<number>(45000);
+-  const [profitActual, setProfitActual] = useState<number>(47000);
++  const [salesAop, setSalesAop] = useState<number>(0);
++  const [salesActual, setSalesActual] = useState<number>(0);
++  const [profitAop, setProfitAop] = useState<number>(0);
++  const [profitActual, setProfitActual] = useState<number>(0);
+ 
+   const salesIndex = salesAop > 0 ? salesActual / salesAop : 0;
+   const profitIndex = profitAop > 0 ? profitActual / profitAop : 0;
+--- a/tests/e2e/tier5-adversarial/m1_stress_challenge.test.ts
++++ b/tests/e2e/tier5-adversarial/m1_stress_challenge.test.ts
+@@ -455,8 +455,8 @@ test('Tier 5 Adversarial: Milestone 1 Boundary & Stress Testing', async (suite)
+       const isDefective = Number.isNaN(res.whatIfColSavings) || !Number.isFinite(res.whatIfColSavings);
+       assert.equal(
+         isDefective,
+-        true,
+-        'CONFIRMED DEFECT: ColEngine produces NaN on crewHoursPlan=0 when managers are scheduled'
++        false,
++        'ColEngine must produce finite whatIfColSavings when crewHoursPlan=0 and managers are scheduled'
+       );
+     });
+ 
+@@ -467,8 +467,8 @@ test('Tier 5 Adversarial: Milestone 1 Boundary & Stress Testing', async (suite)
+       const hasMockSalesAop = source.includes('useState<number>(310000)');
+       assert.equal(
+         hasMockSalesAop,
+-        true,
+-        'CONFIRMED DEFECT: ColBonusSheet.tsx contains hardcoded 310000 salesAop mock default'
++        false,
++        'ColBonusSheet.tsx must not contain hardcoded 310000 salesAop mock default'
+       );
+     });

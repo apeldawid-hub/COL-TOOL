@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldAlert, Save, RotateCcw, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { FloorRuleDay } from '../../../types';
+import { useStore } from '../../../context/StoreContext';
 
 interface FloorHoursModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const FloorHoursModal: React.FC<FloorHoursModalProps> = ({
   onClose,
   onSaveSuccess,
 }) => {
+  const { currentStore } = useStore();
   const [rules, setRules] = useState<FloorRuleDay[]>(DEFAULT_FLOOR_RULES);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -112,7 +114,7 @@ export const FloorHoursModal: React.FC<FloorHoursModalProps> = ({
               <h3 className="text-lg font-black text-[#1E3932] flex items-center gap-2">
                 Konfiguracja Bariery Floor Hours
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#006241] border border-[#C8E6C9]">
-                  Lokal 18120
+                  Lokal {currentStore.unitCode || currentStore.shortName || 'Aktywny'}
                 </span>
               </h3>
               <p className="text-xs text-[#5C6F68]">

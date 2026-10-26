@@ -40,8 +40,8 @@ type AdminTab = 'requests' | 'users' | 'vault' | 'audit';
 export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
   isOpen,
   onClose,
-  adminName = 'Dawid Apel (Store Manager)',
-  storeUnitCode = '18120',
+  adminName = 'Store Manager',
+  storeUnitCode = '',
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('requests');
   const [users, setUsers] = useState<ManagedAppUser[]>([]);
@@ -133,7 +133,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
                 </span>
                 <span className="text-xs text-emerald-200/90 font-semibold flex items-center gap-1">
                   <Building className="w-3.5 h-3.5" />
-                  Jednostka: <strong>{storeUnitCode} SBX Janki</strong>
+                  Jednostka: <strong>{storeUnitCode ? `${storeUnitCode} SBX` : 'Lokal Aktywny'}</strong>
                 </span>
               </div>
               <h2 className="text-2xl font-black text-white tracking-tight mt-0.5">
@@ -254,7 +254,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
                 <div className="text-center py-12 bg-white rounded-2xl border border-stone-200">
                   <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-2 opacity-80" />
                   <h3 className="text-sm font-black text-stone-800">Brak oczekujących wniosków</h3>
-                  <p className="text-xs text-stone-500 mt-1">Wszystkie urządzenia i konta pracowników kawiarni Janki są zweryfikowane.</p>
+                  <p className="text-xs text-stone-500 mt-1">Wszystkie urządzenia i konta pracowników kawiarni są zweryfikowane.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -488,7 +488,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
                   </div>
                   <h4 className="text-xs font-black text-stone-900 uppercase">Sejf 1: Public Schedule</h4>
                   <p className="text-[11px] text-stone-500 mt-1">
-                    Terminy i kody zmian (AM, PM, OFF). Dostępny dla uwierzytelnionych baristów kawiarni Janki.
+                    Terminy i kody zmian (AM, PM, OFF). Dostępny dla uwierzytelnionych baristów kawiarni.
                   </p>
                   <span className="inline-block mt-3 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                     Szyfrowanie TLS 1.3
@@ -533,7 +533,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
                     Niezmienialny Rejestr Zdarzeń Bezpieczeństwa (Audit Trail)
                   </h4>
                   <p className="text-xs text-stone-500 mt-0.5">
-                    Historia wszystkich autoryzacji 2FA, zatwierdzeń kont, zmian ról i procedur Kill-Switch w jednostce Janki.
+                    Historia wszystkich autoryzacji 2FA, zatwierdzeń kont, zmian ról i procedur Kill-Switch w aktywnej jednostce.
                   </p>
                 </div>
                 <button

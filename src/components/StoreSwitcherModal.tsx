@@ -1,5 +1,5 @@
 // src/components/StoreSwitcherModal.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Store,
   Search,
@@ -17,7 +17,12 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { StarbucksStore } from '../constants/starbucksStores';
+import { StarbucksStore, normalizeDiacritics } from '../constants/starbucksStores';
+import { StoreService } from '../services/storeService';
+
+const ITEM_HEIGHT = 76;
+const OVERSCAN = 3;
+const VIEWPORT_HEIGHT = 440;
 
 interface StoreSwitcherModalProps {
   isOpen: boolean;
@@ -32,9 +37,14 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
 }) => {
   const { currentStore, availableStores, switchStore, addCustomStore, removeCustomStore } = useStore();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [rawQuery, setRawQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCityFilter, setSelectedCityFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'LIST' | 'ADD_NEW'>('LIST');
+
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState<number>(0);
 
   // Formularz dodawania własnej kawiarni
   const [newStoreName, setNewStoreName] = useState('');
@@ -51,6 +61,19 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
   const [isSwitchingDb, setIsSwitchingDb] = useState<boolean>(false);
   const [dbSwitchStatus, setDbSwitchStatus] = useState<{ isNew?: boolean; storeName?: string } | null>(null);
 
+  // Debouncing zapytań wyszukiwarki (120ms dla optymalnej reaktywności i płynności)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(rawQuery.trim());
+      setSelectedIndex(0);
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+        setScrollTop(0);
+      }
+    }, 120);
+    return () => clearTimeout(handler);
+  }, [rawQuery]);
+
   // Lista unikalnych miast do filtrów
   const cityFilters = useMemo(() => {
     const cities = new Set<string>();
@@ -58,39 +81,62 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
       const mainCity = s.city.split('/')[0].trim();
       cities.add(mainCity);
     });
-    return ['ALL', ...Array.from(cities)];
+    return ['ALL', 'Warszawa', 'Kraków', 'Wrocław', 'Poznań', 'Gdańsk', 'Katowice', 'Łódź', 'Szczecin'];
   }, [availableStores]);
 
-  // Filtrowanie kawiarni
+  // Filtrowanie kawiarni z normalizacją polskich znaków diakrytycznych
   const filteredStores = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const qNorm = normalizeDiacritics(debouncedQuery);
+
     return availableStores.filter((store) => {
       // Filtr miasta
       if (selectedCityFilter === 'CUSTOM') {
         if (!store.isCustom) return false;
       } else if (selectedCityFilter !== 'ALL') {
-        if (!store.city.toLowerCase().includes(selectedCityFilter.toLowerCase())) {
+        const cityNorm = normalizeDiacritics(store.city);
+        const filterNorm = normalizeDiacritics(selectedCityFilter);
+        if (!cityNorm.includes(filterNorm)) {
           return false;
         }
       }
 
       // Wyszukiwarka tekstowa
-      if (!q) return true;
+      if (!qNorm) return true;
+
+      const nameNorm = normalizeDiacritics(store.name);
+      const shortNorm = normalizeDiacritics(store.shortName);
+      const cityNorm = normalizeDiacritics(store.city);
+      const districtNorm = normalizeDiacritics(store.district);
+      const addrNorm = normalizeDiacritics(store.address || '');
+
       return (
-        store.name.toLowerCase().includes(q) ||
-        store.shortName.toLowerCase().includes(q) ||
-        store.mpk.toLowerCase().includes(q) ||
-        store.unitCode.toLowerCase().includes(q) ||
-        store.city.toLowerCase().includes(q) ||
-        store.district.toLowerCase().includes(q) ||
-        (store.address && store.address.toLowerCase().includes(q))
+        store.mpk.toLowerCase().includes(qNorm) ||
+        store.unitCode.toLowerCase().includes(qNorm) ||
+        nameNorm.includes(qNorm) ||
+        shortNorm.includes(qNorm) ||
+        cityNorm.includes(qNorm) ||
+        districtNorm.includes(qNorm) ||
+        addrNorm.includes(qNorm)
       );
     });
-  }, [availableStores, searchQuery, selectedCityFilter]);
+  }, [availableStores, debouncedQuery, selectedCityFilter]);
 
-  if (!isOpen) return null;
+  // Wirtualizacja listy (Virtual Windowing)
+  const totalItems = filteredStores.length;
+  const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
+  const endIndex = Math.min(totalItems - 1, Math.floor((scrollTop + VIEWPORT_HEIGHT) / ITEM_HEIGHT) + OVERSCAN);
 
-  const handleSelectStore = async (store: StarbucksStore) => {
+  const visibleItems = useMemo(() => {
+    const items: Array<{ index: number; store: StarbucksStore }> = [];
+    for (let i = startIndex; i <= endIndex; i++) {
+      if (filteredStores[i]) {
+        items.push({ index: i, store: filteredStores[i] });
+      }
+    }
+    return items;
+  }, [filteredStores, startIndex, endIndex]);
+
+  const handleSelectStore = useCallback(async (store: StarbucksStore) => {
     setIsSwitchingDb(true);
     setSwitchedStoreId(store.id);
     setDbSwitchStatus(null);
@@ -112,7 +158,53 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
         onClose();
       }, 550);
     }
-  };
+  }, [switchStore, onStoreSwitched, onClose]);
+
+  // Nawigacja klawiaturą (ArrowDown, ArrowUp, Enter, Escape)
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (activeTab !== 'LIST') return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => {
+          const next = Math.min(totalItems - 1, prev + 1);
+          if (scrollContainerRef.current) {
+            const itemTop = next * ITEM_HEIGHT;
+            const itemBottom = itemTop + ITEM_HEIGHT;
+            const currentScroll = scrollContainerRef.current.scrollTop;
+            if (itemBottom > currentScroll + VIEWPORT_HEIGHT) {
+              scrollContainerRef.current.scrollTop = itemBottom - VIEWPORT_HEIGHT;
+            }
+          }
+          return next;
+        });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => {
+          const next = Math.max(0, prev - 1);
+          if (scrollContainerRef.current) {
+            const itemTop = next * ITEM_HEIGHT;
+            const currentScroll = scrollContainerRef.current.scrollTop;
+            if (itemTop < currentScroll) {
+              scrollContainerRef.current.scrollTop = itemTop;
+            }
+          }
+          return next;
+        });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const target = filteredStores[selectedIndex];
+        if (target) {
+          handleSelectStore(target);
+        }
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    },
+    [activeTab, totalItems, selectedIndex, filteredStores, handleSelectStore, onClose]
+  );
+
+  if (!isOpen) return null;
 
   const handleAddNewStoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,7 +271,10 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-md animate-in fade-in duration-200"
+      onKeyDown={handleKeyDown}
+    >
       <div
         className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200"
         role="dialog"
@@ -268,15 +363,20 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
                 <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={rawQuery}
+                  onChange={(e) => setRawQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+                      handleKeyDown(e);
+                    }
+                  }}
                   placeholder="Wyszukaj kawiarnię po nazwie, MPK, kodzie (np. 18120), mieście lub ulicy..."
                   autoFocus
                   className="w-full pl-9.5 pr-8 py-2 bg-stone-50 focus:bg-white border border-stone-200 focus:border-[#006241] focus:ring-2 focus:ring-[#006241]/20 rounded-xl text-xs font-medium text-stone-800 transition-all outline-none"
                 />
-                {searchQuery && (
+                {rawQuery && (
                   <button
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => setRawQuery('')}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
@@ -319,138 +419,147 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
               </div>
             </div>
 
-            {/* LISTA KAWIARNI */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-stone-50/50">
-              {filteredStores.length === 0 ? (
+            {/* LISTA KAWIARNI - WIRTUALIZOWANA */}
+            <div
+              ref={scrollContainerRef}
+              onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
+              className="flex-1 overflow-y-auto relative bg-stone-50/50 p-3"
+              style={{ minHeight: '360px', maxHeight: `${VIEWPORT_HEIGHT}px` }}
+            >
+              {totalItems === 0 ? (
                 <div className="py-12 text-center text-stone-500">
                   <Store className="w-10 h-10 mx-auto text-stone-300 mb-2" />
                   <p className="text-sm font-bold text-stone-700">Nie znaleziono kawiarni</p>
                   <p className="text-xs text-stone-500 mt-1">
-                    Brak wyników dla zapytania „{searchQuery}”. Możesz dodać tę kawiarnię w zakładce „+ Dodaj Nową”.
+                    Brak wyników dla zapytania „{debouncedQuery || rawQuery}”. Możesz dodać tę kawiarnię w zakładce „+ Dodaj Nową”.
                   </p>
                   <button
                     onClick={() => {
-                      setNewStoreName(searchQuery);
+                      setNewStoreName(rawQuery);
                       setActiveTab('ADD_NEW');
                     }}
                     className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#006241] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#00754A] cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Dodaj „{searchQuery}” jako nową kawiarnię
+                    Dodaj „{rawQuery}” jako nową kawiarnię
                   </button>
                 </div>
               ) : (
-                filteredStores.map((store) => {
-                  const isActive = currentStore.id === store.id || currentStore.mpk === store.mpk;
-                  const isJustSwitched = switchedStoreId === store.id;
+                <div style={{ height: `${totalItems * ITEM_HEIGHT}px`, position: 'relative', width: '100%' }}>
+                  {visibleItems.map(({ index, store }) => {
+                    const isActive = currentStore.id === store.id || currentStore.mpk === store.mpk;
+                    const isSelected = selectedIndex === index;
 
-                  return (
-                    <div
-                      key={store.id}
-                      onClick={() => handleSelectStore(store)}
-                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative group flex items-center justify-between ${
-                        isActive
-                          ? 'bg-emerald-50/90 border-[#006241] ring-2 ring-[#006241]/20 shadow-xs'
-                          : 'bg-white hover:bg-stone-50 border-stone-200/90 hover:border-emerald-300 shadow-2xs'
-                      }`}
-                    >
-                      <div className="flex items-start space-x-3.5 flex-1 min-w-0 pr-3">
-                        <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                            isActive
-                              ? 'bg-[#006241] text-white shadow-sm'
-                              : 'bg-stone-100 text-stone-600 group-hover:bg-emerald-100 group-hover:text-[#006241]'
-                          }`}
-                        >
-                          <Store className="w-5 h-5" />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-sm text-stone-900 group-hover:text-[#006241] transition-colors truncate">
-                              {store.name}
-                            </span>
-                            {isActive && (
-                              <span className="px-2 py-0.5 rounded-full bg-[#006241] text-white text-[10px] font-black flex items-center gap-1 shadow-2xs">
-                                <Check className="w-3 h-3" />
-                                Aktywna
-                              </span>
-                            )}
-                            {store.isCustom && (
-                              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300">
-                                Własna
-                              </span>
-                            )}
-                            {store.type && (
-                              <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[10px] font-medium">
-                                {store.type}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-3 mt-1 text-xs text-stone-500">
-                            <span>
-                              Unit: <strong className="text-stone-800">{store.unitCode}</strong>
-                            </span>
-                            <span>•</span>
-                            <span>
-                              MPK: <strong className="text-stone-800">{store.mpk}</strong>
-                            </span>
-                            <span>•</span>
-                            <span className="text-stone-600 font-medium">{store.city}</span>
-                            <span>•</span>
-                            <span className="text-stone-400 text-[11px] truncate">{store.district}</span>
-                          </div>
-
-                          {store.address && (
-                            <div className="flex items-center gap-1.5 mt-1 text-[11px] text-stone-400 truncate">
-                              <MapPin className="w-3 h-3 shrink-0 text-stone-400" />
-                              <span className="truncate">{store.address}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2 shrink-0">
-                        {store.isCustom && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`Czy na pewno chcesz usunąć kawiarnię „${store.name}”?`)) {
-                                removeCustomStore(store.id);
-                              }
-                            }}
-                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                            title="Usuń tę kawiarnię"
+                    return (
+                      <div
+                        key={store.id}
+                        onClick={() => handleSelectStore(store)}
+                        style={{
+                          position: 'absolute',
+                          top: `${index * ITEM_HEIGHT}px`,
+                          left: 0,
+                          right: 0,
+                          height: `${ITEM_HEIGHT - 6}px`,
+                        }}
+                        className={`px-3.5 py-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                          isActive
+                            ? 'bg-emerald-50/90 border-[#006241] ring-2 ring-[#006241]/20 shadow-xs'
+                            : isSelected
+                            ? 'bg-stone-100 border-emerald-400 shadow-2xs'
+                            : 'bg-white hover:bg-stone-50 border-stone-200/90 hover:border-emerald-300 shadow-2xs'
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3.5 flex-1 min-w-0 pr-3">
+                          <div
+                            className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                              isActive
+                                ? 'bg-[#006241] text-white shadow-sm'
+                                : 'bg-stone-100 text-stone-600'
+                            }`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                            <Store className="w-4.5 h-4.5" />
+                          </div>
 
-                        <button
-                          type="button"
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
-                            isActive
-                              ? 'bg-emerald-100 text-[#006241]'
-                              : 'bg-stone-100 group-hover:bg-[#006241] group-hover:text-white text-stone-700'
-                          }`}
-                        >
-                          {isActive ? (
-                            <>
-                              <CheckCircle2 className="w-3.5 h-3.5 text-[#006241]" />
-                              <span>Wybrana</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>Wybierz</span>
-                              <ArrowRight className="w-3 h-3" />
-                            </>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-stone-900 truncate">
+                                {store.name}
+                              </span>
+                              {isActive && (
+                                <span className="px-2 py-0.5 rounded-full bg-[#006241] text-white text-[9px] font-black flex items-center gap-1 shadow-2xs">
+                                  <Check className="w-2.5 h-2.5" />
+                                  Aktywna
+                                </span>
+                              )}
+                              {store.isCustom && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[9px] font-bold border border-amber-300">
+                                  Własna
+                                </span>
+                              )}
+                              {store.type && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[9px] font-medium">
+                                  {store.type}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500 truncate">
+                              <span>Unit: <strong className="text-stone-800">{store.unitCode}</strong></span>
+                              <span>•</span>
+                              <span>MPK: <strong className="text-stone-800">{store.mpk}</strong></span>
+                              <span>•</span>
+                              <span className="text-stone-600 font-medium">{store.city}</span>
+                              {store.address && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-stone-400 truncate">{store.address}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 shrink-0">
+                          {store.isCustom && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Czy na pewno chcesz usunąć kawiarnię „${store.name}”?`)) {
+                                  removeCustomStore(store.id);
+                                }
+                              }}
+                              className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                              title="Usuń tę kawiarnię"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
-                        </button>
+
+                          <button
+                            type="button"
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
+                              isActive
+                                ? 'bg-emerald-100 text-[#006241]'
+                                : 'bg-stone-100 hover:bg-[#006241] hover:text-white text-stone-700'
+                            }`}
+                          >
+                            {isActive ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-[#006241]" />
+                                <span>Wybrana</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Wybierz</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
           </>

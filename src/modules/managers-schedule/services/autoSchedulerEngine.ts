@@ -1929,7 +1929,7 @@ export class AutoSchedulerEngine {
             assignedShiftCode: finalShift.shift_code,
             assignedHours: finalShift.hours,
             reason: reasonText,
-            details: `Zgłoszono prośbę o wolne (OFF), lecz przydzielono ${finalShift.shift_code} (${finalShift.hours}h) w celu zabezpieczenia obsady kawiarni 108120 Janki.`,
+            details: `Zgłoszono prośbę o wolne (OFF), lecz przydzielono ${finalShift.shift_code} (${finalShift.hours}h) w celu zabezpieczenia obsady lokalu.`,
             severity: 'critical',
             suggestion: compensatoryDay ? `Zaproponuj ${firstName} wolne w dniu ${compensatoryDay}.${String(month).padStart(2, '0')} jako rekompensatę.` : 'Rozważ zamówienie wsparcia SUP lub modyfikację dyspozycji.',
             blockers,
