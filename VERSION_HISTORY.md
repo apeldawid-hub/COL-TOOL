@@ -7,7 +7,9 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **[v2.8.68](#v2.8.68--2026-10-26)** | 2026-10-26 | Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji | `minor` | 🚀 Przygotowana |
+| **[v2.8.70](#v2.8.70--2026-10-26)** | 2026-10-26 | Poprawka Schematu REST API Firestore dla Migracji Chmurowej AES-256 (Protobuf Document Fields) | `patch` | 🚀 Opublikowana |
+| **[v2.8.69](#v2.8.69--2026-10-26)** | 2026-10-26 | Naprawa Punktu Wejścia IPC Migracji Chmurowej w Oknie Kawiarni | `patch` | 🚀 Opublikowana |
+| **[v2.8.68](#v2.8.68--2026-10-26)** | 2026-10-26 | Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji | `minor` | 🚀 Opublikowana |
 | **[v2.8.67](#v2.8.67--2026-10-24)** | 2026-10-24 | Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync | `patch` | 🚀 Opublikowana |
 | **[v2.8.65](#v2.8.65--2026-10-24)** | 2026-10-24 | Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC | `feature` | 🚀 Opublikowana |
 | **[v2.8.63](#v2.8.63--2026-10-24)** | 2026-10-24 | Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4) | `patch` | 🚀 Opublikowana |
@@ -37,6 +39,33 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.8.70] — 2026-10-26
+**Tytuł:** Poprawka Schematu REST API Firestore dla Migracji Chmurowej AES-256 (Protobuf Document Fields)  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+1. **Dopasowanie REST API Firestore v1 w `CloudMigrationService`:**
+   - Wyeliminowano błąd parsowania JSON w Google Firestore REST API: `Invalid JSON payload received. Unknown name "docId" at 'document': Cannot find field`.
+   - Zaimplementowano rygorystyczny format Protobuf Document dla zapytań HTTP PATCH: mapowanie wartości (`stringValue`, `integerValue`, `doubleValue`, `booleanValue`, `nullValue`, `mapValue`, `arrayValue`).
+   - Wszystkie szyfrowane sejfy (`financials`, `personnel`, `schedules`, `health_gdpr`) oraz metadane telemetryczne zapisują się poprawnie w chmurze Firestore pod ścieżkami `/stores/{storeId}/{collection}/{docId}`.
+2. **Zachowanie Integralności i Bezpieczeństwa:**
+   - Podtrzymano pełną izolację AES-256-GCM z bound AAD.
+   - Pomyślna weryfikacja automatycznych testów odpornościowych i regresyjnych.
+
+---
+
+### [v2.8.69] — 2026-10-26
+**Tytuł:** Naprawa Punktu Wejścia IPC Migracji Chmurowej w Oknie Kawiarni  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+1. **Statyczne Wywołanie `CloudMigrationService.executeMigration`:**
+   - Naprawiono błąd `TypeError: CloudMigrationService.executeStoreMigration is not a function` w procesie głównym Electrona (`electron/main.ts`).
+2. **Pełna Integracja Przycisków UI:**
+   - Przycisk „Migruj do Chmury (AES-256)” w `DatabaseBackupModal` poprawnie uruchamia 6-fazowy potok migracji.
+
+---
 
 ### [v2.8.68] — 2026-10-26
 **Tytuł:** Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji  

@@ -1037,6 +1037,33 @@ export class CloudMigrationService {
       for (const item of batch.documents) {
         const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/stores/${storeId}/${item.collection}/${item.docId}`;
 
+        // Konwersja obiektu dokumentu do formatu pól wymaganego przez Firestore REST API (v1)
+        const formatFirestoreValue = (val: any): any => {
+          if (val === null || val === undefined) return { nullValue: null };
+          if (typeof val === 'string') return { stringValue: val };
+          if (typeof val === 'boolean') return { booleanValue: val };
+          if (typeof val === 'number') {
+            return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
+          }
+          if (Array.isArray(val)) {
+            return { arrayValue: { values: val.map(formatFirestoreValue) } };
+          }
+          if (typeof val === 'object') {
+            const fields: Record<string, any> = {};
+            for (const [k, v] of Object.entries(val)) {
+              fields[k] = formatFirestoreValue(v);
+            }
+            return { mapValue: { fields } };
+          }
+          return { stringValue: String(val) };
+        };
+
+        const fieldsPayload: Record<string, any> = {};
+        for (const [k, v] of Object.entries(item.doc)) {
+          fieldsPayload[k] = formatFirestoreValue(v);
+        }
+        const firestoreBody = { fields: fieldsPayload };
+
         let attempts = 0;
         let uploadSucceeded = false;
         let lastError: any = null;
@@ -1052,7 +1079,7 @@ export class CloudMigrationService {
             const res = await fetchFn(url, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(item.doc),
+              body: JSON.stringify(firestoreBody),
             });
 
             if (!res.ok) {
