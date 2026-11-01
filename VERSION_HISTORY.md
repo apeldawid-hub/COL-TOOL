@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.0](#v2.9.0--2026-11-01)** | 2026-11-01 | Enterprise Security & Fleet Management (Podwójne Profile, Klucze Sprzętowe, MFA, Auto-Lock & Disaster Recovery BIP-39) | `major` | 🚀 Opublikowana |
 | **[v2.8.70](#v2.8.70--2026-10-26)** | 2026-10-26 | Poprawka Schematu REST API Firestore dla Migracji Chmurowej AES-256 (Protobuf Document Fields) | `patch` | 🚀 Opublikowana |
 | **[v2.8.69](#v2.8.69--2026-10-26)** | 2026-10-26 | Naprawa Punktu Wejścia IPC Migracji Chmurowej w Oknie Kawiarni | `patch` | 🚀 Opublikowana |
 | **[v2.8.68](#v2.8.68--2026-10-26)** | 2026-10-26 | Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji | `minor` | 🚀 Opublikowana |
@@ -39,6 +40,41 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.0] — 2026-11-01
+**Tytuł:** Enterprise Security & Fleet Management (Podwójne Profile, Klucze Sprzętowe, MFA, Auto-Lock & Disaster Recovery BIP-39)  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+1. **Podwójny Profil Aplikacji (`FLEET_MASTER` vs `STORE_CLIENT`):**
+   - Ścisła izolacja stacji administratorskiej od stacji klienckich Store Managerów (SM) i Assistant Store Managerów (ASM).
+   - Profil `STORE_CLIENT` jest domyślny (zasada least-privilege) i blokuje dostęp do funkcji globalnych, przełączania nieprzypisanych kawiarni, zaawansowanej telemetrii oraz operacji bazy danych.
+   - Profil `FLEET_MASTER` udostępnia centralny pulpit zarządzania całą siecią kawiarni, generator kluczy aktywacyjnych, Kill-Switch oraz audyt stacji.
+
+2. **Kryptograficzny Silnik Licencji i Wiązania Sprzętowego (Hardware-Bound Activation):**
+   - Unikalne klucze aktywacyjne formatu `SBX-<storeId>-<hex>-<checksum>` z 64-bitową entropią CSPRNG i podpisem HMAC-SHA256.
+   - Odcisk sprzętowy (Hardware Fingerprint) wiążący instalację z fizyczną maszyną (IOPlatformUUID na macOS, MachineGuid na Windows, machine-id na Linux oraz unikalny adres MAC).
+   - Ochrona przed klonowaniem stacji (`HARDWARE_LOCKOUT`) oraz detekcja modyfikacji parametrów licencji (`TAMPER_DETECTED`).
+
+3. **Uwierzytelnianie Korporacyjne 2FA & Bramka Aktywacji:**
+   - Dwuetapowe logowanie OTP (6 cyfr CSPRNG, SHA-256 z solą, ochrona przed brute-force z blokadą po 3 próbach, unieważnienie po użyciu).
+   - Dozwolone domeny korporacyjne: `@amrest.eu` oraz `@starbucks.com`.
+   - Pełnoekranowy modal aktywacyjny nie do obejścia przed autoryzacją stacji.
+
+4. **Automatyczna Blokada Sesji (Session Auto-Lock) & Czyszczenie Pamięci RAM:**
+   - 15-minutowy timer bezczynności użytkownika automatycznie blokujący widok aplikacji.
+   - Bezpieczne zerowanie kluczy w pamięci RAM (`StoreKeyCache.clear()`) podczas blokady sesji w celu zapobieżenia zrzutom pamięci (memory dump extraction).
+
+5. **Disaster Recovery & Odzyskiwanie Stacji Master (BIP-39 24-Word Seed):**
+   - Standard SatoshiLabs BIP-0039 z 256-bitową entropią (24 słowa) oraz wyprowadzaniem nasion PBKDF2-HMAC-SHA512.
+   - Kanoniczna lista 2,048 słów języka angielskiego zweryfikowana sumą kontrolną SHA-256 (`2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`).
+   - Stałoczasowa weryfikacja haseł Master (`crypto.timingSafeEqual`) oraz mechanizm rate-limiting z trwałym plikiem blokady (15 min po 5 błędnych próbach).
+
+6. **Pełna Zgodność Testowa i Jakościowa:**
+   - Kompletny pakiet 188 testów bezpieczeństwa przechodzący w 100% (M1, M2, M3, M4).
+   - Czysty build produkcyjny (`tsc && vite build`) dla środowiska Electron i React.
+
+---
 
 ### [v2.8.70] — 2026-10-26
 **Tytuł:** Poprawka Schematu REST API Firestore dla Migracji Chmurowej AES-256 (Protobuf Document Fields)  

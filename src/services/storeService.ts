@@ -1,6 +1,7 @@
 import { StarbucksStore, STARBUCKS_STORES_CATALOG, normalizeDiacritics } from '../constants/starbucksStores';
 import { logger } from './logger';
 import { StoreStorage } from './storeStorage';
+import type { AppRuntimeMode } from './security/profilePolicyService';
 
 export interface StoreSwitchingDetail {
   fromStore: StarbucksStore;
@@ -27,6 +28,27 @@ const STORAGE_STORE_CITY_KEY = 'sbx_store_city';
 export class StoreService {
   private static cachedAllStores: StarbucksStore[] | null = null;
   private static storeIndexMap: Map<string, StarbucksStore> | null = null;
+  private static runtimeSecurityProfile: {
+    appMode: AppRuntimeMode | string;
+    assignedStoreIds: string[];
+  } = {
+    appMode: 'STORE_CLIENT',
+    assignedStoreIds: [],
+  };
+
+  public static setRuntimeSecurityProfile(
+    appMode: AppRuntimeMode | string,
+    assignedStoreIds: string[] = []
+  ): void {
+    this.runtimeSecurityProfile = {
+      appMode: appMode || 'STORE_CLIENT',
+      assignedStoreIds: Array.isArray(assignedStoreIds) ? assignedStoreIds : [],
+    };
+  }
+
+  public static getRuntimeSecurityProfile(): { appMode: AppRuntimeMode | string; assignedStoreIds: string[] } {
+    return this.runtimeSecurityProfile;
+  }
 
   /**
    * Usuwa polskie znaki diakrytyczne dla bezbłędnego wyszukiwania (np. "lodz" -> "lodz", "Łódź" -> "lodz")
@@ -39,6 +61,7 @@ export class StoreService {
    * Zwraca listę własnych kawiarni dodanych przez użytkownika
    */
   public static getCustomStores(): StarbucksStore[] {
+    if (typeof localStorage === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_CUSTOM_STORES_KEY);
       if (data) {
@@ -114,9 +137,55 @@ export class StoreService {
   }
 
   /**
+   * Sprawdza, czy dana kawiarnia pasuje do listy przypisanych identyfikatorów (id, unitCode, mpk)
+   */
+  public static isStoreAssigned(store: StarbucksStore, assignedStoreIds: string[]): boolean {
+    if (!assignedStoreIds || !Array.isArray(assignedStoreIds) || assignedStoreIds.length === 0) return false;
+    const normalizedAssigned = assignedStoreIds
+      .filter(Boolean)
+      .map((id) => String(id).trim().toLowerCase());
+
+    const matches = (candidate?: string) =>
+      Boolean(candidate && normalizedAssigned.includes(String(candidate).trim().toLowerCase()));
+
+    return matches(store.id) || matches(store.unitCode) || matches(store.mpk);
+  }
+
+  /**
+   * Zwraca listę kawiarni dopuszczonych dla danego profilu runtime.
+   * - FLEET_MASTER: pełna lista 100+ kawiarni
+   * - STORE_CLIENT: ściśle lista przypisanych lokali
+   */
+  public static getAvailableStoresForProfile(
+    mode: AppRuntimeMode | string,
+    assignedStoreIds: string[] = []
+  ): StarbucksStore[] {
+    const allStores = this.getAllStores();
+    const isFleetMaster = String(mode || '').trim().toUpperCase() === 'FLEET_MASTER';
+    if (isFleetMaster) {
+      return allStores;
+    }
+
+    if (!assignedStoreIds || assignedStoreIds.length === 0) {
+      const current = this.getCurrentStore();
+      return current.id ? [current] : [];
+    }
+
+    const filtered = allStores.filter((store) => this.isStoreAssigned(store, assignedStoreIds));
+    if (filtered.length === 0) {
+      const current = this.getCurrentStore();
+      if (current.id && this.isStoreAssigned(current, assignedStoreIds)) {
+        return [current];
+      }
+    }
+    return filtered;
+  }
+
+  /**
    * Sprawdza czy użytkownik skonfigurował już kawiarnię (zakończył onboarding)
    */
   public static hasConfiguredStore(): boolean {
+    if (typeof localStorage === 'undefined') return false;
     try {
       const savedName = localStorage.getItem(STORAGE_STORE_NAME_KEY)?.trim();
       const savedUnitCode = localStorage.getItem(STORAGE_UNIT_CODE_KEY)?.trim();
@@ -131,46 +200,48 @@ export class StoreService {
    * Zwraca aktualnie aktywną kawiarnię
    */
   public static getCurrentStore(): StarbucksStore {
-    try {
-      const savedName = localStorage.getItem(STORAGE_STORE_NAME_KEY);
-      const savedUnitCode = localStorage.getItem(STORAGE_UNIT_CODE_KEY);
-      const savedMpk = localStorage.getItem(STORAGE_STORE_MPK_KEY);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const savedName = localStorage.getItem(STORAGE_STORE_NAME_KEY);
+        const savedUnitCode = localStorage.getItem(STORAGE_UNIT_CODE_KEY);
+        const savedMpk = localStorage.getItem(STORAGE_STORE_MPK_KEY);
 
-      const allStores = this.getAllStores();
+        const allStores = this.getAllStores();
 
-      if (savedMpk) {
-        const found = allStores.find((s) => s.mpk === savedMpk || s.id === savedMpk);
-        if (found) return found;
+        if (savedMpk) {
+          const found = allStores.find((s) => s.mpk === savedMpk || s.id === savedMpk);
+          if (found) return found;
+        }
+
+        if (savedName) {
+          const found = allStores.find(
+            (s) => s.name.toLowerCase() === savedName.toLowerCase() || s.shortName.toLowerCase() === savedName.toLowerCase()
+          );
+          if (found) return found;
+        }
+
+        if (savedUnitCode) {
+          const found = allStores.find((s) => s.unitCode === savedUnitCode);
+          if (found) return found;
+        }
+
+        // Jeśli w localStorage był niestandardowy zapis, skonstruuj z niego obiekt
+        if (savedName || savedUnitCode) {
+          return {
+            id: savedMpk || savedUnitCode || 'custom',
+            name: savedName || 'Kawiarnia Starbucks',
+            shortName: savedName ? savedName.replace(/^SBX\s*/, '').replace(/108\d{3}\s*/, '') : 'Kawiarnia',
+            unitCode: savedUnitCode || '',
+            mpk: savedMpk || '',
+            city: localStorage.getItem(STORAGE_STORE_CITY_KEY) || '',
+            district: localStorage.getItem(STORAGE_STORE_DISTRICT_KEY) || '',
+            address: '',
+            type: 'Mall',
+          };
+        }
+      } catch (e) {
+        console.warn('Błąd odczytu aktualnej kawiarni z localStorage:', e);
       }
-
-      if (savedName) {
-        const found = allStores.find(
-          (s) => s.name.toLowerCase() === savedName.toLowerCase() || s.shortName.toLowerCase() === savedName.toLowerCase()
-        );
-        if (found) return found;
-      }
-
-      if (savedUnitCode) {
-        const found = allStores.find((s) => s.unitCode === savedUnitCode);
-        if (found) return found;
-      }
-
-      // Jeśli w localStorage był niestandardowy zapis, skonstruuj z niego obiekt
-      if (savedName || savedUnitCode) {
-        return {
-          id: savedMpk || savedUnitCode || 'custom',
-          name: savedName || 'Kawiarnia Starbucks',
-          shortName: savedName ? savedName.replace(/^SBX\s*/, '').replace(/108\d{3}\s*/, '') : 'Kawiarnia',
-          unitCode: savedUnitCode || '',
-          mpk: savedMpk || '',
-          city: localStorage.getItem(STORAGE_STORE_CITY_KEY) || '',
-          district: localStorage.getItem(STORAGE_STORE_DISTRICT_KEY) || '',
-          address: '',
-          type: 'Mall',
-        };
-      }
-    } catch (e) {
-      console.warn('Błąd odczytu aktualnej kawiarni z localStorage:', e);
     }
 
     // Gdy brak zapisanej kawiarni (stan początkowy przed ukończeniem kreatora konfiguracji)
@@ -191,7 +262,26 @@ export class StoreService {
    * Zmienia aktywną kawiarnię, przełączając dedykowaną bazę SQLite w Electronie
    * oraz zapisując wybór w localStorage i emitując zdarzenie systemowe.
    */
-  public static async setCurrentStore(store: StarbucksStore): Promise<{ success: boolean; isNew?: boolean }> {
+  public static async setCurrentStore(
+    store: StarbucksStore,
+    securityContext?: { appMode: AppRuntimeMode | string; assignedStoreIds?: string[] }
+  ): Promise<{ success: boolean; isNew?: boolean; error?: string }> {
+    const effectiveMode = securityContext?.appMode ?? this.runtimeSecurityProfile.appMode;
+    const effectiveAssigned = securityContext?.assignedStoreIds ?? this.runtimeSecurityProfile.assignedStoreIds;
+
+    // Fail-Closed Security Guard: Only explicit FLEET_MASTER can switch to any store.
+    // All other modes (STORE_CLIENT, lowercase 'store_client', or tampered values) are restricted.
+    const isFleetMaster = String(effectiveMode || '').trim().toUpperCase() === 'FLEET_MASTER';
+    if (!isFleetMaster) {
+      if (!this.isStoreAssigned(store, effectiveAssigned)) {
+        logger.warn('SECURITY', `[Access Denied] Zablokowano próbę zmiany kawiarni na ${store.name} (${store.id}) na stacji klienckiej.`, {
+          storeId: store.id,
+          assignedStoreIds: effectiveAssigned,
+        });
+        throw new Error(`UnauthorizedStoreSwitchError: Odmowa dostępu — lokal "${store.name}" (${store.id}) nie jest przypisany do tej stacji roboczej.`);
+      }
+    }
+
     try {
       const prevStore = this.getCurrentStore();
 
@@ -203,20 +293,34 @@ export class StoreService {
         toStoreId: store.id,
         timestamp: Date.now(),
       };
-      window.dispatchEvent(
-        new CustomEvent('sbx:store-switching', {
-          detail: switchingDetail,
-        })
-      );
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        try {
+          if (typeof CustomEvent !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('sbx:store-switching', { detail: switchingDetail })
+            );
+          } else {
+            window.dispatchEvent({ type: 'sbx:store-switching', detail: switchingDetail } as any);
+          }
+        } catch (eventErr) {
+          console.warn('[StoreService] Failed to dispatch sbx:store-switching event:', eventErr);
+        }
+      }
 
-      localStorage.setItem(STORAGE_STORE_NAME_KEY, store.name);
-      localStorage.setItem(STORAGE_UNIT_CODE_KEY, store.unitCode);
-      localStorage.setItem(STORAGE_STORE_MPK_KEY, store.mpk);
-      localStorage.setItem(STORAGE_STORE_DISTRICT_KEY, store.district);
-      localStorage.setItem(STORAGE_STORE_CITY_KEY, store.city);
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_STORE_NAME_KEY, store.name);
+          localStorage.setItem(STORAGE_UNIT_CODE_KEY, store.unitCode);
+          localStorage.setItem(STORAGE_STORE_MPK_KEY, store.mpk);
+          localStorage.setItem(STORAGE_STORE_DISTRICT_KEY, store.district);
+          localStorage.setItem(STORAGE_STORE_CITY_KEY, store.city);
+        } catch (storageErr) {
+          console.warn('[StoreService] Failed to persist store to localStorage:', storageErr);
+        }
+      }
 
       // Przełączenie pliku bazy SQLite w Electronie na bazę tej kawiarni
-      const apiObj = (window as any).api || (window as any).electronAPI;
+      const apiObj = typeof window !== 'undefined' ? ((window as any).api || (window as any).electronAPI) : null;
       let switchResult: any = { success: true };
       if (apiObj?.switchStoreDatabase) {
         try {
@@ -260,16 +364,23 @@ export class StoreService {
         isNewDb: Boolean(switchResult?.isNew),
         timestamp: Date.now(),
       };
-      window.dispatchEvent(
-        new CustomEvent('sbx:store-switched', {
-          detail: switchedDetail,
-        })
-      );
-      window.dispatchEvent(
-        new CustomEvent('sbx-store-changed', {
-          detail: store,
-        })
-      );
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        try {
+          if (typeof CustomEvent !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('sbx:store-switched', { detail: switchedDetail })
+            );
+            window.dispatchEvent(
+              new CustomEvent('sbx-store-changed', { detail: store })
+            );
+          } else {
+            window.dispatchEvent({ type: 'sbx:store-switched', detail: switchedDetail } as any);
+            window.dispatchEvent({ type: 'sbx-store-changed', detail: store } as any);
+          }
+        } catch (eventErr) {
+          console.warn('[StoreService] Failed to dispatch store switched events:', eventErr);
+        }
+      }
 
       return switchResult;
     } catch (e) {
@@ -290,7 +401,7 @@ export class StoreService {
       console.warn('Błąd migracji kluczy legacy w StoreStorage:', e);
     }
 
-    const apiObj = (window as any).api || (window as any).electronAPI;
+    const apiObj = typeof window !== 'undefined' ? ((window as any).api || (window as any).electronAPI) : null;
 
     // 1. Wczytanie własnych kawiarni z trwałego pliku na dysku w Electronie
     if (apiObj?.getCustomStores) {
@@ -306,7 +417,11 @@ export class StoreService {
           }
 
           const merged = Array.from(localMap.values());
-          localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(merged));
+          if (typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(merged));
+            } catch {}
+          }
           this.invalidateCache();
           
           // Zapewnij, że plik na dysku zawiera pełny zbiór
@@ -315,7 +430,11 @@ export class StoreService {
           }
 
           // Powiadom komponenty o zaktualizowaniu listy kawiarni
-          window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            try {
+              window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+            } catch {}
+          }
         } else {
           // Jeśli na dysku pusto, ale w localStorage są zapisane kawiarnie — zrzuć je na dysk!
           const localStores = this.getCustomStores();
@@ -354,7 +473,18 @@ export class StoreService {
    * Dodaje nową, spersonalizowaną kawiarnię do pamięci, localStorage oraz trwałego pliku
    * custom_stores.json na dysku komputera, a następnie opcjonalnie ją aktywuje.
    */
-  public static async addCustomStore(store: StarbucksStore, activate = true): Promise<{ success: boolean; isNew?: boolean }> {
+  public static async addCustomStore(
+    store: StarbucksStore,
+    activate = true,
+    securityContext?: { appMode: AppRuntimeMode | string }
+  ): Promise<{ success: boolean; isNew?: boolean; error?: string }> {
+    const effectiveMode = securityContext?.appMode ?? this.runtimeSecurityProfile.appMode;
+    const isFleetMaster = String(effectiveMode || '').trim().toUpperCase() === 'FLEET_MASTER';
+    if (!isFleetMaster) {
+      logger.warn('SECURITY', `[Access Denied] Dodawanie własnych kawiarni jest zablokowane na stacji klienckiej.`);
+      throw new Error('UnauthorizedStoreCreationError: Niedozwolone w trybie STORE_CLIENT — dodawanie kawiarni zablokowane.');
+    }
+
     try {
       const customStores = this.getCustomStores();
       const existingIdx = customStores.findIndex((s) => s.id === store.id || s.mpk === store.mpk);
@@ -368,11 +498,17 @@ export class StoreService {
       }
 
       // 1. Zapis w localStorage
-      localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(customStores));
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(customStores));
+        } catch (storageErr) {
+          console.warn('[StoreService] Failed to save custom stores to localStorage:', storageErr);
+        }
+      }
       this.invalidateCache();
 
       // 2. Trwały zapis na dysku w Electronie
-      const apiObj = (window as any).api || (window as any).electronAPI;
+      const apiObj = typeof window !== 'undefined' ? ((window as any).api || (window as any).electronAPI) : null;
       if (apiObj?.saveCustomStores) {
         try {
           await apiObj.saveCustomStores(customStores);
@@ -381,11 +517,15 @@ export class StoreService {
         }
       }
 
-      window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        try {
+          window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+        } catch {}
+      }
 
       // 3. Aktywacja nowej kawiarni
       if (activate) {
-        return await this.setCurrentStore(storeToSave);
+        return await this.setCurrentStore(storeToSave, { appMode: 'FLEET_MASTER' });
       }
 
       return { success: true };
@@ -398,13 +538,29 @@ export class StoreService {
   /**
    * Usuwa własną kawiarnię z listy w localStorage oraz na dysku
    */
-  public static async removeCustomStore(storeId: string): Promise<void> {
+  public static async removeCustomStore(
+    storeId: string,
+    securityContext?: { appMode: AppRuntimeMode | string }
+  ): Promise<void> {
+    const effectiveMode = securityContext?.appMode ?? this.runtimeSecurityProfile.appMode;
+    const isFleetMaster = String(effectiveMode || '').trim().toUpperCase() === 'FLEET_MASTER';
+    if (!isFleetMaster) {
+      logger.warn('SECURITY', `[Access Denied] Usuwanie kawiarni jest zablokowane na stacji klienckiej.`);
+      throw new Error('UnauthorizedStoreRemovalError: Niedozwolone w trybie STORE_CLIENT — usuwanie kawiarni zablokowane.');
+    }
+
     try {
       const customStores = this.getCustomStores().filter((s) => s.id !== storeId);
-      localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(customStores));
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_CUSTOM_STORES_KEY, JSON.stringify(customStores));
+        } catch (storageErr) {
+          console.warn('[StoreService] Failed to update custom stores in localStorage:', storageErr);
+        }
+      }
       this.invalidateCache();
 
-      const apiObj = (window as any).api || (window as any).electronAPI;
+      const apiObj = typeof window !== 'undefined' ? ((window as any).api || (window as any).electronAPI) : null;
       if (apiObj?.saveCustomStores) {
         try {
           await apiObj.saveCustomStores(customStores);
@@ -413,7 +569,11 @@ export class StoreService {
         }
       }
 
-      window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        try {
+          window.dispatchEvent(new CustomEvent('sbx-stores-list-updated'));
+        } catch {}
+      }
     } catch (e) {
       console.error('Błąd usuwania kawiarni w StoreService:', e);
     }

@@ -162,6 +162,18 @@ export class StoreKeyCache {
     this.cache.clear();
   }
 
+  public static setStoreKey(storeId: string, key: Buffer): void {
+    this.set(storeId, storeId, 'default', key);
+  }
+
+  public static hasStoreKey(storeId: string): boolean {
+    const prefix = `${storeId}:`;
+    for (const k of this.cache.keys()) {
+      if (k.startsWith(prefix)) return true;
+    }
+    return false;
+  }
+
   public static size(): number {
     return this.cache.size;
   }

@@ -1,0 +1,322 @@
+diff --git a/tests/security/challenger1_m2_isolation_privilege.test.ts b/tests/security/challenger1_m2_isolation_privilege.test.ts
+index c6b6188..05df84b 100644
+--- a/tests/security/challenger1_m2_isolation_privilege.test.ts
++++ b/tests/security/challenger1_m2_isolation_privilege.test.ts
+@@ -1,6 +1,7 @@
+ /**
+- * Starbucks Operations Suite — Milestone 2 Adversarial Challenge Test Suite
++ * Starbucks Operations Suite — Milestone 2 Adversarial Challenge Test Suite (Harmonized)
+  * Challenger: M2 Challenger 1 (Store Isolation & Privilege Escalation Stress Test)
++ * Harmonized by: M2 Iter2 Explorer 3 (Security Test Suite Harmonization)
+  * File: tests/security/challenger1_m2_isolation_privilege.test.ts
+  *
+  * Scope:
+@@ -8,7 +9,7 @@
+  *    case variations, prototype pollution, whitespace, partial matches, state mutation checks).
+  * 2. Profile policy spoofing attempts against restricted operations (Clean Slate DB reset,
+  *    manual VACUUM/PRAGMA, CSV exports, custom store addition, mode parameter tampering).
+- * 3. Empirical vulnerability demonstration & failure mode verification.
++ * 3. Hardened fail-closed behavior verification & least-privilege defaults.
+  */
+ 
+ import test from 'node:test';
+@@ -289,17 +290,16 @@ test('M2-CHALLENGER-1: Store Isolation & Privilege Escalation Stress Test', asyn
+       false,
+       'Assigned list with only whitespace must fail closed'
+     );
+-
+-    // Vulnerability Check: canSwitchToStore on null assignedStoreIds
+-    try {
+-      const res = ProfilePolicyService.canSwitchToStore('STORE_CLIENT', '108120', null as any);
+-      assert.equal(res, false, 'Expected fail-closed boolean');
+-    } catch (err: any) {
+-      assert.ok(
+-        err instanceof TypeError,
+-        'Demonstrates vulnerability: canSwitchToStore throws unhandled TypeError on null assignedStoreIds'
+-      );
+-    }
++    assert.equal(
++      ProfilePolicyService.canSwitchToStore('STORE_CLIENT', '108120', null as any),
++      false,
++      'Null assignedStoreIds must fail closed without throwing TypeError'
++    );
++    assert.equal(
++      ProfilePolicyService.canSwitchToStore('STORE_CLIENT', '108120', 12345 as any),
++      false,
++      'Non-array assignedStoreIds must fail closed without throwing TypeError'
++    );
+   });
+ 
+   await suite.test('1.8 Store Boundary: Catalog filtering fail-closed behavior', () => {
+@@ -315,6 +315,13 @@ test('M2-CHALLENGER-1: Store Isolation & Privilege Escalation Stress Test', asyn
+       ['   ']
+     );
+     assert.deepEqual(filteredWhitespace, [], 'Filter with whitespace assigned list must return 0 stores');
++
++    const filteredNull = ProfilePolicyService.filterStoresForProfile(
++      STARBUCKS_STORES_CATALOG,
++      'STORE_CLIENT',
++      null as any
++    );
++    assert.deepEqual(filteredNull, [], 'Filter with null assigned list must return 0 stores');
+   });
+ 
+   // ==========================================================================
+@@ -473,6 +480,30 @@ test('M2-CHALLENGER-1: Store Isolation & Privilege Escalation Stress Test', asyn
+       assert.ok(res.error?.includes('Wymagane wpisanie dokładnej frazy'));
+     }
+ 
++    // Adversarial: Missing or undefined storeId in payload must return failure cleanly
++    const missingStoreIdRes = FleetService.getInstance().applyKillSwitch({
++      confirmationChallenge: 'REVOKE 108120',
++      reason: 'Missing storeId check',
++      actorName: 'tester',
++      actorEmail: 'tester@starbucks.com',
++    } as any);
++    assert.equal(missingStoreIdRes.success, false, 'Missing storeId must return failure cleanly without throwing TypeError');
++
++    // Adversarial: Alternative targetStoreId property alias support
++    const targetStoreIdRes = FleetService.getInstance().applyKillSwitch({
++      targetStoreId: '108120',
++      confirmationChallenge: 'REVOKE 108120',
++      reason: 'targetStoreId alias check',
++      actorName: 'tester',
++      actorEmail: 'tester@starbucks.com',
++    } as any);
++    assert.equal(targetStoreIdRes.success, true, 'targetStoreId alias should be supported gracefully');
++
++    // Adversarial: Missing or undefined confirmationChallenge must return failure cleanly
++    const missingChallengeRes = FleetService.getInstance().applyKillSwitch({
++      storeId: '108120',
++      reason: 'Missing challenge check',
++      actorName: 'tester',
++      actorEmail: 'tester@starbucks.com',
++    } as any);
++    assert.equal(missingChallengeRes.success, false, 'Missing confirmationChallenge must return failure cleanly');
++
+     // Note on casing: FleetService.applyKillSwitch normalizes via .toUpperCase()
+     const lowercaseRes = FleetService.getInstance().applyKillSwitch({
+       storeId,
+@@ -499,35 +530,36 @@ test('M2-CHALLENGER-1: Store Isolation & Privilege Escalation Stress Test', asyn
+   });
+ 
+   // ==========================================================================
+-  // SECTION 3: Empirical Stress-Test of Profile Discrepancies & Default Open State
++  // SECTION 3: Hardened Profile Security & Least-Privilege Verification
+   // ==========================================================================
+-  await suite.test('3.1 Vulnerability Discovery: StoreService setCurrentStore bypass with lowercase appMode', async () => {
+-    // Attempting to switch with lowercase 'store_client'
+-    const switchResult = await StoreService.setCurrentStore(storeZloteTarasy, {
+-      appMode: 'store_client', // Lowercase bypass attempt
+-      assignedStoreIds: ['108120'],
+-    });
+-
+-    // Empirical observation: effectiveMode === 'STORE_CLIENT' is case-sensitive and fails open
+-    // If it allowed the switch, switchResult.success is true
+-    assert.equal(
+-      switchResult.success,
+-      true,
+-      'Demonstrates critical vulnerability: StoreService.setCurrentStore allows unassigned store switch when appMode is lowercase "store_client"'
++  await suite.test('3.1 Hardened Store Boundary: StoreService rejects unassigned switch with lowercase "store_client"', async () => {
++    // Attempting to switch with lowercase 'store_client' must reject fail-closed
++    await assert.rejects(
++      async () => {
++        await StoreService.setCurrentStore(storeZloteTarasy, {
++          appMode: 'store_client', // Lowercase bypass attempt
++          assignedStoreIds: ['108120'],
++        });
++      },
++      /UnauthorizedStoreSwitchError|Odmowa dostępu/i,
++      'StoreService.setCurrentStore must reject unassigned store switch when appMode is lowercase "store_client"'
+     );
+   });
+ 
+-  await suite.test('3.2 Vulnerability Discovery: StoreService initial static profile is FLEET_MASTER', () => {
++  await suite.test('3.2 Least-Privilege Default: StoreService initial static profile defaults to STORE_CLIENT', () => {
+     // Verified against the initial snapshot before subtests modified state:
+     assert.equal(
+       initialStaticProfile.appMode,
+-      'FLEET_MASTER',
+-      'Demonstrates vulnerability: StoreService.runtimeSecurityProfile initializes to FLEET_MASTER instead of least-privilege STORE_CLIENT'
++      'STORE_CLIENT',
++      'StoreService.runtimeSecurityProfile must default to least-privilege STORE_CLIENT'
++    );
++    assert.deepEqual(
++      initialStaticProfile.assignedStoreIds,
++      [],
++      'StoreService.runtimeSecurityProfile assignedStoreIds must default to empty array'
+     );
+   });
+ 
+-  // Clean up mock state after suite
++  // Clean up mock state after suite — reset to secure STORE_CLIENT default
+   suite.after(() => {
+-    StoreService.setRuntimeSecurityProfile('FLEET_MASTER');
++    StoreService.setRuntimeSecurityProfile('STORE_CLIENT', []);
+     (globalThis as any).localStorage = originalLocalStorage;
+     (globalThis as any).window = originalWindow;
+     (globalThis as any).CustomEvent = originalCustomEvent;
+   });
+ });
+diff --git a/tests/security/dual_profile_isolation.test.ts b/tests/security/dual_profile_isolation.test.ts
+index e391b45..c6d36e2 100644
+--- a/tests/security/dual_profile_isolation.test.ts
++++ b/tests/security/dual_profile_isolation.test.ts
+@@ -1,6 +1,7 @@
+ /**
+- * Starbucks Operations Suite — Milestone 2 Security Test Suite
++ * Starbucks Operations Suite — Milestone 2 Security Test Suite (Harmonized)
+  * File: tests/security/dual_profile_isolation.test.ts
++ * Harmonized by: M2 Iter2 Explorer 3 (Security Test Suite Harmonization)
+  *
+  * Scope: Dual-Profile Runtime Architecture & Fleet Master Isolation
+  * Tests profile policy enforcement, catalog isolation, unauthorized store switching guards,
+@@ -16,6 +17,59 @@ import { STARBUCKS_STORES_CATALOG, StarbucksStore } from '../../src/constants/s
+ import { StoreKeyCache } from '../../src/services/security/encryptionService';
+ import { KillSwitchPayload } from '../../src/types/fleet';
+ 
++// ----------------------------------------------------------------------------
++// Headless Node.js Mock Environment (Prevents ReferenceErrors in headless runs)
++// ----------------------------------------------------------------------------
++const originalLocalStorage = (globalThis as any).localStorage;
++const originalWindow = (globalThis as any).window;
++const originalCustomEvent = (globalThis as any).CustomEvent;
++
++class TestMemoryStorage {
++  private data = new Map<string, string>();
++  getItem(key: string) { return this.data.get(key) ?? null; }
++  setItem(key: string, value: string) { this.data.set(key, String(value)); }
++  removeItem(key: string) { this.data.delete(key); }
++  clear() { this.data.clear(); }
++  get length() { return this.data.size; }
++}
++
++class TestMockWindow {
++  private listeners = new Map<string, Function[]>();
++  addEventListener(event: string, fn: Function) {
++    const list = this.listeners.get(event) || [];
++    list.push(fn);
++    this.listeners.set(event, list);
++  }
++  removeEventListener(event: string, fn: Function) {
++    const list = this.listeners.get(event) || [];
++    this.listeners.set(event, list.filter((f) => f !== fn));
++  }
++  dispatchEvent(event: any): boolean {
++    const list = this.listeners.get(event?.type) || [];
++    for (const fn of list) {
++      try { fn(event); } catch (_) {}
++    }
++    return true;
++  }
++  api = {
++    switchStoreDatabase: async (opts: any) => ({ success: true, dbPath: `store_${opts.storeId}.db`, isNew: false }),
++    saveAppSettings: async () => ({ success: true }),
++    getCustomStores: async () => [],
++    saveCustomStores: async () => ({ success: true }),
++  };
++}
++
++if (typeof (globalThis as any).localStorage === 'undefined') {
++  (globalThis as any).localStorage = new TestMemoryStorage();
++}
++if (typeof (globalThis as any).window === 'undefined') {
++  (globalThis as any).window = new TestMockWindow();
++}
++if (typeof (globalThis as any).CustomEvent === 'undefined') {
++  (globalThis as any).CustomEvent = class CustomEvent {
++    constructor(public type: string, public init?: any) {
++      this.detail = init?.detail;
++    }
++    detail: any;
++  };
++}
++
+ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t) => {
+   // Test fixture stores
+   const storeJanki = STARBUCKS_STORES_CATALOG.find((s) => s.id === '108120' || s.unitCode === '18120') || {
+@@ -126,6 +180,13 @@ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t)
+     );
+ 
+     assert.deepEqual(undefinedAssigned, [], 'Store Client with undefined assigned stores must fail closed');
++
++    const nullAssigned = ProfilePolicyService.filterStoresForProfile(
++      STARBUCKS_STORES_CATALOG,
++      'STORE_CLIENT',
++      null as any
++    );
++    assert.deepEqual(nullAssigned, [], 'Store Client with null assigned stores must fail closed');
+   });
+ 
+   // --------------------------------------------------------------------------
+@@ -151,6 +212,13 @@ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t)
+       false,
+       'Store Client must be blocked from switching to unassigned store'
+     );
++
++    // Store Client blocked on null assignedStoreIds
++    assert.equal(
++      ProfilePolicyService.canSwitchToStore('STORE_CLIENT', '108120', null as any),
++      false,
++      'Store Client must fail closed on null assignedStoreIds'
++    );
+   });
+ 
+   await t.test('3.2 StoreService Guard: setCurrentStore throws on unauthorized switch in STORE_CLIENT', async () => {
+@@ -163,7 +231,7 @@ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t)
+     await assert.rejects(
+       async () => {
+         await StoreService.setCurrentStore(storeZloteTarasy);
+       },
+-      /Odmowa dostępu|Naruszenie profilu|nie jest przypisany/i,
++      /Odmowa dostępu|Naruszenie profilu|nie jest przypisany|UnauthorizedStoreSwitchError/i,
+       'Switching to unassigned store in STORE_CLIENT must reject with security error'
+     );
+ 
+@@ -171,8 +239,8 @@ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t)
+     await assert.doesNotReject(async () => {
+       await StoreService.setCurrentStore(storeJanki);
+     });
+ 
+-    // Reset runtime profile to FLEET_MASTER for other tests
+-    StoreService.setRuntimeSecurityProfile('FLEET_MASTER');
++    // Reset runtime profile to STORE_CLIENT for security isolation
++    StoreService.setRuntimeSecurityProfile('STORE_CLIENT', []);
+   });
+ 
+   await t.test('3.3 StoreService Guard: addCustomStore blocked in STORE_CLIENT mode', async () => {
+@@ -197,7 +265,7 @@ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t)
+       'Adding custom stores must be blocked in STORE_CLIENT mode'
+     );
+ 
+-    StoreService.setRuntimeSecurityProfile('FLEET_MASTER');
++    StoreService.setRuntimeSecurityProfile('STORE_CLIENT', []);
+   });
+ 
+   // --------------------------------------------------------------------------
+@@ -367,6 +435,14 @@ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t)
+     assert.ok(updatedStore, 'Store record must exist in fleet service');
+     assert.equal(updatedStore?.health, 'revoked', 'Store health must transition to revoked');
+ 
++    // 8. Verify event dispatch occurred
++    if (typeof window !== 'undefined') {
++      assert.equal(eventFired, true, 'sbx:license-revoked event must be dispatched to window');
++      assert.equal(eventDetail?.storeId, storeJanki.id, 'Dispatched event must include target storeId');
++      if (window.removeEventListener) {
++        window.removeEventListener('sbx:license-revoked', eventHandler);
++      }
++    }
+   });
+ 
+   // --------------------------------------------------------------------------
+@@ -391,4 +467,11 @@ test('M2-SEC: Dual-Profile Runtime Security & Fleet Isolation Suite', async (t)
+   });
++
++  // Suite teardown: restore globals and reset profile to least-privilege default
++  t.after(() => {
++    StoreService.setRuntimeSecurityProfile('STORE_CLIENT', []);
++    (globalThis as any).localStorage = originalLocalStorage;
++    (globalThis as any).window = originalWindow;
++    (globalThis as any).CustomEvent = originalCustomEvent;
++  });
+ });

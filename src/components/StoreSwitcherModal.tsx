@@ -35,7 +35,7 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
   onClose,
   onStoreSwitched,
 }) => {
-  const { currentStore, availableStores, switchStore, addCustomStore, removeCustomStore } = useStore();
+  const { currentStore, availableStores, switchStore, addCustomStore, removeCustomStore, isStoreClient } = useStore();
 
   const [rawQuery, setRawQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -204,7 +204,7 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
     [activeTab, totalItems, selectedIndex, filteredStores, handleSelectStore, onClose]
   );
 
-  if (!isOpen) return null;
+  if (!isOpen || isStoreClient) return null;
 
   const handleAddNewStoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

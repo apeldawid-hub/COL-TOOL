@@ -1,5 +1,5 @@
 // src/components/LoginView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Store, 
   ArrowRight, 
@@ -15,12 +15,14 @@ import {
   Laptop, 
   UserPlus, 
   Sparkles,
-  Lock
+  Lock,
+  RotateCcw
 } from 'lucide-react';
 import { APP_VERSION, APP_SHORT_NAME } from '../version';
 import { useStore } from '../context/StoreContext';
+import { useAuth } from '../context/AuthContext';
 import { StoreSwitcherModal } from './StoreSwitcherModal';
-import { AuthService, AuthUserSession } from '../services/auth/authService';
+import { AuthService, AuthUserSession, validateCorporateEmail } from '../services/auth/authService';
 import { AdminService } from '../services/admin/adminService';
 import { AppUserRole } from '../types/admin';
 
@@ -32,12 +34,19 @@ type AuthTab = 'store_manager' | 'partner_2fa' | 'register_partner';
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const { currentStore } = useStore();
+  const { loginWith2Fa } = useAuth();
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<AuthTab>('store_manager');
 
   // Stan dla 2FA
   const [email2Fa, setEmail2Fa] = useState('');
-  const [otpCode, setOtpCode] = useState('');
+  const [password2Fa, setPassword2Fa] = useState('');
+  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [timerSeconds, setTimerSeconds] = useState<number>(300);
+  const [resendCooldown, setResendCooldown] = useState<number>(30);
+  const [isLockedOut, setIsLockedOut] = useState<boolean>(false);
+  const [lockoutSeconds, setLockoutSeconds] = useState<number>(0);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [simulatedCode, setSimulatedCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,6 +71,23 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     setSuccessMessage(null);
   }, [activeTab]);
 
+  // Licznik ważności kodu (5 min) oraz cooldown ponownej wysyłki (30s) i blokady (60s)
+  useEffect(() => {
+    if (!isOtpSent) return;
+    const interval = setInterval(() => {
+      setTimerSeconds((prev) => Math.max(0, prev - 1));
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          setIsLockedOut(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isOtpSent]);
+
   // Obsługa natychmiastowego logowania Store Managera (Dawid Apel)
   const handleStoreManagerLogin = () => {
     setIsSubmitting(true);
@@ -77,22 +103,91 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     }
   };
 
-  // Krok 1: Wysłanie kodu 2FA na firmowy e-mail
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  // Obsługa wprowadzania pojedynczych cyfr w 6 polach OTP
+  const handleDigitChange = (index: number, value: string) => {
+    const numeric = value.replace(/[^0-9]/g, '');
+    if (!numeric) {
+      const next = [...digits];
+      next[index] = '';
+      setDigits(next);
+      return;
+    }
+    const digit = numeric.slice(-1);
+    const next = [...digits];
+    next[index] = digit;
+    setDigits(next);
+
+    if (index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (!digits[index] && index > 0) {
+        const next = [...digits];
+        next[index - 1] = '';
+        setDigits(next);
+        inputRefs.current[index - 1]?.focus();
+      } else {
+        const next = [...digits];
+        next[index] = '';
+        setDigits(next);
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+    if (!pasted) return;
+    const next = [...digits];
+    for (let i = 0; i < 6; i++) {
+      next[i] = pasted[i] || '';
+    }
+    setDigits(next);
+    const focusIdx = Math.min(pasted.length, 5);
+    inputRefs.current[focusIdx]?.focus();
+  };
+
+  // Krok 1: Wysłanie kodu 2FA na firmowy e-mail (po walidacji domeny)
+  const handleRequestOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
-    setIsSubmitting(true);
 
+    const val = validateCorporateEmail(email2Fa);
+    if (!val.isValid || !val.normalizedEmail) {
+      setErrorMessage(val.error || 'Wprowadź prawidłowy adres e-mail w domenie @amrest.eu lub @starbucks.com.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const res = await AuthService.request2FaOtp(email2Fa, currentStore.unitCode);
+      const res = await AuthService.request2FaOtp(val.normalizedEmail, currentStore.unitCode);
       if (res.success) {
         setIsOtpSent(true);
+        setDigits(['', '', '', '', '', '']);
+        setTimerSeconds(res.expiresInSeconds || 300);
+        setResendCooldown(res.resendCooldownSeconds || 30);
+        setIsLockedOut(false);
+        setLockoutSeconds(0);
         setSuccessMessage(res.message);
         if (res.simulatedCode) {
           setSimulatedCode(res.simulatedCode);
         }
+        setTimeout(() => {
+          inputRefs.current[0]?.focus();
+        }, 150);
       } else {
+        if (res.isLockedOut) {
+          setIsLockedOut(true);
+          setLockoutSeconds(res.cooldownSeconds || 60);
+        }
         setErrorMessage(res.message);
       }
     } catch (err: any) {
@@ -102,21 +197,32 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     }
   };
 
-  // Krok 2: Weryfikacja kodu 2FA
+  // Krok 2: Weryfikacja 6-cyfrowego kodu 2FA
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
-    setIsSubmitting(true);
 
+    const enteredCode = digits.join('');
+    if (enteredCode.length !== 6) {
+      setErrorMessage('Wprowadź pełny 6-cyfrowy kod weryfikacyjny.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const res = await AuthService.verify2FaOtp(email2Fa, otpCode);
-      if (res.success && res.session) {
+      const res = await loginWith2Fa(email2Fa, enteredCode);
+      if (res.success) {
         setSuccessMessage('Pomyślna weryfikacja 2FA! Logowanie...');
+        const session = AuthService.getCurrentSession();
         setTimeout(() => {
-          onLogin(`${res.session!.fullName} (${res.session!.role})`, res.session);
+          onLogin(session ? `${session.fullName} (${session.role})` : email2Fa, session || undefined);
         }, 300);
       } else {
+        if ((res as any).isLockedOut) {
+          setIsLockedOut(true);
+          setLockoutSeconds((res as any).cooldownSeconds || 60);
+        }
         setErrorMessage(res.message || 'Niepoprawny kod weryfikacyjny.');
         setIsSubmitting(false);
       }
@@ -342,12 +448,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                         value={email2Fa}
                         onChange={(e) => setEmail2Fa(e.target.value)}
                         placeholder="np. jan.kowalski@amrest.eu"
-                        className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241] focus:bg-white transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241] focus:bg-white transition-all font-medium"
                       />
                     </div>
-                    <p className="text-[11px] text-stone-500 mt-1">
-                      Weryfikacja dwuetapowa wyśle 6-cyfrowy kod autoryzacyjny na podaną skrzynkę.
+                    <p className="text-[11px] text-stone-500 mt-1.5 flex items-center gap-1">
+                      <Shield className="w-3 h-3 text-[#006241]" />
+                      Weryfikacja dwuetapowa 2FA wyśle 6-cyfrowy kod autoryzacyjny na podaną skrzynkę.
                     </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                      Hasło / PIN dostępowy:
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="password"
+                        value={password2Fa}
+                        onChange={(e) => setPassword2Fa(e.target.value)}
+                        placeholder="Wprowadź hasło lub PIN..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241] focus:bg-white transition-all font-medium"
+                      />
+                    </div>
                   </div>
 
                   <button
@@ -370,36 +493,82 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                       type="button"
                       onClick={() => {
                         setIsOtpSent(false);
-                        setOtpCode('');
+                        setDigits(['', '', '', '', '', '']);
                         setSimulatedCode(null);
                       }}
                       className="text-[#006241] hover:underline font-bold text-[11px] cursor-pointer"
                     >
-                      Zmień e-mail
+                      Zmień adres e-mail
                     </button>
                   </div>
 
+                  {/* 6 Separate Digit Boxes */}
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                      Wpisz 6-cyfrowy kod z wiadomości e-mail:
-                    </label>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        maxLength={6}
-                        required
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                        placeholder="000000"
-                        className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-center font-mono text-lg font-bold tracking-widest text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241] focus:bg-white transition-all"
-                      />
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-[#006241]" />
+                        Wpisz 6-cyfrowy kod z wiadomości e-mail:
+                      </label>
+                      <span className="text-[11px] font-mono font-bold text-stone-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-stone-400" />
+                        {Math.floor(timerSeconds / 60)}:{(timerSeconds % 60).toString().padStart(2, '0')}
+                      </span>
                     </div>
+
+                    <div className="flex justify-center items-center gap-2.5 my-3">
+                      {digits.map((digit, idx) => (
+                        <input
+                          key={idx}
+                          ref={(el) => { inputRefs.current[idx] = el; }}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={1}
+                          disabled={isSubmitting || isLockedOut || timerSeconds === 0}
+                          value={digit}
+                          onChange={(e) => handleDigitChange(idx, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(idx, e)}
+                          onPaste={handlePaste}
+                          className={`w-11 sm:w-12 h-14 text-center font-mono text-2xl font-black rounded-xl border-2 transition-all outline-none ${
+                            isLockedOut
+                              ? 'border-rose-300 bg-rose-50 text-rose-700 cursor-not-allowed'
+                              : digit
+                              ? 'border-[#006241] bg-emerald-50/40 text-[#006241]'
+                              : 'border-stone-200 bg-stone-50 text-stone-900 focus:border-[#006241] focus:ring-2 focus:ring-[#006241]/20 focus:bg-white'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Resend and timer status */}
+                    <div className="flex items-center justify-between text-[11px] mt-2">
+                      <span className="text-stone-400">
+                        {timerSeconds === 0 ? 'Kod wygasł' : `Ważność kodu: ${Math.floor(timerSeconds / 60)}:${(timerSeconds % 60).toString().padStart(2, '0')}`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestOtp()}
+                        disabled={isSubmitting || isLockedOut || resendCooldown > 0}
+                        className="text-[#006241] hover:underline font-bold disabled:opacity-40 disabled:hover:no-underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        {resendCooldown > 0 ? `Wyślij kod ponownie (${resendCooldown}s)` : 'Wyślij kod ponownie'}
+                      </button>
+                    </div>
+
+                    {isLockedOut && (
+                      <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>
+                          Przekroczono limit 3 prób weryfikacji. Dostęp został zablokowany na {lockoutSeconds} sekund w celu ochrony konta.
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <button
                     type="submit"
-                    disabled={isSubmitting || otpCode.length !== 6}
+                    disabled={isSubmitting || digits.some((d) => !d) || isLockedOut || timerSeconds === 0}
                     className="w-full bg-[#006241] hover:bg-[#00754A] active:scale-[0.99] disabled:opacity-50 text-white font-bold py-3.5 px-6 rounded-2xl shadow-md transition-all flex items-center justify-center space-x-2 group cursor-pointer text-xs"
                   >
                     <span>{isSubmitting ? 'Weryfikacja...' : 'Zaloguj i odblokuj pulpit'}</span>

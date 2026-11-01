@@ -602,6 +602,7 @@ export interface TorQuarterData {
 }
 
 export type AppModule =
+  | 'fleet_master'
   | 'dashboard'
   | 'labor_forecast'
   | 'managers_schedule'
@@ -655,3 +656,5 @@ export interface DatabaseOptimizationResult {
   durationMs: number;
   health: DatabaseHealthStatus;
 }
+
+export * from './licensing';

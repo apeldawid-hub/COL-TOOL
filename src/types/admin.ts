@@ -61,7 +61,7 @@ export interface SecurityAuditLog {
   timestamp: string;
   actorName: string;
   actorRole: AppUserRole;
-  actionType: 'LOGIN_2FA' | 'REQUEST_APPROVED' | 'REQUEST_REJECTED' | 'ROLE_CHANGED' | 'PERMISSION_TOGGLED' | 'KILL_SWITCH_REVOKE' | 'KEY_ROTATION';
+  actionType: 'LOGIN_2FA' | 'REQUEST_APPROVED' | 'REQUEST_REJECTED' | 'ROLE_CHANGED' | 'PERMISSION_TOGGLED' | 'KILL_SWITCH_REVOKE' | 'KEY_ROTATION' | 'SECURITY_ALERT';
   targetResource: string;
   details: string;
   ipAddress?: string;

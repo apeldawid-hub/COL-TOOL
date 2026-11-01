@@ -11,6 +11,9 @@ import { AppUpdater } from './updater';
 import { CrashLogManager } from './crashLogManager';
 import { GitHubReporter } from './githubReporter';
 import { VaultKeyManager } from './security/vaultKeyManager';
+import { HardwareIdManager } from './security/hardwareIdManager';
+import { LicenseVaultManager } from './security/licenseVaultManager';
+import { MasterCredentialManager } from './security/masterCredentialManager';
 
 // Rejestracja globalnego łapania awarii w procesie głównym Electron
 process.on('uncaughtException', (error) => {
@@ -1986,6 +1989,40 @@ function setupIpcHandlers() {
 
   ipcMain.handle('crypto:safe-storage-decrypt', async (_event, encryptedBase64: string) => {
     return VaultKeyManager.getInstance().decryptString(encryptedBase64);
+  });
+
+  ipcMain.handle('crypto:zeroize-keys', async () => {
+    return VaultKeyManager.getInstance().zeroizeKeys();
+  });
+
+  // =========================================================================
+  // Milestone 4: Feature F11 — Master Credential & Sliding-Window Rate Limiter
+  // =========================================================================
+  ipcMain.handle('crypto:verify-master-credential', async (_event, credential: string) => {
+    return MasterCredentialManager.getInstance().verifyCredential(credential);
+  });
+
+  ipcMain.handle('crypto:get-master-credential-status', async () => {
+    return MasterCredentialManager.getInstance().getStatus();
+  });
+
+  // =========================================================================
+  // Milestone 1: Licensing & Hardware-Bound Activation Engine IPC Handlers
+  // =========================================================================
+  ipcMain.handle('system:get-hardware-fingerprint', async () => {
+    return HardwareIdManager.getInstance().getHardwareFingerprint();
+  });
+
+  ipcMain.handle('licensing:save-license', async (_event, payload: string) => {
+    return LicenseVaultManager.getInstance().saveLicense(payload);
+  });
+
+  ipcMain.handle('licensing:load-license', async () => {
+    return LicenseVaultManager.getInstance().loadLicense();
+  });
+
+  ipcMain.handle('licensing:revoke-license', async () => {
+    return LicenseVaultManager.getInstance().revokeLicense();
   });
 
   // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification IPC

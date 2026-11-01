@@ -190,3 +190,43 @@ Dostarczyć gotową do wdrożenia, szczegółową roadmapę implementacyjną w p
 - [ ] Szczegółowy projekt UI/UX uwzględniający realia pracy Store Managera.
 - [ ] Harmonogram wdrożenia podzielony na etapy, przygotowany do późniejszej implementacji.
 - [ ] Raport pozostaje ściśle w trybie projektowym — bez wprowadzania modyfikacji w plikach źródłowych projektu.
+
+
+## Follow-up — 2026-10-26T16:11:59Z
+
+Implement the approved Master Fleet HQ vs Store Client architecture and Enterprise Security Model according to prompt_draft.md:
+
+1. R1: Licensing & Hardware-Bound Activation Engine (src/services/security/licensingService.ts):
+   - Generate and validate cryptographically signed activation keys: `SBX-<storeId>-<randomHex>-<checksum>`.
+   - Compute deterministic hardware fingerprint (OS, CPU, machine-id/hostname) and bind active license.
+   - Enforce hardware lock preventing copying app data to unauthorized machines.
+
+2. R2: Dual-Profile Runtime Architecture (Master HQ vs Store Client):
+   - Provide clean profile differentiation (`appMode: 'FLEET_MASTER' | 'STORE_CLIENT'`).
+   - Create Fleet Master Control Center view (`src/components/admin/FleetMasterDashboard.tsx`):
+     * Fleet catalog overview of 100+ stores with health and sync status.
+     * License key generator modal for provisioning new stores.
+     * Store activation, deactivation, and remote Kill-Switch revocation.
+     * Security audit trail and fleet release management.
+   - Restrict Store Client view (`src/components/StoreClientView.tsx` / App navigation):
+     * Restrict store dropdown strictly to assigned stores.
+     * Strip developer options, raw database buttons, and technical telemetry.
+     * Provide seamless one-click cloud sync with friendly status indicator.
+
+3. R3: Multi-Factor Authentication & Activation Flow (LoginView.tsx & ActivationModal.tsx):
+   - Unactivated stations require entering valid activation key before granting access.
+   - 2FA corporate authentication enforcing @amrest.eu / @starbucks.com domains.
+   - Auto-lock session after period of inactivity.
+
+4. R4: Master Hardening & Disaster Recovery:
+   - Implement BIP-39 mnemonic phrase generator and validator (24 words) for disaster recovery (`src/services/security/masterRecoveryService.ts`).
+   - In-memory key zeroization on inactivity timeout.
+   - Electron IPC bridge for secure master credential verification.
+
+5. R5: Verification & Quality Assurance:
+   - Ensure `npm run build` succeeds cleanly without errors.
+   - Add automated unit and boundary tests in `tests/` verifying activation key generation, hardware fingerprint matching, profile isolation, and recovery seed validation.
+   - Publish hot-patch OTA when complete and document in VERSION_HISTORY.md.
+
+Working directory: /Users/dawidapel/COL Tool
+Integrity mode: development

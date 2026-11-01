@@ -14,7 +14,13 @@ import { AdminConsoleModal } from './components/admin/AdminConsoleModal';
 import { AdminService } from './services/admin/adminService';
 import { AuthService } from './services/auth/authService';
 import { useStore } from './context/StoreContext';
+import { useAuth } from './context/AuthContext';
 import { StoreService } from './services/storeService';
+import { FleetMasterDashboard } from './components/admin/FleetMasterDashboard';
+import { StoreClientView } from './components/StoreClientView';
+import { ActivationModal } from './components/ActivationModal';
+import { SessionLockOverlay } from './components/security/SessionLockOverlay';
+import { useInactivityAutoLock } from './hooks/useInactivityAutoLock';
 import {
   LaborForecastView,
   ImportModal,
@@ -54,6 +60,14 @@ const DEFAULT_MONTHS = [
 
 export const App: React.FC = () => {
   const { currentStore, isStoreSwitcherOpen, closeStoreSwitcher } = useStore();
+  const { 
+    appMode, 
+    isFleetMaster, 
+    isStoreClient, 
+    isStationActivated, 
+    licenseStatus, 
+    lockSession 
+  } = useAuth();
 
   // Stan pierwszego uruchomienia / Menu Startowego (Onboarding)
   // null = trwa weryfikacja z bazą SQLite / ustawieniami, true = ukończono, false = nowe uruchomienie
@@ -138,6 +152,13 @@ export const App: React.FC = () => {
   // Aktywny moduł aplikacji (domyślnie 'dashboard' po zalogowaniu)
   const [activeModule, setActiveModule] = useState<AppModule>('dashboard');
 
+  // Wymuszenie powrotu do dashboardu jeśli Store Client znalazłby się w module fleet_master
+  useEffect(() => {
+    if (isStoreClient && (activeModule as string) === 'fleet_master') {
+      setActiveModule('dashboard');
+    }
+  }, [isStoreClient, activeModule]);
+
   // Stan zwinięcia paska bocznego (sidebar) — domyślnie zwinięty po zalogowaniu
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
@@ -186,6 +207,36 @@ export const App: React.FC = () => {
 
   const [dailyKpiMap, setDailyKpiMap] = useState<Record<string, any>>({});
   const [dailyActualHoursMap, setDailyActualHoursMap] = useState<Record<string, number>>({});
+
+  // Feature F9: Inactivity auto-lock hook (15 min idle timeout & RAM key zeroization)
+  useInactivityAutoLock({
+    enabled: isLoggedIn,
+    onLock: lockSession,
+  });
+
+  // Feature F9: Modal Dismissal and Session Lock event listener
+  useEffect(() => {
+    const handleDismissModals = () => {
+      setIsImportModalOpen(false);
+      setIsBackupModalOpen(false);
+      setIsCloudDocsModalOpen(false);
+      setIsUpdateModalOpen(false);
+      setIsSettingsOpen(false);
+      setIsBugReporterOpen(false);
+      setIsAdminConsoleOpen(false);
+      closeStoreSwitcher();
+      setActiveViewerWeek(null);
+      setActiveBridgeWeekRow(null);
+    };
+
+    window.addEventListener('sbx:dismiss-modals', handleDismissModals);
+    window.addEventListener('sbx:session-locked', handleDismissModals);
+
+    return () => {
+      window.removeEventListener('sbx:dismiss-modals', handleDismissModals);
+      window.removeEventListener('sbx:session-locked', handleDismissModals);
+    };
+  }, [closeStoreSwitcher]);
 
   // Inicjalizacja listy lat
   useEffect(() => {
@@ -449,8 +500,8 @@ export const App: React.FC = () => {
     }
   }
 
-  // 0. Ekran Ładowania Startowego (Weryfikacja bazy danych i profilu)
-  if (hasCompletedOnboarding === null) {
+  // 0. Ekran Ładowania Startowego (Weryfikacja bazy danych, licencji i profilu)
+  if (hasCompletedOnboarding === null || licenseStatus === null) {
     return (
       <div className="h-screen w-screen bg-[#1E3932] flex flex-col items-center justify-center select-none text-white">
         <div className="w-16 h-16 rounded-2xl bg-[#006241] flex items-center justify-center text-3xl shadow-xl animate-pulse mb-4 ring-4 ring-white/10">
@@ -459,9 +510,24 @@ export const App: React.FC = () => {
         <h1 className="text-xl font-black tracking-tight text-white">Starbucks Operations Suite</h1>
         <p className="text-xs text-emerald-200/70 mt-1 font-medium flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          Inicjalizacja pulpitu operacyjnego...
+          Inicjalizacja pulpitu operacyjnego i weryfikacja stacji...
         </p>
       </div>
+    );
+  }
+
+  // 0.5. Pre-Login Station Activation Gate (Feature F7)
+  // Jeśli stacja robocza nie jest aktywowana (lub została wycofana Kill-Switchem),
+  // całkowicie blokujemy dostęp przed onboardingiem i logowaniem.
+  if (!isStationActivated) {
+    return (
+      <ActivationModal
+        isOpen={true}
+        licenseStatus={licenseStatus}
+        onActivationSuccess={() => {
+          // AuthContext automatycznie aktualizuje isStationActivated i odblokowuje pulpit
+        }}
+      />
     );
   }
 
@@ -559,186 +625,154 @@ export const App: React.FC = () => {
     );
   }
 
-  return (
-    <div className="h-screen w-screen bg-[#F4F7F5] flex overflow-hidden select-none">
-      {/* Wysuwany Pasek Boczny po lewej */}
-        <Sidebar
-          activeModule={activeModule}
-          onSelectModule={setActiveModule}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          onOpenSettings={() => {
-            setSettingsInitialTab(undefined);
-            setIsSettingsOpen(true);
-          }}
-          onOpenAdminConsole={() => {
-            setPendingRequestsCount(AdminService.getPendingRequests().length);
-            setIsAdminConsoleOpen(true);
-          }}
-          pendingRequestsCount={pendingRequestsCount}
-          onOpenImportModal={() => setIsImportModalOpen(true)}
-          onRefresh={loadMonthData}
-          isLoading={isLoading}
-          onLogout={() => {
-            AuthService.logout();
-            setIsLoggedIn(false);
-            setLoggedInUser('Store Manager (SM)');
-          }}
-        />
+  const renderMainContent = () => (
+    <>
+      {/* MODUŁ SPECJALNY: FLEET MASTER HQ DASHBOARD (Tylko dla profilu Fleet Master) */}
+      {activeModule === 'fleet_master' && isFleetMaster && (
+        <ErrorBoundary moduleName="Fleet Master HQ" fallbackTitle="Błąd w panelu Fleet Master HQ">
+          <FleetMasterDashboard />
+        </ErrorBoundary>
+      )}
 
-      {/* Prawa strona: Header + Główna Przestrzeń Robocza */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <Header
-          activeModule={activeModule}
-          userName={loggedInUser}
-          selectedYear={selectedYear}
-          selectedMonth={selectedMonth}
-          onNavigateModule={setActiveModule}
-          onOpenNotificationsSettings={() => {
-            setSettingsInitialTab('notifications');
-            setIsSettingsOpen(true);
-          }}
-          onOpenBackupModal={() => setIsBackupModalOpen(true)}
-        />
+      {/* GŁÓWNY PULPIT PO ZALOGOWANIU */}
+      {activeModule === 'dashboard' && (
+        <ErrorBoundary moduleName="Dashboard" fallbackTitle="Błąd w pulpicie głównym">
+          <DashboardView
+            key={`dashboard-${currentStore.id}-${selectedYear}-${selectedMonth}`}
+            onNavigate={setActiveModule}
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+          />
+        </ErrorBoundary>
+      )}
 
-        <main className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-5 py-4 pb-24 w-full">
-          {/* GŁÓWNY PULPIT PO ZALOGOWANIU */}
-          {activeModule === 'dashboard' && (
-            <ErrorBoundary moduleName="Dashboard" fallbackTitle="Błąd w pulpicie głównym">
-              <DashboardView
-                key={`dashboard-${currentStore.id}-${selectedYear}-${selectedMonth}`}
-                onNavigate={setActiveModule}
-                selectedYear={selectedYear}
-                selectedMonth={selectedMonth}
-              />
-            </ErrorBoundary>
-          )}
+      {/* MODUŁ 2: MANAGERS SCHEDULE */}
+      {activeModule === 'managers_schedule' && (
+        <ErrorBoundary moduleName="Managers Schedule" fallbackTitle="Błąd w module Grafiku Managerskiego">
+          <ManagerScheduleView
+            key={`mgr-sched-${currentStore.id}-${selectedYear}-${selectedMonth}`}
+            currentYear={selectedYear}
+            currentMonthName={selectedMonth}
+          />
+        </ErrorBoundary>
+      )}
 
-          {/* MODUŁ 2: MANAGERS SCHEDULE */}
-          {activeModule === 'managers_schedule' && (
-            <ErrorBoundary moduleName="Managers Schedule" fallbackTitle="Błąd w module Grafiku Managerskiego">
-              <ManagerScheduleView
-                key={`mgr-sched-${currentStore.id}-${selectedYear}-${selectedMonth}`}
-                currentYear={selectedYear}
-                currentMonthName={selectedMonth}
-              />
-            </ErrorBoundary>
-          )}
+      {/* MODUŁ 1: TPLH FORECAST & LABOR BALANCING */}
+      {activeModule === 'labor_forecast' && (
+        <ErrorBoundary moduleName="Labor Forecast" fallbackTitle="Błąd w module TPLH Forecast & Labor">
+          <LaborForecastView
+            key={`labor-forecast-${currentStore.id}-${selectedYear}-${selectedMonth}`}
+            currentYear={selectedYear}
+            currentMonthName={selectedMonth}
+            aopPlan={aopPlan}
+            summary={summary}
+            weeks={weeks}
+            onPeriodChange={(y, m) => {
+              setSelectedYear(y);
+              setSelectedMonth(m);
+              setTargetWeekKeyOverride(null);
+            }}
+            onSaveTrx={handleSaveTrx}
+            onSaveScheduledHours={handleSaveScheduledHours}
+            onSelectTargetWeek={(key) => setTargetWeekKeyOverride(key)}
+            onRefresh={loadMonthData}
+            selectedStrategy={selectedStrategy}
+            onSelectStrategy={setSelectedStrategy}
+            managerShifts={managerShifts}
+            shiftDefinitions={shiftDefinitions}
+            managerEmployees={managerEmployees}
+            dailyKpiMap={dailyKpiMap}
+            dailyActualHoursMap={dailyActualHoursMap}
+          />
+        </ErrorBoundary>
+      )}
 
-          {/* MODUŁ 1: TPLH FORECAST & LABOR BALANCING */}
-          {activeModule === 'labor_forecast' && (
-            <ErrorBoundary moduleName="Labor Forecast" fallbackTitle="Błąd w module TPLH Forecast & Labor">
-              <LaborForecastView
-                key={`labor-forecast-${currentStore.id}-${selectedYear}-${selectedMonth}`}
-                currentYear={selectedYear}
-                currentMonthName={selectedMonth}
-                aopPlan={aopPlan}
-                summary={summary}
-                weeks={weeks}
-                onPeriodChange={(y, m) => {
-                  setSelectedYear(y);
-                  setSelectedMonth(m);
-                  setTargetWeekKeyOverride(null);
-                }}
-                onSaveTrx={handleSaveTrx}
-                onSaveScheduledHours={handleSaveScheduledHours}
-                onSelectTargetWeek={(key) => setTargetWeekKeyOverride(key)}
-                onRefresh={loadMonthData}
-                selectedStrategy={selectedStrategy}
-                onSelectStrategy={setSelectedStrategy}
-                managerShifts={managerShifts}
-                shiftDefinitions={shiftDefinitions}
-                managerEmployees={managerEmployees}
-                dailyKpiMap={dailyKpiMap}
-                dailyActualHoursMap={dailyActualHoursMap}
-              />
-            </ErrorBoundary>
-          )}
+      {/* MODUŁ 3: SZKOLENIA (STARBUCKS TRAINING SUITE) */}
+      {activeModule === 'trainings' && (
+        <ErrorBoundary moduleName="Trainings Suite" fallbackTitle="Błąd w module Szkoleń">
+          <ComingSoonOverlayWrapper
+            module="trainings"
+            title="Szkolenia & Barista Certifications"
+            subtitle="Moduł 3: Starbucks Training Suite"
+            description="Zarządzanie ścieżką wdrożeniową First 30 (Zmiany T1–T10), The Barista Journey, cyfrowe arkusze egzaminacyjne Skill Check oraz monitoring godzin szkoleniowych z budżetu Non-Coverage."
+            features={[
+              'Matryca kompetencji i certyfikacji partnerów',
+              'Harmonogram zmian First 30 (T1–T10) i B90/B180',
+              'Cyfrowe arkusze Skill Check z weryfikacją standardów',
+              'Ewidencja godzin z budżetu Non-Coverage (NC)'
+            ]}
+            onNavigate={setActiveModule}
+          >
+            <TrainingsView
+              key={`trainings-${currentStore.id}-${selectedYear}-${selectedMonth}`}
+              selectedYear={selectedYear}
+              selectedMonth={DEFAULT_MONTHS.indexOf(selectedMonth) + 1}
+            />
+          </ComingSoonOverlayWrapper>
+        </ErrorBoundary>
+      )}
 
-          {/* MODUŁ 3: SZKOLENIA (STARBUCKS TRAINING SUITE) */}
-          {activeModule === 'trainings' && (
-            <ErrorBoundary moduleName="Trainings Suite" fallbackTitle="Błąd w module Szkoleń">
-              <ComingSoonOverlayWrapper
-                module="trainings"
-                title="Szkolenia & Barista Certifications"
-                subtitle="Moduł 3: Starbucks Training Suite"
-                description="Zarządzanie ścieżką wdrożeniową First 30 (Zmiany T1–T10), The Barista Journey, cyfrowe arkusze egzaminacyjne Skill Check oraz monitoring godzin szkoleniowych z budżetu Non-Coverage."
-                features={[
-                  'Matryca kompetencji i certyfikacji partnerów',
-                  'Harmonogram zmian First 30 (T1–T10) i B90/B180',
-                  'Cyfrowe arkusze Skill Check z weryfikacją standardów',
-                  'Ewidencja godzin z budżetu Non-Coverage (NC)'
-                ]}
-                onNavigate={setActiveModule}
-              >
-                <TrainingsView
-                  key={`trainings-${currentStore.id}-${selectedYear}-${selectedMonth}`}
-                  selectedYear={selectedYear}
-                  selectedMonth={DEFAULT_MONTHS.indexOf(selectedMonth) + 1}
-                />
-              </ComingSoonOverlayWrapper>
-            </ErrorBoundary>
-          )}
+      {/* MODUŁ 4: COL CALCULATOR (REPLIKA 1:1 EXCEL) */}
+      {activeModule === 'col_calculator' && (
+        <ErrorBoundary moduleName="COL Calculator" fallbackTitle="Błąd w kalkulatorze COL">
+          <ComingSoonOverlayWrapper
+            module="col_calculator"
+            title="COL Calculator (Cost of Labor)"
+            subtitle="Moduł 4: Kalkulator Kosztu Robocizny i Rentowności P&L"
+            description="Kalkulator kosztów pracy integrujący stawki godzinowe menedżerów i baristów, narzuty pracodawcy ZUS 19.48%, linie Equity P&L, premie oraz symulacje rentowności grafiku w czasie rzeczywistym."
+            features={[
+              'Kalkulacja procentowego kosztu robocizny (COL % vs Sales)',
+              'Wycena ułożonego grafiku menedżerów i baristów',
+              'Automatyczne narzuty ZUS 19.48%, PPK i rezerwa urlopowa',
+              'Symulator What-If i wskaźnik SPLH (Sales Per Labor Hour)'
+            ]}
+            onNavigate={setActiveModule}
+          >
+            <ColCalculatorView
+              key={`col-calc-${currentStore.id}-${selectedYear}-${selectedMonth}`}
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+            />
+          </ComingSoonOverlayWrapper>
+        </ErrorBoundary>
+      )}
 
-          {/* MODUŁ 4: COL CALCULATOR (REPLIKA 1:1 EXCEL) */}
-          {activeModule === 'col_calculator' && (
-            <ErrorBoundary moduleName="COL Calculator" fallbackTitle="Błąd w kalkulatorze COL">
-              <ComingSoonOverlayWrapper
-                module="col_calculator"
-                title="COL Calculator (Cost of Labor)"
-                subtitle="Moduł 4: Kalkulator Kosztu Robocizny i Rentowności P&L"
-                description="Kalkulator kosztów pracy integrujący stawki godzinowe menedżerów i baristów, narzuty pracodawcy ZUS 19.48%, linie Equity P&L, premie oraz symulacje rentowności grafiku w czasie rzeczywistym."
-                features={[
-                  'Kalkulacja procentowego kosztu robocizny (COL % vs Sales)',
-                  'Wycena ułożonego grafiku menedżerów i baristów',
-                  'Automatyczne narzuty ZUS 19.48%, PPK i rezerwa urlopowa',
-                  'Symulator What-If i wskaźnik SPLH (Sales Per Labor Hour)'
-                ]}
-                onNavigate={setActiveModule}
-              >
-                <ColCalculatorView
-                  key={`col-calc-${currentStore.id}-${selectedYear}-${selectedMonth}`}
-                  selectedYear={selectedYear}
-                  selectedMonth={selectedMonth}
-                />
-              </ComingSoonOverlayWrapper>
-            </ErrorBoundary>
-          )}
+      {/* SCRATCH MODUŁY W PRZYGOTOWANIU: ANALIZA, IBS & IMS */}
+      {(activeModule === 'analytics' || activeModule === 'ibs_ims') && (
+        <ErrorBoundary moduleName="Analytics / Scratch" fallbackTitle="Błąd w module pomocniczym">
+          <ComingSoonOverlayWrapper
+            module={activeModule}
+            title={activeModule === 'analytics' ? 'Analiza Biznesowa & Efektywność (BI)' : 'IBS & IMS (Ideal Barista & Manager Structure)'}
+            subtitle={activeModule === 'analytics' ? 'Moduł 5: Zaawansowane Raportowanie' : 'Moduł 6: Struktura Kadrowa (Ideal Structure)'}
+            description={activeModule === 'analytics'
+              ? 'Kompleksowy moduł analityczny łączący transakcje, wielkości koszyka, mix produktowy oraz koszty robocizny w dynamicznych wizualizacjach wielomiesięcznych.'
+              : 'Optymalizacja i modelowanie idealnej struktury kadrowej kawiarni Starbucks (IBS — Ideal Barista Structure oraz IMS — Ideal Manager Structure) w oparciu o wolumen transakcji i zapotrzebowanie operacyjne.'}
+            features={activeModule === 'analytics' ? [
+              'Analiza TPLH w ujęciu dobowym i szczytów Peak Hours',
+              'Porównania realizacji budżetów AOP rok do roku (YoY)',
+              'Korelacja obsady grafiku z Customer Connection Score',
+              'Wielowymiarowy eksport raportów do arkuszy Excel (.xlsx)'
+            ] : [
+              'Kalkulacja Ideal Barista Structure (IBS) w oparciu o wolumen transakcji TRX',
+              'Modelowanie Ideal Manager Structure (IMS: Store Manager, ASM, Shift Supervisor)',
+              'Identyfikacja luk kadrowych, bilans etatów (1.0 / 0.75 / 0.5) i planowanie rekrutacji',
+              'Prognoza zapotrzebowania na awanse wewnętrzne i ścieżki rozwoju w dystrykcie'
+            ]}
+            onNavigate={setActiveModule}
+          >
+            <ModulePlaceholderView
+              key={`placeholder-${currentStore.id}-${activeModule}-${selectedYear}-${selectedMonth}`}
+              module={activeModule}
+              onNavigate={setActiveModule}
+            />
+          </ComingSoonOverlayWrapper>
+        </ErrorBoundary>
+      )}
+    </>
+  );
 
-          {/* SCRATCH MODUŁY W PRZYGOTOWANIU: ANALIZA, IBS & IMS */}
-          {(activeModule === 'analytics' || activeModule === 'ibs_ims') && (
-            <ErrorBoundary moduleName="Analytics / Scratch" fallbackTitle="Błąd w module pomocniczym">
-              <ComingSoonOverlayWrapper
-                module={activeModule}
-                title={activeModule === 'analytics' ? 'Analiza Biznesowa & Efektywność (BI)' : 'IBS & IMS (Ideal Barista & Manager Structure)'}
-                subtitle={activeModule === 'analytics' ? 'Moduł 5: Zaawansowane Raportowanie' : 'Moduł 6: Struktura Kadrowa (Ideal Structure)'}
-                description={activeModule === 'analytics'
-                  ? 'Kompleksowy moduł analityczny łączący transakcje, wielkości koszyka, mix produktowy oraz koszty robocizny w dynamicznych wizualizacjach wielomiesięcznych.'
-                  : 'Optymalizacja i modelowanie idealnej struktury kadrowej kawiarni Starbucks (IBS — Ideal Barista Structure oraz IMS — Ideal Manager Structure) w oparciu o wolumen transakcji i zapotrzebowanie operacyjne.'}
-                features={activeModule === 'analytics' ? [
-                  'Analiza TPLH w ujęciu dobowym i szczytów Peak Hours',
-                  'Porównania realizacji budżetów AOP rok do roku (YoY)',
-                  'Korelacja obsady grafiku z Customer Connection Score',
-                  'Wielowymiarowy eksport raportów do arkuszy Excel (.xlsx)'
-                ] : [
-                  'Kalkulacja Ideal Barista Structure (IBS) w oparciu o wolumen transakcji TRX',
-                  'Modelowanie Ideal Manager Structure (IMS: Store Manager, ASM, Shift Supervisor)',
-                  'Identyfikacja luk kadrowych, bilans etatów (1.0 / 0.75 / 0.5) i planowanie rekrutacji',
-                  'Prognoza zapotrzebowania na awanse wewnętrzne i ścieżki rozwoju w dystrykcie'
-                ]}
-                onNavigate={setActiveModule}
-              >
-                <ModulePlaceholderView
-                  key={`placeholder-${currentStore.id}-${activeModule}-${selectedYear}-${selectedMonth}`}
-                  module={activeModule}
-                  onNavigate={setActiveModule}
-                />
-              </ComingSoonOverlayWrapper>
-            </ErrorBoundary>
-          )}
-        </main>
-      </div>
-
+  const renderModals = () => (
+    <>
       {/* Okno Modalne Importu MAPAL (Sidebar) */}
       <ImportModal
         isOpen={isImportModalOpen}
@@ -751,6 +785,7 @@ export const App: React.FC = () => {
 
       {/* Centralne Okno Ustawień Konfiguracji */}
       <UnifiedSettingsModal
+        appMode={appMode}
         isOpen={isSettingsOpen}
         onClose={() => {
           setIsSettingsOpen(false);
@@ -780,6 +815,7 @@ export const App: React.FC = () => {
 
       {/* Okno Modalne Kopii Zapasowych Bazy Danych SQLite */}
       <DatabaseBackupModal
+        appMode={appMode}
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
         onRestoreSuccess={() => {
@@ -834,6 +870,90 @@ export const App: React.FC = () => {
 
       {/* Okno Interaktywnego Animowanego Samouczka Modelowego */}
       <InteractiveModelTutorial />
+
+      {/* Auto-Lock Overlay dla bezczynności sesji stacji (Store Client & Fleet Master) */}
+      <SessionLockOverlay />
+    </>
+  );
+
+  // 3A. Wariant dla dedykowanej stacji kawiarni (Store Client Appliance)
+  if (isStoreClient) {
+    return (
+      <div className="h-screen w-screen bg-[#F4F7F5] flex flex-col overflow-hidden select-none">
+        <StoreClientView
+          currentStore={currentStore}
+          activeModule={activeModule}
+          onSelectModule={setActiveModule}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          userName={loggedInUser}
+          onOpenSettings={() => {
+            setSettingsInitialTab(undefined);
+            setIsSettingsOpen(true);
+          }}
+          onOpenBackupModal={() => setIsBackupModalOpen(true)}
+          onLogout={() => {
+            AuthService.logout();
+            setIsLoggedIn(false);
+            setLoggedInUser('Store Manager (SM)');
+          }}
+        >
+          {renderMainContent()}
+        </StoreClientView>
+        {renderModals()}
+      </div>
+    );
+  }
+
+  // 3B. Wariant standardowy / Fleet Master HQ Desktop
+  return (
+    <div className="h-screen w-screen bg-[#F4F7F5] flex overflow-hidden select-none">
+      {/* Wysuwany Pasek Boczny po lewej */}
+      <Sidebar
+        activeModule={activeModule}
+        onSelectModule={setActiveModule}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onOpenSettings={() => {
+          setSettingsInitialTab(undefined);
+          setIsSettingsOpen(true);
+        }}
+        onOpenAdminConsole={() => {
+          setPendingRequestsCount(AdminService.getPendingRequests().length);
+          setIsAdminConsoleOpen(true);
+        }}
+        pendingRequestsCount={pendingRequestsCount}
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        onRefresh={loadMonthData}
+        isLoading={isLoading}
+        onLogout={() => {
+          AuthService.logout();
+          setIsLoggedIn(false);
+          setLoggedInUser('Store Manager (SM)');
+        }}
+      />
+
+      {/* Prawa strona: Header + Główna Przestrzeń Robocza */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <Header
+          activeModule={activeModule}
+          userName={loggedInUser}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          onNavigateModule={setActiveModule}
+          onOpenNotificationsSettings={() => {
+            setSettingsInitialTab('notifications');
+            setIsSettingsOpen(true);
+          }}
+          onOpenBackupModal={() => setIsBackupModalOpen(true)}
+        />
+
+        <main className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-5 py-4 pb-24 w-full">
+          {renderMainContent()}
+        </main>
+      </div>
+
+      {renderModals()}
     </div>
   );
 };

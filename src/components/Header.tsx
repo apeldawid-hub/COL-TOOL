@@ -28,6 +28,8 @@ import {
   Flame,
   Check,
   ChevronsUpDown,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { todoService, StoreTask } from '../services/todoService';
 import { databaseHealthService } from '../services/databaseHealthService';
@@ -46,6 +48,7 @@ interface HeaderProps {
 }
 
 const MODULE_TITLES: Record<AppModule, { title: string; icon: React.ComponentType<{ className?: string }> }> = {
+  fleet_master: { title: 'Centrala Floty (100+)', icon: ShieldCheck },
   dashboard: { title: 'Podsumowanie', icon: LayoutDashboard },
   labor_forecast: { title: 'TPLH Forecast & Labor Balancing', icon: BarChart3 },
   managers_schedule: { title: 'Grafik Managerski', icon: CalendarDays },
@@ -68,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
   const currentModuleInfo = MODULE_TITLES[activeModule] || MODULE_TITLES.dashboard;
   const ModuleIcon = currentModuleInfo.icon;
 
-  const { currentStore, openStoreSwitcher } = useStore();
+  const { currentStore, openStoreSwitcher, isStoreClient } = useStore();
 
   const [isTodoOpen, setIsTodoOpen] = useState<boolean>(false);
   const [tasks, setTasks] = useState<StoreTask[]>(() => todoService.getTasks());
@@ -155,21 +158,39 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </div>
-          <button
-            onClick={openStoreSwitcher}
-            title={`Aktywna kawiarnia: ${currentStore.name} (Unit: ${currentStore.unitCode}, MPK: ${currentStore.mpk}). Kliknij, aby przełączyć kawiarnię.`}
-            className="flex items-center space-x-1.5 text-[11px] text-[#5C6F68] hover:text-[#006241] bg-stone-100/70 hover:bg-emerald-50 px-2 py-0.5 rounded-lg border border-transparent hover:border-emerald-200 transition-all cursor-pointer group/store"
-          >
-            <Store className="w-3.5 h-3.5 text-[#CBA258] group-hover/store:scale-110 transition-transform shrink-0" />
-            <span className="font-bold text-[#1E3932] group-hover/store:text-[#006241] truncate max-w-[130px] sm:max-w-[180px]">
-              {currentStore.shortName}
-            </span>
-            <span className="text-stone-300">•</span>
-            <span className="text-[10px] font-mono font-bold text-stone-600 bg-white px-1 py-0.2 rounded border border-stone-200">
-              {currentStore.unitCode}
-            </span>
-            <ChevronsUpDown className="w-3 h-3 text-stone-400 group-hover/store:text-[#006241] transition-colors ml-0.5 shrink-0" />
-          </button>
+          {isStoreClient ? (
+            /* Verified Store Station Badge (Non-clickable / Read-only) */
+            <div
+              title={`Stacja robocza licencjonowana dla lokalu: ${currentStore.name} (Unit: ${currentStore.unitCode}, MPK: ${currentStore.mpk}). Przełączanie kawiarni zablokowane na stacji zaplecza.`}
+              className="flex items-center space-x-1.5 text-[11px] text-emerald-900 bg-emerald-50/80 px-2.5 py-1 rounded-lg border border-emerald-200/90 shadow-2xs select-none cursor-default"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#006241] shrink-0" />
+              <span className="font-bold text-[#006241] truncate max-w-[130px] sm:max-w-[180px]">
+                {currentStore.shortName || currentStore.name}
+              </span>
+              <span className="text-emerald-300">•</span>
+              <span className="text-[10px] font-mono font-bold text-emerald-800 bg-white/90 px-1 py-0.2 rounded border border-emerald-300/60">
+                {currentStore.unitCode}
+              </span>
+              <Lock className="w-3 h-3 text-emerald-600/70 ml-0.5 shrink-0" />
+            </div>
+          ) : (
+            <button
+              onClick={openStoreSwitcher}
+              title={`Aktywna kawiarnia: ${currentStore.name} (Unit: ${currentStore.unitCode}, MPK: ${currentStore.mpk}). Kliknij, aby przełączyć kawiarnię.`}
+              className="flex items-center space-x-1.5 text-[11px] text-[#5C6F68] hover:text-[#006241] bg-stone-100/70 hover:bg-emerald-50 px-2 py-0.5 rounded-lg border border-transparent hover:border-emerald-200 transition-all cursor-pointer group/store"
+            >
+              <Store className="w-3.5 h-3.5 text-[#CBA258] group-hover/store:scale-110 transition-transform shrink-0" />
+              <span className="font-bold text-[#1E3932] group-hover/store:text-[#006241] truncate max-w-[130px] sm:max-w-[180px]">
+                {currentStore.shortName || currentStore.name}
+              </span>
+              <span className="text-stone-300">•</span>
+              <span className="text-[10px] font-mono font-bold text-stone-600 bg-white px-1 py-0.2 rounded border border-stone-200">
+                {currentStore.unitCode}
+              </span>
+              <ChevronsUpDown className="w-3 h-3 text-stone-400 group-hover/store:text-[#006241] transition-colors ml-0.5 shrink-0" />
+            </button>
+          )}
         </div>
       </div>
 

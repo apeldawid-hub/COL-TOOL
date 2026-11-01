@@ -133,11 +133,20 @@ export interface IElectronAPI {
   cryptoDeriveStoreKey?: (storeId: string, unitCode: string) => Promise<string>;
   cryptoSafeStorageEncrypt?: (plaintext: string) => Promise<{ success: boolean; data?: string; error?: string }>;
   cryptoSafeStorageDecrypt?: (encryptedBase64: string) => Promise<{ success: boolean; data?: string; error?: string }>;
+  cryptoZeroizeKeys?: () => Promise<{ success: boolean; zeroizedCount: number }>;
   // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification
   executeStoreMigration?: (options: any) => Promise<any>;
   verifyStoreParity?: (storeId: string, options?: any) => Promise<any>;
   extractStoreTables?: (storeId: string) => Promise<any>;
   getMigrationReceipt?: (storeId: string) => Promise<any>;
+  // Milestone 1: Licensing & Hardware-Bound Activation Engine
+  getHardwareFingerprint?: () => Promise<string>;
+  saveLicense?: (payload: string) => Promise<boolean>;
+  loadLicense?: () => Promise<string | null>;
+  revokeLicense?: () => Promise<boolean>;
+  // Milestone 4: Feature F11 — Master Credential & Sliding-Window Rate Limiter
+  verifyMasterCredential?: (credential: string) => Promise<any>;
+  getMasterCredentialStatus?: () => Promise<any>;
 }
 
 const api: IElectronAPI = {
@@ -275,11 +284,20 @@ const api: IElectronAPI = {
   cryptoDeriveStoreKey: (storeId, unitCode) => ipcRenderer.invoke('crypto:derive-store-key', storeId, unitCode),
   cryptoSafeStorageEncrypt: (plaintext) => ipcRenderer.invoke('crypto:safe-storage-encrypt', plaintext),
   cryptoSafeStorageDecrypt: (encryptedBase64) => ipcRenderer.invoke('crypto:safe-storage-decrypt', encryptedBase64),
+  cryptoZeroizeKeys: () => ipcRenderer.invoke('crypto:zeroize-keys'),
+  // Milestone 4: Feature F11 — Master Credential & Sliding-Window Rate Limiter
+  verifyMasterCredential: (credential: string) => ipcRenderer.invoke('crypto:verify-master-credential', credential),
+  getMasterCredentialStatus: () => ipcRenderer.invoke('crypto:get-master-credential-status'),
   // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification
   executeStoreMigration: (options) => ipcRenderer.invoke('migration:execute-store-migration', options),
   verifyStoreParity: (storeId, options) => ipcRenderer.invoke('migration:verify-store-parity', storeId, options),
   extractStoreTables: (storeId) => ipcRenderer.invoke('migration:extract-store-tables', storeId),
   getMigrationReceipt: (storeId) => ipcRenderer.invoke('migration:get-receipt', storeId),
+  // Milestone 1: Licensing & Hardware-Bound Activation Engine
+  getHardwareFingerprint: () => ipcRenderer.invoke('system:get-hardware-fingerprint'),
+  saveLicense: (payload: string) => ipcRenderer.invoke('licensing:save-license', payload),
+  loadLicense: () => ipcRenderer.invoke('licensing:load-license'),
+  revokeLicense: () => ipcRenderer.invoke('licensing:revoke-license'),
 };
 
 contextBridge.exposeInMainWorld('api', api);

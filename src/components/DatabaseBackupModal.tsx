@@ -27,6 +27,7 @@ import {
 import { databaseHealthService } from '../services/databaseHealthService';
 import { DatabaseHealthStatus } from '../types';
 import { useStore } from '../context/StoreContext';
+import { ProfilePolicyService, AppRuntimeMode } from '../services/security/profilePolicyService';
 
 interface DatabaseBackupRecord {
   filename: string;
@@ -50,14 +51,18 @@ interface DatabaseBackupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRestoreSuccess?: () => void;
+  appMode?: AppRuntimeMode;
 }
 
 export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
   isOpen,
   onClose,
-  onRestoreSuccess
+  onRestoreSuccess,
+  appMode,
 }) => {
-  const { currentStore } = useStore();
+  const { currentStore, isStoreClient, appMode: storeAppMode } = useStore();
+  const effectiveMode = appMode || storeAppMode || (isStoreClient ? 'STORE_CLIENT' : 'FLEET_MASTER');
+  const policy = ProfilePolicyService.getPolicy(effectiveMode);
   const [backups, setBackups] = useState<DatabaseBackupRecord[]>([]);
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [healthStatus, setHealthStatus] = useState<DatabaseHealthStatus | null>(() =>
@@ -446,7 +451,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
         )}
 
         {/* DIALOG POTWIERDZENIA IMPORTU PACZKI HISTORYCZNEJ */}
-        {confirmHistoricalImport && (
+        {policy.allowHistoricalImport && confirmHistoricalImport && (
           <div className="mx-6 mt-4 p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-400 shadow-sm animate-in fade-in">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-xl bg-emerald-200 text-emerald-900 shrink-0 mt-0.5">
@@ -490,7 +495,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
         )}
 
         {/* DIALOG POTWIERDZENIA CLEAN SLATE (CZYSTA WERSJA STARTOWA) */}
-        {confirmCleanSlate && (
+        {policy.allowCleanSlateReset && confirmCleanSlate && (
           <div className="mx-6 mt-4 p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 shadow-sm animate-in fade-in">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-xl bg-rose-200 text-rose-900 shrink-0 mt-0.5">
@@ -702,112 +707,139 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
             )}
           </div>
 
-          {/* CENTRUM DANYCH & PACZEK HISTORYCZNYCH (CLEAN SLATE & IMPORT HUB) */}
-          <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-xs font-black tracking-wider uppercase text-[#1E3932] flex items-center gap-1.5">
-                  <FolderArchive className="w-4 h-4 text-[#006241]" />
-                  Centrum Paczek Danych & Instalacji (Folder ./IMPORT)
-                </h3>
-                <p className="text-[11px] text-stone-500 mt-0.5">
-                  Zarządzaj kompletną paczką danych lub zresetuj aplikację do czystego stanu instalacyjnego.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              {/* Szyfrowana Migracja do Chmury Firebase */}
-              <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-300 flex flex-col justify-between shadow-sm">
+          {/* CENTRUM DANYCH & PACZEK HISTORYCZNYCH (CLEAN SLATE & IMPORT HUB) - FLEET_MASTER ONLY */}
+          {policy.allowCleanSlateReset || policy.allowHistoricalImport ? (
+            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200">
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <div className="text-xs font-bold text-[#006241] flex items-center gap-1.5 mb-1">
-                    <CloudLightning className="w-3.5 h-3.5 text-emerald-600" />
-                    Migracja do Chmury (AES-256)
-                  </div>
-                  <p className="text-[10px] text-stone-600">
-                    Zaszyfruj i przenieś bazę lokalu <strong>{currentStore?.shortName || '108120'}</strong> do skarbców Firebase.
+                  <h3 className="text-xs font-black tracking-wider uppercase text-[#1E3932] flex items-center gap-1.5">
+                    <FolderArchive className="w-4 h-4 text-[#006241]" />
+                    Centrum Paczek Danych & Instalacji (Folder ./IMPORT)
+                  </h3>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    Zarządzaj kompletną paczką danych lub zresetuj aplikację do czystego stanu instalacyjnego.
                   </p>
-                  {migrationStatus && (
-                    <div className="mt-2 text-[10px] text-emerald-800 bg-emerald-100/70 p-1.5 rounded flex items-center gap-1.5">
-                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                      <span>{migrationStatus.message}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                {/* Szyfrowana Migracja do Chmury Firebase */}
+                <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-300 flex flex-col justify-between shadow-sm">
+                  <div>
+                    <div className="text-xs font-bold text-[#006241] flex items-center gap-1.5 mb-1">
+                      <CloudLightning className="w-3.5 h-3.5 text-emerald-600" />
+                      Migracja do Chmury (AES-256)
                     </div>
-                  )}
-                </div>
-                <button
-                  onClick={handleCloudVaultMigration}
-                  disabled={isMigratingCloud || isProcessingPackage}
-                  className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-[#006241] hover:bg-[#1E3932] text-white text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
-                >
-                  {isMigratingCloud ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Lock className="w-3 h-3 text-emerald-200" />}
-                  <span>{isMigratingCloud ? 'Migrowanie...' : 'Migruj do Chmury'}</span>
-                </button>
-              </div>
-
-              {/* Eksport paczki do IMPORT */}
-              <div className="bg-white p-3 rounded-xl border border-stone-200 flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-1">
-                    <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-                    Eksport do ./IMPORT/
+                    <p className="text-[10px] text-stone-600">
+                      Zaszyfruj i przenieś bazę lokalu <strong>{currentStore?.shortName || '108120'}</strong> do skarbców Firebase.
+                    </p>
+                    {migrationStatus && (
+                      <div className="mt-2 text-[10px] text-emerald-800 bg-emerald-100/70 p-1.5 rounded flex items-center gap-1.5">
+                        <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                        <span>{migrationStatus.message}</span>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-[10px] text-stone-500">
-                    Wyeksportuj 17 tabel i bazę master do folderu IMPORT.
-                  </p>
+                  <button
+                    onClick={handleCloudVaultMigration}
+                    disabled={isMigratingCloud || isProcessingPackage}
+                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-[#006241] hover:bg-[#1E3932] text-white text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
+                  >
+                    {isMigratingCloud ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Lock className="w-3 h-3 text-emerald-200" />}
+                    <span>{isMigratingCloud ? 'Migrowanie...' : 'Migruj do Chmury'}</span>
+                  </button>
                 </div>
-                <button
-                  onClick={handleExportPackage}
-                  disabled={isProcessingPackage}
-                  className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UploadCloud className="w-3 h-3" />}
-                  <span>Eksportuj Paczkę</span>
-                </button>
-              </div>
 
-              {/* Import paczki z IMPORT */}
-              <div className="bg-white p-3 rounded-xl border border-stone-200 flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-1">
-                    <DownloadCloud className="w-3.5 h-3.5 text-emerald-600" />
-                    Wgraj z ./IMPORT/
+                {/* Eksport paczki do IMPORT */}
+                <div className="bg-white p-3 rounded-xl border border-stone-200 flex flex-col justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-1">
+                      <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
+                      Eksport do ./IMPORT/
+                    </div>
+                    <p className="text-[10px] text-stone-500">
+                      Wyeksportuj 17 tabel i bazę master do folderu IMPORT.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-stone-500">
-                    Wgraj pełną historię: AOP 2021–2036, MAPAL i 9 mies. grafików.
-                  </p>
+                  <button
+                    onClick={handleExportPackage}
+                    disabled={isProcessingPackage}
+                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UploadCloud className="w-3 h-3" />}
+                    <span>Eksportuj Paczkę</span>
+                  </button>
                 </div>
-                <button
-                  onClick={() => setConfirmHistoricalImport(true)}
-                  disabled={isProcessingPackage}
-                  className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#006241] border border-emerald-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <DownloadCloud className="w-3 h-3" />}
-                  <span>Wgraj Historię</span>
-                </button>
-              </div>
 
-              {/* Czysta Wersja Startowa */}
-              <div className="bg-white p-3 rounded-xl border border-rose-200/80 flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-bold text-rose-900 flex items-center gap-1.5 mb-1">
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    Wersja Startowa
+                {/* Import paczki z IMPORT */}
+                <div className="bg-white p-3 rounded-xl border border-stone-200 flex flex-col justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-1">
+                      <DownloadCloud className="w-3.5 h-3.5 text-emerald-600" />
+                      Wgraj z ./IMPORT/
+                    </div>
+                    <p className="text-[10px] text-stone-500">
+                      Wgraj pełną historię: AOP 2021–2036, MAPAL i 9 mies. grafików.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-stone-500">
-                    Wyczyść dane operacyjne (Clean Slate) z zachowaniem norm KP.
-                  </p>
+                  <button
+                    onClick={() => setConfirmHistoricalImport(true)}
+                    disabled={isProcessingPackage}
+                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#006241] border border-emerald-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <DownloadCloud className="w-3 h-3" />}
+                    <span>Wgraj Historię</span>
+                  </button>
                 </div>
-                <button
-                  onClick={() => setConfirmCleanSlate(true)}
-                  disabled={isProcessingPackage}
-                  className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                  <span>Clean Slate (Wyczyść)</span>
-                </button>
+
+                {/* Czysta Wersja Startowa */}
+                <div className="bg-white p-3 rounded-xl border border-rose-200/80 flex flex-col justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-rose-900 flex items-center gap-1.5 mb-1">
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      Wersja Startowa
+                    </div>
+                    <p className="text-[10px] text-stone-500">
+                      Wyczyść dane operacyjne (Clean Slate) z zachowaniem norm KP.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setConfirmCleanSlate(true)}
+                    disabled={isProcessingPackage}
+                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    <span>Clean Slate (Wyczyść)</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* Zabezpieczony panel dla STORE_CLIENT */
+            <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-white border border-emerald-200 text-[#006241]">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-[#1E3932] uppercase tracking-wide">
+                    Automatyczna Ochrona Danych Kawiarni
+                  </h4>
+                  <p className="text-[11px] text-stone-600 mt-0.5">
+                    System tworzy automatyczne punkty przywracania przed każdą zmianą w grafiku. Ostatnie 15 kopii jest chronione rotacyjnie.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCreateBackup}
+                disabled={isCreating}
+                className="px-3.5 py-2 rounded-xl bg-[#006241] hover:bg-[#004f34] text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <PlusCircle className="w-3.5 h-3.5 text-[#CBA258]" />
+                <span>{isCreating ? 'Tworzenie...' : 'Utwórz Kopię Ratunkową'}</span>
+              </button>
+            </div>
+          )}
 
           {/* KARTA STATUSU BAZY I SZYBKI ZAPIS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

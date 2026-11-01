@@ -143,4 +143,16 @@ export class VaultKeyManager {
       return { success: false, error: err.message };
     }
   }
+
+  /**
+   * Flushes cached in-memory master secrets (crypto:zeroize-keys).
+   */
+  public zeroizeKeys(): { success: boolean; zeroizedCount: number } {
+    let count = 0;
+    if (this.cachedMasterPassphrase) {
+      this.cachedMasterPassphrase = null;
+      count++;
+    }
+    return { success: true, zeroizedCount: count };
+  }
 }
