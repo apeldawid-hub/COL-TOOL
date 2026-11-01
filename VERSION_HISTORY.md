@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.3](#v2.9.3--2026-11-02)** | 2026-11-02 | Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina | `patch` | 🚀 Opublikowana |
 | **[v2.9.2](#v2.9.2--2026-11-02)** | 2026-11-02 | Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master | `feature` | 🚀 Opublikowana |
 | **[v2.9.1](#v2.9.1--2026-11-01)** | 2026-11-01 | Hot-Patch OTA: Eliminacja Node require('crypto') w bundle frontendu, Universal WebCrypto (@noble/hashes) & Poprawka CSP Google Fonts | `patch` | 🚀 Opublikowana |
 | **[v2.9.0](#v2.9.0--2026-11-01)** | 2026-11-01 | Enterprise Security & Fleet Management (Podwójne Profile, Klucze Sprzętowe, MFA, Auto-Lock & Disaster Recovery BIP-39) | `major` | 🚀 Opublikowana |
@@ -42,6 +43,24 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.3] — 2026-11-02
+**Tytuł:** Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+**Status:** 🚀 Wdrożona na GitHub Releases (`sos-patch-2.9.3.zip`, 12.39 MB, SHA256: `60e312a18a...`)
+
+#### 🎯 Kluczowe Wdrożenia:
+1. **Automatyczny i Bezpowrotny Purge Danych Mockowych (`AdminService.purgePrototypeData`)**:
+   - Wyeliminowano wszystkie historyczne konta prototypowe z wersji testowych (`usr_ssv_kamil_k`, `usr_ssv_zuzanna_m`, fałszywe adresy e-mail).
+   - Mechanizm skanuje wszystkie partycje `StoreStorage` i `localStorage` przy starcie i natychmiastowo usuwa nieautoryzowane rekordy.
+2. **Przycisk Trwałego Usuwania Kont w Panelu Admina (`AdminConsoleModal.tsx`)**:
+   - Dodano przycisk kosza (`Trash2`) obok akcji Kill-Switch, umożliwiający Store Managerowi i Administratorowi bezpowrotne usunięcie dowolnego profilu z bazy.
+3. **Usunięcie Fikcyjnych Nazwisk z Placeholderów UI**:
+   - Wszystkie placeholdery w formularzach rejestracyjnych i edycyjnych zostały zamienione na profesjonalne, neutralne etykiety (`np. Imię i Nazwisko`).
+4. **Testy Integralności**:
+   - Dopisano dedykowany test weryfikujący automatyczne usuwanie mocków z pamięci lokalnej. Wszystkie testy bezpieczeństwa przechodzą pomyślnie.
+
+---
 
 ### [v2.9.2] — 2026-11-02
 **Tytuł:** Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master  
