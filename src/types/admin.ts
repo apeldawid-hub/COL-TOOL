@@ -16,10 +16,20 @@ export interface PendingAccessRequest {
   requestedRole: AppUserRole;
   deviceFingerprint: string;
   deviceName: string;
-  ipAddress: string;
+  ipAddress?: string;
   requestNote?: string;
   createdAt: string;
   status: AccessRequestStatus;
+  isEmailVerified: boolean;
+  pairingToken?: string;
+  assignedStoreId?: string;
+  assignedStoreName?: string;
+  assignedRole?: AppUserRole;
+  assignedPermissions?: GranularUserPermissions;
+  assignedLicenseKey?: string;
+  rejectionReason?: string;
+  approvedAt?: string;
+  approvedBy?: string;
 }
 
 export interface GranularUserPermissions {

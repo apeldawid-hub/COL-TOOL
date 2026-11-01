@@ -277,6 +277,8 @@ export class AdminService {
       requestNote: payload.requestNote || 'Nowe zgłoszenie dostępu przez aplikację desktopową',
       createdAt: new Date().toISOString(),
       status: 'PENDING',
+      isEmailVerified: true,
+      pairingToken: `REQ-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
     };
 
     if (existingIndex >= 0) {

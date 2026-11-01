@@ -1,17 +1,14 @@
 // src/components/ActivationModal.tsx
 /**
- * Starbucks Operations Suite — Pre-Login Station Activation Gate Modal
- * Feature F7 (Milestone 3)
- *
- * Implements:
- * - High-priority blocking overlay (z-[99998]) preventing access before station activation.
- * - Non-dismissible: cannot be closed via Escape, backdrop clicks, or close buttons.
- * - Smart input parser: accepts raw canonical key, JSON license envelopes, QR URLs, or instruction emails.
- * - Hardware Identity summary snippet with 1-click clipboard copy for DM provisioning.
- * - Submits via useAuth().activateStation(key) with feedback, error states, and auto-transition.
+ * Starbucks Operations Suite — Pre-Login Station Activation & Device Enrollment Gate
+ * Implements the 4-step Store Manager Onboarding Workflow:
+ * 1. Fresh app launch on SM laptop (unactivated state)
+ * 2. Registration with corporate @amrest.eu / @starbucks.com email & 6-digit OTP verification
+ * 3. Pending Approval state: laptop binds hardware fingerprint and waits for manager approval
+ * 4. Automatic activation once Managing Director / Fleet Master approves the request
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ShieldAlert, 
   KeyRound, 
@@ -26,12 +23,24 @@ import {
   ClipboardPaste,
   HelpCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Mail,
+  User,
+  Clock,
+  RefreshCw,
+  Send,
+  XCircle,
+  Lock,
+  Building2,
+  CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { LicensingService } from '../services/security/licensingService';
+import { LicensingService, licensingService } from '../services/security/licensingService';
 import type { ActiveLicenseRecord, LicenseStatusResult } from '../types/licensing';
 import { ErrorBoundary } from './ErrorBoundary';
+import { enrollmentService } from '../services/admin/enrollmentService';
+import { AppUserRole, PendingAccessRequest } from '../types/admin';
+import { AuthService } from '../services/auth/authService';
 
 export interface ParsedActivationInput {
   cleanKey: string | null;
@@ -153,102 +162,294 @@ export interface ActivationModalProps {
   presentationMode?: 'blocking_modal' | 'fullscreen_gate';
 }
 
-export const ActivationModalContent: React.FC<ActivationModalProps> = ({
+type OnboardingStep = 'REGISTER' | 'VERIFY_OTP' | 'PENDING_APPROVAL' | 'MANUAL_KEY';
+
+export const ActivationModal: React.FC<ActivationModalProps> = ({
   isOpen = true,
   onActivationSuccess,
-  licenseStatus: propsStatus,
+  licenseStatus,
   expectedStoreId,
+  presentationMode = 'blocking_modal',
 }) => {
-  const { isStationActivated, licenseStatus: authStatus, activateStation } = useAuth();
-  const currentStatus = propsStatus || authStatus;
+  const { activateStation, isStationActivated, licenseStatus: contextStatus } = useAuth();
+  const currentStatus = licenseStatus || contextStatus;
 
+  // Główny krok procesu
+  const [step, setStep] = useState<OnboardingStep>('REGISTER');
+
+  // Dane rejestracyjne kierownika
+  const [fullName, setFullName] = useState<string>(() => localStorage.getItem('sbx_user_name') || '');
+  const [email, setEmail] = useState<string>(() => localStorage.getItem('sbx_user_email') || '');
+  const [role, setRole] = useState<AppUserRole>('STORE_MANAGER');
+  const [requestNote, setRequestNote] = useState<string>('');
+
+  // 6-cyfrowy kod weryfikacyjny (OTP)
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [otpTimerSeconds, setOtpTimerSeconds] = useState<number>(300);
+  const [simulatedOtpCode, setSimulatedOtpCode] = useState<string | null>(null);
+  const otpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  // Stan zgłoszenia w toku
+  const [pendingRequest, setPendingRequest] = useState<PendingAccessRequest | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
+  const [copiedToken, setCopiedToken] = useState<boolean>(false);
+
+  // Formularz wprowadzania ręcznego klucza (dla wstecznej kompatybilności / admina)
   const [rawInput, setRawInput] = useState('');
-  const [parsed, setParsed] = useState<ParsedActivationInput>({
-    cleanKey: null,
-    formatSource: null,
-    isValidFormat: false,
-  });
+  const [parsed, setParsed] = useState<ParsedActivationInput>({ cleanKey: null, key: '', formatSource: null, isValidFormat: false });
 
-  const [hwFingerprint, setHwFingerprint] = useState<string>('Pobieranie...');
-  const [hwDetails, setHwDetails] = useState<{ os?: string; host?: string; cpu?: string }>({});
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [copiedHw, setCopiedHw] = useState(false);
-
+  // Stan ogólny
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successLicense, setSuccessLicense] = useState<ActiveLicenseRecord | null>(null);
+  const [approvedNotification, setApprovedNotification] = useState<string | null>(null);
 
-  // Harvest hardware info for District Manager provisioning display
+  // Hardware snapshot
+  const [hwFingerprint, setHwFingerprint] = useState<string>('Pobieranie...');
+  const deviceName = AuthService.getDeviceName();
+
+  // Inicjalizacja: sprawdzenie czy dla tego laptopa istnieje już oczekujący wniosek
   useEffect(() => {
     let isMounted = true;
-    const fetchHw = async () => {
+    const checkExistingEnrollment = async () => {
       try {
-        const fp = await LicensingService.getInstance().getHardwareFingerprint();
-        if (isMounted) {
-          setHwFingerprint(fp);
-          const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'Node/Desktop';
-          let osName = 'macOS (Zaplecze)';
-          if (ua.includes('Windows')) osName = 'Windows Desktop';
-          else if (ua.includes('Linux')) osName = 'Linux Client';
-          setHwDetails({
-            os: osName,
-            host: typeof window !== 'undefined' ? (window.location.hostname || 'localhost') : 'local',
-          });
+        const hw = await licensingService.getHardwareFingerprint();
+        if (isMounted) setHwFingerprint(hw);
+
+        const existing = await enrollmentService.getCurrentDeviceEnrollment();
+        if (existing && isMounted) {
+          setPendingRequest(existing);
+          if (existing.status === 'PENDING') {
+            setStep('PENDING_APPROVAL');
+            setFullName(existing.fullName);
+            setEmail(existing.email);
+            setRole(existing.requestedRole);
+          } else if (existing.status === 'APPROVED' && existing.assignedLicenseKey) {
+            // Automatyczna aktywacja jeśli wniosek został już zatwierdzony w tle
+            handleAutoActivate(existing);
+          }
         }
       } catch (err) {
-        if (isMounted) setHwFingerprint('hw_err_unable_to_read');
+        console.warn('[ActivationModal] Błąd inicjalizacji wniosku:', err);
       }
     };
-    fetchHw();
-    return () => { isMounted = false; };
+
+    checkExistingEnrollment();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Update parsed state when raw input changes
-  const handleInputChange = (val: string) => {
-    setRawInput(val);
-    setErrorMessage(null);
-    const result = parseActivationInput(val);
-    setParsed(result);
+  // Odliczanie czasu ważności kodu OTP (5 min)
+  useEffect(() => {
+    if (step !== 'VERIFY_OTP') return;
+    const timer = setInterval(() => {
+      setOtpTimerSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [step]);
+
+  // Automatyczne odpytywanie o status wniosku co 5 sekund w stanie PENDING_APPROVAL
+  useEffect(() => {
+    if (step !== 'PENDING_APPROVAL' || !pendingRequest || isStationActivated) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latest = await enrollmentService.getCurrentDeviceEnrollment();
+        if (latest) {
+          setPendingRequest(latest);
+          if (latest.status === 'APPROVED' && latest.assignedLicenseKey) {
+            handleAutoActivate(latest);
+          }
+        }
+      } catch {}
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [step, pendingRequest, isStationActivated]);
+
+  // Automatyczna aktywacja po zatwierdzeniu przez Managera Zarządzającego
+  const handleAutoActivate = async (approvedReq: PendingAccessRequest) => {
+    if (!approvedReq.assignedLicenseKey) return;
+    setIsSubmitting(true);
+    setApprovedNotification(
+      `🎉 Dostęp zatwierdzony! Przydzielono: ${approvedReq.assignedStoreName || approvedReq.assignedStoreId || 'Kawiarnia'}. Aktywuję stację...`
+    );
+
+    try {
+      const res = await activateStation(approvedReq.assignedLicenseKey, approvedReq.assignedStoreId);
+      if (res.success && res.license) {
+        // Zapisz dane użytkownika i kawiarni
+        try {
+          localStorage.setItem('sbx_user_name', approvedReq.fullName);
+          localStorage.setItem('sbx_user_email', approvedReq.email);
+          localStorage.setItem('sbx_user_role', approvedReq.assignedRole || approvedReq.requestedRole);
+          if (approvedReq.assignedStoreId) localStorage.setItem('sbx_unit_code', approvedReq.assignedStoreId);
+          if (approvedReq.assignedStoreName) localStorage.setItem('sbx_store_name', approvedReq.assignedStoreName);
+          localStorage.setItem('sbx_onboarding_completed', 'true');
+        } catch {}
+
+        setSuccessLicense(res.license);
+        setTimeout(() => {
+          if (onActivationSuccess) onActivationSuccess(res.license!);
+        }, 1200);
+      } else {
+        setErrorMessage(res.error || 'Błąd wiązania licencji z urządzeniem.');
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Błąd automatycznej aktywacji.');
+      setIsSubmitting(false);
+    }
   };
 
-  // Smart Clipboard Paste Handler
-  const handlePasteFromClipboard = async () => {
+  // Krok 1 ➔ 2: Wysłanie kodu OTP na maila
+  const handleRequestOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    if (!fullName.trim()) {
+      setErrorMessage('Wprowadź swoje Imię i Nazwisko.');
+      return;
+    }
+
+    if (!email.trim()) {
+      setErrorMessage('Wprowadź służbowy adres e-mail @amrest.eu lub @starbucks.com.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          handleInputChange(text);
+      const res = await enrollmentService.requestEmailOtp(email);
+      if (res.success) {
+        setStep('VERIFY_OTP');
+        setOtpDigits(['', '', '', '', '', '']);
+        setOtpTimerSeconds(300);
+        if (res.simulatedCode) {
+          setSimulatedOtpCode(res.simulatedCode);
+        }
+        setTimeout(() => {
+          otpInputRefs.current[0]?.focus();
+        }, 150);
+      } else {
+        setErrorMessage(res.message);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Wystąpił błąd podczas wysyłania kodu.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Obsługa wpisywania 6 cyfr OTP
+  const handleOtpDigitChange = (index: number, val: string) => {
+    const numeric = val.replace(/[^0-9]/g, '');
+    const next = [...otpDigits];
+    if (!numeric) {
+      next[index] = '';
+      setOtpDigits(next);
+      return;
+    }
+    next[index] = numeric.slice(-1);
+    setOtpDigits(next);
+
+    if (index < 5 && numeric) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+    if (!pasted) return;
+    const next = [...otpDigits];
+    for (let i = 0; i < 6; i++) {
+      next[i] = pasted[i] || '';
+    }
+    setOtpDigits(next);
+    const focusIdx = Math.min(pasted.length, 5);
+    otpInputRefs.current[focusIdx]?.focus();
+  };
+
+  // Krok 2 ➔ 3: Weryfikacja kodu OTP i wysłanie wniosku urządzenia
+  const handleVerifyOtpAndSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    const code = otpDigits.join('');
+    if (code.length !== 6) {
+      setErrorMessage('Wprowadź pełny 6-cyfrowy kod z wiadomości e-mail.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const verifyRes = enrollmentService.verifyEmailOtp(email, code);
+      if (!verifyRes.success) {
+        setErrorMessage(verifyRes.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Sukces weryfikacji maila ➔ Utworzenie zgłoszenia laptopa
+      const submitRes = await enrollmentService.submitEnrollmentRequest({
+        fullName,
+        email,
+        requestedRole: role,
+        requestNote,
+      });
+
+      if (submitRes.success && submitRes.request) {
+        setPendingRequest(submitRes.request);
+        setStep('PENDING_APPROVAL');
+      } else {
+        setErrorMessage(submitRes.message || 'Nie udało się zarejestrować wniosku urządzenia.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Błąd rejestracji wniosku.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Ręczne sprawdzenie statusu przez użytkownika
+  const handleManualCheckStatus = async () => {
+    setIsCheckingStatus(true);
+    setErrorMessage(null);
+    try {
+      const latest = await enrollmentService.getCurrentDeviceEnrollment();
+      if (latest) {
+        setPendingRequest(latest);
+        if (latest.status === 'APPROVED' && latest.assignedLicenseKey) {
+          handleAutoActivate(latest);
+        } else if (latest.status === 'REJECTED') {
+          setErrorMessage(`Twój wniosek został odrzucony: ${latest.rejectionReason || 'Skontaktuj się z Managerem Zarządzającym.'}`);
+        } else {
+          // Nadal PENDING
         }
       }
-    } catch (_) {}
+    } catch (err: any) {
+      setErrorMessage('Błąd sprawdzania statusu.');
+    } finally {
+      setTimeout(() => setIsCheckingStatus(false), 500);
+    }
   };
 
-  // Copy hardware snippet for DM
-  const handleCopyHwFingerprint = async () => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        const payload = `Starbucks Station Hardware ID:\nFingerprint: ${hwFingerprint}\nOS: ${hwDetails.os || 'Desktop'}\nTimestamp: ${new Date().toISOString()}`;
-        await navigator.clipboard.writeText(payload);
-        setCopiedHw(true);
-        setTimeout(() => setCopiedHw(false), 2500);
-      }
-    } catch (_) {}
+  // Kopiowanie tokenu wniosku
+  const handleCopyPairingToken = () => {
+    if (!pendingRequest?.pairingToken) return;
+    navigator.clipboard?.writeText(pendingRequest.pairingToken);
+    setCopiedToken(true);
+    setTimeout(() => setCopiedToken(false), 2000);
   };
 
-  // Prevent Escape key dismissal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, []);
-
-  // Submission handler
-  const handleActivate = async (e: React.FormEvent) => {
+  // Obsługa wprowadzania bezpośredniego klucza SBX-
+  const handleManualActivate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!parsed.cleanKey || !parsed.isValidFormat) {
       setErrorMessage('Wprowadź prawidłowy klucz aktywacyjny w formacie SBX-<storeId>-<randomHex>-<checksum>.');
@@ -262,11 +463,9 @@ export const ActivationModalContent: React.FC<ActivationModalProps> = ({
       const res = await activateStation(parsed.cleanKey, expectedStoreId);
       if (res.success && res.license) {
         setSuccessLicense(res.license);
-        if (onActivationSuccess) {
-          onActivationSuccess(res.license);
-        }
+        if (onActivationSuccess) onActivationSuccess(res.license);
       } else {
-        setErrorMessage(res.error || 'Nie udało się aktywować stacji. Sprawdź poprawność klucza.');
+        setErrorMessage(res.error || 'Nie udało się aktywować stacji.');
         setIsSubmitting(false);
       }
     } catch (err: any) {
@@ -277,39 +476,6 @@ export const ActivationModalContent: React.FC<ActivationModalProps> = ({
 
   if (!isOpen || isStationActivated) {
     return null;
-  }
-
-  // Derive status badge content
-  let statusBadge = {
-    title: 'Wymagana aktywacja stacji',
-    desc: 'Stacja robocza nie posiada aktywnej licencji operacyjnej.',
-    color: 'bg-amber-500/15 border-amber-500/30 text-amber-700',
-    icon: KeyRound,
-  };
-
-  if (currentStatus?.status === 'HARDWARE_LOCKOUT') {
-    if (currentStatus.revoked) {
-      statusBadge = {
-        title: 'Licencja wycofana (Kill-Switch)',
-        desc: 'Dostęp do stacji został zdalnie unieważniony przez Administratora Floty.',
-        color: 'bg-rose-500/15 border-rose-500/30 text-rose-700',
-        icon: ShieldAlert,
-      };
-    } else {
-      statusBadge = {
-        title: 'Niezgodność sprzętowa (Hardware Mismatch)',
-        desc: 'Wykryto przeniesienie bazy na inny komputer bez autoryzacji.',
-        color: 'bg-orange-500/15 border-orange-500/30 text-orange-700',
-        icon: AlertTriangle,
-      };
-    }
-  } else if (currentStatus?.status === 'TAMPER_DETECTED') {
-    statusBadge = {
-      title: 'Wykryto naruszenie integralności',
-      desc: 'Plik licencji został zmodyfikowany lub uszkodzony (niepoprawny podpis HMAC).',
-      color: 'bg-red-500/15 border-red-500/30 text-red-700',
-      icon: ShieldAlert,
-    };
   }
 
   return (
@@ -337,176 +503,383 @@ export const ActivationModalContent: React.FC<ActivationModalProps> = ({
                 <h1 className="text-lg font-black tracking-tight text-stone-900 uppercase">
                   Starbucks Operations Suite
                 </h1>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
-                  Security Gate
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#006241]/10 text-[#006241] border border-[#006241]/20 font-mono">
+                  {step === 'PENDING_APPROVAL' ? 'Oczekiwanie' : 'Rejestracja SM'}
                 </span>
               </div>
               <p className="text-xs text-stone-500 font-medium mt-0.5">
-                Pre-Login Station Activation & Hardware Binding
+                Konfiguracja stanowiska i dostęp do danych kawiarni
               </p>
             </div>
           </div>
 
-          {/* Status Badge */}
-          <div className={`p-4 rounded-2xl border flex items-start gap-3 ${statusBadge.color}`}>
-            <statusBadge.icon className="w-5 h-5 shrink-0 mt-0.5" />
-            <div className="text-xs">
-              <strong className="block font-bold">{statusBadge.title}</strong>
-              <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">{statusBadge.desc}</p>
+          {/* Sukces powiadomienia */}
+          {approvedNotification && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 animate-in fade-in">
+              <CheckCircle className="w-6 h-6 text-emerald-600 shrink-0 animate-bounce" />
+              <div className="text-xs font-semibold">{approvedNotification}</div>
             </div>
-          </div>
+          )}
 
-          {/* Success Screen */}
-          {successLicense ? (
-            <div className="py-6 text-center space-y-4 animate-in zoom-in-95 duration-300">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-10 h-10 animate-bounce" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-stone-900">Stacja Robocza Aktywowana!</h3>
-                <p className="text-xs text-stone-600 mt-1">
-                  Pomyślnie powiązano bezpieczny magazyn sprzętowy dla kawiarni:
+          {/* Błędy */}
+          {errorMessage && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 animate-in fade-in">
+              <XCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="text-xs font-medium">{errorMessage}</div>
+            </div>
+          )}
+
+          {/* =================================================================== */}
+          {/* KROK 1: FORMULARZ REJESTRACJI KIEROWNIKA */}
+          {/* =================================================================== */}
+          {step === 'REGISTER' && (
+            <form onSubmit={handleRequestOtp} className="space-y-4">
+              <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200/80">
+                <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-2 mb-1">
+                  <User className="w-4 h-4 text-[#006241]" />
+                  Rejestracja Kierownika na tym laptopie
+                </h3>
+                <p className="text-[11px] text-stone-500">
+                  Wprowadź swoje dane oraz firmowy adres e-mail. Na podaną skrzynkę prześlemy 6-cyfrowy kod weryfikacyjny.
                 </p>
-                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-mono font-bold text-emerald-800">
-                  <span>Lokal: {successLicense.storeId}</span>
-                  <span>•</span>
-                  <span>Profil: {successLicense.tier}</span>
-                </div>
               </div>
-              <p className="text-[11px] text-stone-400">
-                Pulpit za chwilę odblokuje dostęp do logowania...
-              </p>
-            </div>
-          ) : (
-            /* Activation Key Entry Form */
-            <form onSubmit={handleActivate} className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-[#006241]" />
-                    Klucz Aktywacyjny Stacji (Kryptograficzny):
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handlePasteFromClipboard}
-                    className="text-[11px] font-semibold text-[#006241] hover:text-[#00754A] flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <ClipboardPaste className="w-3.5 h-3.5" />
-                    Wklej ze schowka
-                  </button>
-                </div>
 
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Imię i Nazwisko:</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="np. Jan Kowalski"
+                  className="w-full px-4 py-2.5 rounded-xl border border-stone-300 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Służbowy e-mail pracowniczy:</label>
                 <div className="relative">
                   <input
-                    type="text"
-                    value={rawInput}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    placeholder="SBX-18120-01A1B2C3D4E5F678-ABCDEF1234"
-                    disabled={isSubmitting}
-                    className={`w-full py-3.5 px-4 bg-stone-50 border rounded-2xl font-mono text-sm tracking-wide font-bold transition-all outline-none ${
-                      parsed.isValidFormat
-                        ? 'border-emerald-500 bg-emerald-50/20 text-emerald-900 focus:ring-2 focus:ring-emerald-500/30'
-                        : rawInput.trim()
-                        ? 'border-stone-300 focus:border-[#006241] focus:ring-2 focus:ring-[#006241]/20 focus:bg-white text-stone-900'
-                        : 'border-stone-300 focus:border-[#006241] focus:ring-2 focus:ring-[#006241]/20 focus:bg-white text-stone-900'
-                    }`}
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="jan.kowalski@amrest.eu"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241] focus:border-transparent"
                   />
-                  {parsed.isValidFormat && (
-                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-600">
-                      <Check className="w-5 h-5" />
-                    </div>
-                  )}
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
                 </div>
-
-                {/* Live Parsing Feedback */}
-                {parsed.isValidFormat && (
-                  <div className="mt-2 flex items-center justify-between text-[11px] px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <Sparkles className="w-3 h-3 text-emerald-600" />
-                      Format poprawny • Lokal: <strong className="font-mono">{parsed.storeId}</strong>
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-bold">
-                      {parsed.tier || 'STORE_CLIENT'}
-                    </span>
-                  </div>
-                )}
-
-                {/* Error Banner */}
-                {errorMessage && (
-                  <div className="mt-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span className="font-medium leading-relaxed">{errorMessage}</span>
-                  </div>
-                )}
+                <p className="text-[10px] text-stone-500 mt-1">Dozwolone domeny: @amrest.eu oraz @starbucks.com</p>
               </div>
 
-              {/* Submit Button */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Stanowisko:</label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as AppUserRole)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241]"
+                  >
+                    <option value="STORE_MANAGER">Store Manager (SM)</option>
+                    <option value="ASSISTANT_STORE_MANAGER">Assistant Store Manager (ASM)</option>
+                    <option value="DISTRICT_MANAGER">District Manager (DM)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">Komputer:</label>
+                  <div className="w-full px-3 py-2.5 rounded-xl bg-stone-100 border border-stone-200 text-xs text-stone-600 truncate flex items-center gap-1.5">
+                    <Laptop className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                    <span className="truncate">{deviceName}</span>
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="submit"
-                disabled={isSubmitting || !parsed.isValidFormat}
-                className="w-full py-4 px-6 bg-[#006241] hover:bg-[#00754A] disabled:opacity-50 text-white font-bold text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full mt-2 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-[#006241] hover:bg-[#00754A] transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Weryfikacja kryptograficzna i wiązanie ze sprzętem...</span>
+                    Wysyłam kod weryfikacyjny...
                   </>
                 ) : (
                   <>
-                    <span>Aktywuj i powiąż stację ze sprzętem</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <Send className="w-4 h-4" />
+                    Wyślij kod weryfikacyjny na e-mail
                   </>
                 )}
               </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('MANUAL_KEY')}
+                  className="text-[11px] text-stone-500 hover:text-stone-800 underline cursor-pointer"
+                >
+                  Masz bezpośredni klucz licencyjny SBX-...? Wprowadź ręcznie
+                </button>
+              </div>
             </form>
           )}
 
-          {/* Collapsible Hardware Diagnostics Footer */}
-          <div className="pt-2 border-t border-stone-100">
-            <button
-              type="button"
-              onClick={() => setShowDiagnostics(!showDiagnostics)}
-              className="w-full flex items-center justify-between text-xs text-stone-500 hover:text-stone-800 py-1 font-medium transition-colors cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <Laptop className="w-3.5 h-3.5" />
-                Identyfikator sprzętowy stacji roboczej (Hardware Diagnostics)
-              </span>
-              {showDiagnostics ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-
-            {showDiagnostics && (
-              <div className="mt-3 p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-2.5 text-xs animate-in slide-in-from-top-2 duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-stone-500">Odcisk sprzętowy (Fingerprint):</span>
-                  <button
-                    type="button"
-                    onClick={handleCopyHwFingerprint}
-                    className="text-[#006241] hover:underline font-bold flex items-center gap-1 text-[11px] cursor-pointer"
-                  >
-                    {copiedHw ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    {copiedHw ? 'Skopiowano ID' : 'Kopiuj dla District Managera'}
-                  </button>
+          {/* =================================================================== */}
+          {/* KROK 2: WERYFIKACJA 6-CYFROWEGO KODU Z E-MAILA */}
+          {/* =================================================================== */}
+          {step === 'VERIFY_OTP' && (
+            <form onSubmit={handleVerifyOtpAndSubmit} className="space-y-5">
+              <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200">
+                <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs mb-1">
+                  <Mail className="w-4 h-4 text-[#006241]" />
+                  Wysłano kod na: <span className="font-mono underline">{email}</span>
                 </div>
-                <div className="p-2 bg-white rounded-xl border border-stone-200 font-mono text-[11px] text-stone-700 break-all select-all">
-                  {hwFingerprint}
-                </div>
-                <p className="text-[10px] text-stone-400 leading-relaxed">
-                  Przekaż ten identyfikator swojemu District Managerowi lub IT AmRest w celu wygenerowania dedykowanego klucza aktywacyjnego dla tej stacji.
+                <p className="text-[11px] text-emerald-800/80">
+                  Otwórz swoją skrzynkę e-mail i przepisz 6-cyfrowy kod autoryzacyjny, aby powiązać ten komputer z Twoim kontem.
                 </p>
               </div>
-            )}
+
+              {simulatedOtpCode && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center justify-between">
+                  <span>🛠️ <strong>Tryb testowy/demo:</strong> Twój kod to: <code className="font-mono font-bold text-sm bg-white px-2 py-0.5 rounded border border-amber-300">{simulatedOtpCode}</code></span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const arr = simulatedOtpCode.split('');
+                      setOtpDigits(arr);
+                    }}
+                    className="text-[10px] font-bold underline cursor-pointer text-amber-800"
+                  >
+                    Wstaw kod
+                  </button>
+                </div>
+              )}
+
+              {/* Pola na 6 cyfr */}
+              <div>
+                <label className="block text-xs font-bold text-stone-700 text-center mb-2">
+                  Przepisz 6-cyfrowy kod z wiadomości:
+                </label>
+                <div className="flex justify-center gap-2.5 sm:gap-3" onPaste={handleOtpPaste}>
+                  {otpDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => {
+                        otpInputRefs.current[idx] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                      className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-mono font-black text-stone-900 bg-stone-50 border-2 border-stone-300 rounded-xl focus:border-[#006241] focus:bg-white focus:outline-none transition-all"
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center justify-between mt-3 text-[11px] text-stone-500 px-1">
+                  <span className="flex items-center gap-1 font-mono">
+                    <Clock className="w-3.5 h-3.5 text-stone-400" />
+                    Ważność: {Math.floor(otpTimerSeconds / 60)}:{(otpTimerSeconds % 60).toString().padStart(2, '0')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRequestOtp}
+                    disabled={isSubmitting}
+                    className="text-[#006241] font-bold hover:underline cursor-pointer"
+                  >
+                    Wyślij kod ponownie
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('REGISTER')}
+                  className="w-1/3 py-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-600 hover:bg-stone-50 cursor-pointer"
+                >
+                  Wróć
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || otpDigits.join('').length !== 6}
+                  className="w-2/3 py-3 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-[#006241] hover:bg-[#00754A] cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Potwierdź i zarejestruj laptop
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* =================================================================== */}
+          {/* KROK 3: OCZEKIWANIE NA AKCEPTACJĘ PRZEZ MANAGERA ZARZĄDZAJĄCEGO */}
+          {/* =================================================================== */}
+          {step === 'PENDING_APPROVAL' && (
+            <div className="space-y-5 animate-in fade-in">
+              <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-900">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-200/80 flex items-center justify-center text-amber-800 shrink-0 mt-0.5">
+                    <Clock className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-amber-950">
+                      Oczekiwanie na przydzielenie dostępu
+                    </h3>
+                    <p className="text-[11px] text-amber-900/90 mt-1 leading-relaxed">
+                      Twój adres e-mail został zweryfikowany. Zgłoszenie dla tego laptopa zostało przekazane do Managera Zarządzającego.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Karta szczegółów urządzenia */}
+              <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-stone-200/70">
+                  <span className="text-stone-500 font-medium">Kierownik:</span>
+                  <span className="font-bold text-stone-900">{pendingRequest?.fullName || fullName} ({pendingRequest?.requestedRole || role})</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-stone-200/70">
+                  <span className="text-stone-500 font-medium">Potwierdzony e-mail:</span>
+                  <span className="font-bold text-[#006241] flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {pendingRequest?.email || email}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-stone-200/70">
+                  <span className="text-stone-500 font-medium">Urządzenie:</span>
+                  <span className="font-bold text-stone-800 flex items-center gap-1">
+                    <Laptop className="w-3.5 h-3.5 text-stone-500" />
+                    {pendingRequest?.deviceName || deviceName}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-stone-500 font-medium">Kod zgłoszenia:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-stone-300 text-stone-900">
+                      {pendingRequest?.pairingToken || 'REQ-PENDING'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyPairingToken}
+                      className="text-[10px] text-[#006241] font-bold underline cursor-pointer"
+                    >
+                      {copiedToken ? 'Skopiowano!' : 'Kopiuj'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informacja o auto-odblokowaniu */}
+              <div className="text-center space-y-1">
+                <p className="text-[11px] text-stone-500">
+                  Aplikacja odpytuje system w tle. Gdy Manager zatwierdzi wniosek i przydzieli kawiarnię, pulpit odblokuje się automatycznie.
+                </p>
+              </div>
+
+              {/* Przyciski kontrolne */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleManualCheckStatus}
+                  disabled={isCheckingStatus || isSubmitting}
+                  className="w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-[#006241] hover:bg-[#00754A] cursor-pointer shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
+                  {isCheckingStatus ? 'Sprawdzam status...' : 'Sprawdź status dostępu'}
+                </button>
+              </div>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    enrollmentService.cancelCurrentEnrollment();
+                    setPendingRequest(null);
+                    setStep('REGISTER');
+                  }}
+                  className="text-[11px] text-stone-400 hover:text-stone-700 underline cursor-pointer"
+                >
+                  Anuluj zgłoszenie i zmień dane
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================================== */}
+          {/* KROK 4: WPISANIE RĘCZNEGO KLUCZA SBX- (FALLBACK DLA ADMINA / AWARYJNY) */}
+          {/* =================================================================== */}
+          {step === 'MANUAL_KEY' && (
+            <form onSubmit={handleManualActivate} className="space-y-4 animate-in fade-in">
+              <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200">
+                <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-2 mb-1">
+                  <KeyRound className="w-4 h-4 text-[#CBA258]" />
+                  Ręczna aktywacja stacji kluczem
+                </h3>
+                <p className="text-[11px] text-stone-500">
+                  Wklej bezpośredni klucz licencyjny wygenerowany przez Managera Zarządzającego.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Klucz licencyjny (SBX-...):</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={rawInput}
+                    onChange={(e) => {
+                      setRawInput(e.target.value);
+                      setParsed(parseActivationInput(e.target.value));
+                    }}
+                    placeholder="SBX-108120-XXXXXXXX-YYYY"
+                    className="w-full px-4 py-2.5 rounded-xl border border-stone-300 font-mono text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241]"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const text = await navigator.clipboard?.readText();
+                      if (text) {
+                        setRawInput(text);
+                        setParsed(parseActivationInput(text));
+                      }
+                    }}
+                    className="absolute right-2 top-2 px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md text-[10px] font-bold cursor-pointer"
+                  >
+                    Wklej
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('REGISTER')}
+                  className="w-1/3 py-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-600 hover:bg-stone-50 cursor-pointer"
+                >
+                  Wróć
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !parsed.isValidFormat}
+                  className="w-2/3 py-3 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-[#006241] hover:bg-[#00754A] cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                  Aktywuj kluczem
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Footer Security Note */}
+          <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-400">
+            <span>Hardware ID: {hwFingerprint.slice(0, 16)}...</span>
+            <span className="font-semibold text-stone-500">Starbucks Enterprise Guard</span>
           </div>
         </div>
       </div>
     </div>
-  );
-};
-
-export const ActivationModal: React.FC<ActivationModalProps> = (props) => {
-  return (
-    <ErrorBoundary moduleName="Station Activation Gate" fallbackTitle="Błąd w bramce aktywacyjnej stacji">
-      <ActivationModalContent {...props} />
-    </ErrorBoundary>
   );
 };

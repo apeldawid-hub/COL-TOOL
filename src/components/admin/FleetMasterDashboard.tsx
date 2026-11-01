@@ -36,9 +36,20 @@ import {
   ArrowRight,
   Info,
   Server,
+  Laptop,
+  UserPlus,
+  Users,
+  Mail,
+  CheckSquare,
+  Square,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import { STARBUCKS_STORES_CATALOG, StarbucksStore, normalizeDiacritics } from '../../constants/starbucksStores';
 import { fleetService } from '../../services/admin/fleetService';
+import { enrollmentService } from '../../services/admin/enrollmentService';
+import { PendingAccessRequest, AppUserRole, GranularUserPermissions } from '../../types/admin';
+import { ROLE_DEFAULT_PERMISSIONS } from '../../services/admin/adminService';
 import { useStore } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { APP_VERSION } from '../../version';
@@ -66,7 +77,22 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   const [auditLogs, setAuditLogs] = useState<FleetAuditRecord[]>(() => fleetService.getAuditLogs());
 
   // Aktywna zakładka
-  const [activeTab, setActiveTab] = useState<'katalog' | 'licencje' | 'killswitch' | 'audyt'>('katalog');
+  const [activeTab, setActiveTab] = useState<'katalog' | 'wnioski' | 'licencje' | 'killswitch' | 'audyt'>('katalog');
+
+  // Wnioski o dostęp i rejestracje urządzeń (Zero-Trust Enrollment)
+  const [accessRequests, setAccessRequests] = useState<PendingAccessRequest[]>([]);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
+  const [selectedReqForApproval, setSelectedReqForApproval] = useState<PendingAccessRequest | null>(null);
+  const [selectedReqForReject, setSelectedReqForReject] = useState<PendingAccessRequest | null>(null);
+  const [rejectReasonInput, setRejectReasonInput] = useState<string>('');
+
+  // Konfiguracja przydziału w modalu akceptacji
+  const [approvalStoreId, setApprovalStoreId] = useState<string>('108120');
+  const [approvalRole, setApprovalRole] = useState<AppUserRole>('STORE_MANAGER');
+  const [approvalPermissions, setApprovalPermissions] = useState<GranularUserPermissions>({ ...ROLE_DEFAULT_PERMISSIONS.STORE_MANAGER });
+  const [storeSearchInModal, setStoreSearchInModal] = useState<string>('');
+  const [isApprovingRequest, setIsApprovingRequest] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Filtrowanie katalogu
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -92,15 +118,105 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   const [ksChallengeInput, setKsChallengeInput] = useState<string>('');
   const [ksError, setKsError] = useState<string | null>(null);
 
-  // Subskrypcja na aktualizacje floty
+  // Subskrypcja na aktualizacje floty oraz wniosków urządzeń
+  const loadRequests = useCallback(async () => {
+    try {
+      const list = await enrollmentService.getAllRequests();
+      setAccessRequests(list);
+      setPendingRequestsCount(list.filter((r) => r.status === 'PENDING').length);
+    } catch {}
+  }, []);
+
   useEffect(() => {
+    loadRequests();
+    const unsubEnrollment = enrollmentService.subscribe(loadRequests);
     const unsub = fleetService.subscribe(() => {
       setStores(fleetService.getFleetStores());
       setStats(fleetService.getSummaryStats());
       setAuditLogs(fleetService.getAuditLogs());
     });
-    return unsub;
-  }, []);
+    return () => {
+      unsub();
+      unsubEnrollment();
+    };
+  }, [loadRequests]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Otwarcie modalu przydziału uprawnień
+  const handleOpenApprovalModal = (req: PendingAccessRequest) => {
+    setSelectedReqForApproval(req);
+    // Domyślnie proponuj przypisaną kawiarnię lub 108120 Janki
+    setApprovalStoreId(req.storeUnitCode || '108120');
+    setApprovalRole(req.requestedRole || 'STORE_MANAGER');
+    setApprovalPermissions({ ...ROLE_DEFAULT_PERMISSIONS[req.requestedRole || 'STORE_MANAGER'] });
+    setStoreSearchInModal('');
+  };
+
+  // Zmiana roli w formularzu ➔ aktualizacja domyślnych uprawnień
+  const handleApprovalRoleChange = (newRole: AppUserRole) => {
+    setApprovalRole(newRole);
+    setApprovalPermissions({ ...ROLE_DEFAULT_PERMISSIONS[newRole] });
+  };
+
+  // Przełączanie pojedynczego uprawnienia
+  const handleTogglePermission = (key: keyof GranularUserPermissions) => {
+    setApprovalPermissions((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  // Zatwierdzenie wniosku i wygenerowanie klucza sprzętowego
+  const handleConfirmApproval = async () => {
+    if (!selectedReqForApproval) return;
+    setIsApprovingRequest(true);
+    try {
+      const adminName = currentSession?.fullName || 'Manager Zarządzający (Fleet Master)';
+      const res = await enrollmentService.approveAccessRequest(selectedReqForApproval.id, {
+        storeId: approvalStoreId,
+        role: approvalRole,
+        permissions: approvalPermissions,
+        adminName,
+      });
+
+      if (res.success) {
+        showToast(`✅ Zaakceptowano wniosek dla ${selectedReqForApproval.fullName}. Przydzielono kawiarnię ${approvalStoreId}.`);
+        setSelectedReqForApproval(null);
+        await loadRequests();
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Błąd zatwierdzania wniosku.');
+    } finally {
+      setIsApprovingRequest(false);
+    }
+  };
+
+  // Odrzucenie wniosku
+  const handleConfirmReject = async () => {
+    if (!selectedReqForReject) return;
+    try {
+      const adminName = currentSession?.fullName || 'Manager Zarządzający (Fleet Master)';
+      const res = await enrollmentService.rejectAccessRequest(
+        selectedReqForReject.id,
+        rejectReasonInput || 'Odrzucono przez Managera Zarządzającego',
+        adminName
+      );
+      if (res.success) {
+        showToast(`✕ Odrzucono wniosek dla ${selectedReqForReject.fullName}.`);
+        setSelectedReqForReject(null);
+        setRejectReasonInput('');
+        await loadRequests();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Błąd odrzucania wniosku.');
+    }
+  };
 
   // Lista unikalnych dystryktów do filtra
   const availableDistricts = useMemo(() => {
@@ -393,6 +509,27 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
           </button>
 
           <button
+            onClick={() => setActiveTab('wnioski')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 relative ${
+              activeTab === 'wnioski'
+                ? 'bg-[#006241] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Wnioski Kierowników</span>
+            {pendingRequestsCount > 0 ? (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400 text-amber-950 font-black animate-pulse">
+                {pendingRequestsCount}
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+                {accessRequests.length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('licencje')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'licencje'
@@ -622,6 +759,172 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ZAKŁADKA: WNIOSKI KIEROWNIKÓW (ZERO-TRUST ENROLLMENT) */}
+        {activeTab === 'wnioski' && (
+          <div className="space-y-4">
+            {/* Pasek nagłówkowy i statystyki wniosków */}
+            <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-xl bg-emerald-50 text-[#006241]">
+                  <UserCheck className="w-6 h-6 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#1E3932]">Wnioski Rejestracyjne Kierowników & Laptopów</h3>
+                  <p className="text-xs text-stone-500">
+                    Autoryzuj nowe stanowiska, przypisuj kawiarnie oraz definiuj granularne uprawnienia do modułów.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>Oczekujące: {pendingRequestsCount}</span>
+                </div>
+                <button
+                  onClick={loadRequests}
+                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Odśwież</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tabela zgłoszeń */}
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
+              {accessRequests.length === 0 ? (
+                <div className="p-10 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-stone-100 text-stone-400 mx-auto flex items-center justify-center text-xl">
+                    <Laptop className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-bold text-stone-700">Brak zgłoszeń oczekujących</h4>
+                  <p className="text-xs text-stone-500 max-w-md mx-auto">
+                    Gdy Store Manager pobierze aplikację i potwierdzi swój służbowy e-mail @amrest.eu, jego komputer pojawi się tutaj z prośbą o przydział kawiarni i klucza.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-stone-50 border-b border-stone-200 text-stone-500 font-bold uppercase text-[10px]">
+                        <th className="py-3 px-4">Kierownik</th>
+                        <th className="py-3 px-4">Laptop & Odcisk Sprzętowy</th>
+                        <th className="py-3 px-4">Kod Zgłoszenia</th>
+                        <th className="py-3 px-4">Zgłoszono</th>
+                        <th className="py-3 px-4">Status & Przypisanie</th>
+                        <th className="py-3 px-4 text-right">Decyzja</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {accessRequests.map((req) => (
+                        <tr key={req.id} className="hover:bg-stone-50/70 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-stone-900">{req.fullName}</div>
+                            <div className="text-[11px] text-[#006241] flex items-center gap-1 font-medium">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {req.email}
+                            </div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">Wnioskowana rola: {req.requestedRole}</div>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-stone-800 flex items-center gap-1.5">
+                              <Laptop className="w-3.5 h-3.5 text-stone-500" />
+                              {req.deviceName}
+                            </div>
+                            <div className="font-mono text-[10px] text-stone-400 truncate max-w-xs" title={req.deviceFingerprint}>
+                              ID: {req.deviceFingerprint ? req.deviceFingerprint.slice(0, 18) + '...' : '—'}
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className="font-mono font-bold bg-stone-100 text-stone-800 px-2 py-0.5 rounded border border-stone-200">
+                              {req.pairingToken || 'REQ-DEV'}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4 text-stone-500 whitespace-nowrap">
+                            {new Date(req.createdAt).toLocaleString('pl-PL', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            {req.status === 'PENDING' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                <Clock className="w-3 h-3 animate-pulse" />
+                                Oczekuje na decyzję
+                              </span>
+                            )}
+                            {req.status === 'APPROVED' && (
+                              <div className="space-y-0.5">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Zatwierdzony ({req.assignedRole || 'SM'})
+                                </span>
+                                <div className="text-[11px] font-semibold text-stone-700">
+                                  {req.assignedStoreName || req.assignedStoreId}
+                                </div>
+                                {req.assignedLicenseKey && (
+                                  <div className="font-mono text-[9px] text-stone-400">
+                                    Klucz: {req.assignedLicenseKey.slice(0, 16)}...
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {req.status === 'REJECTED' && (
+                              <div className="space-y-0.5">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                  <XCircle className="w-3 h-3" />
+                                  Odrzucony
+                                </span>
+                                {req.rejectionReason && (
+                                  <div className="text-[10px] text-rose-600 truncate max-w-xs">{req.rejectionReason}</div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            {req.status === 'PENDING' ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => setSelectedReqForReject(req)}
+                                  className="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Odrzuć
+                                </button>
+                                <button
+                                  onClick={() => handleOpenApprovalModal(req)}
+                                  className="px-3 py-1.5 rounded-lg bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Akceptuj & Przydziel</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenApprovalModal(req)}
+                                className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-semibold transition-colors cursor-pointer"
+                              >
+                                Zmień uprawnienia
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -973,6 +1276,312 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
           </div>
         )}
       </main>
+
+      {/* MODAL 1: AUTORYZACJA I PRZYDZIAŁ DANYCH DLA KIEROWNIKA */}
+      {selectedReqForApproval && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl border border-stone-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#1E3932] via-[#006241] to-[#00754A] p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-[#CBA258]">
+                  <UserCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black uppercase tracking-wider text-white">
+                    Autoryzacja Stanowiska & Przydział Danych
+                  </h2>
+                  <p className="text-xs text-emerald-200">
+                    {selectedReqForApproval.fullName} • {selectedReqForApproval.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedReqForApproval(null)}
+                className="text-white/60 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-5 text-xs">
+              {/* Laptop info snippet */}
+              <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Laptop className="w-4 h-4 text-stone-500" />
+                  <div>
+                    <div className="font-bold text-stone-800">{selectedReqForApproval.deviceName}</div>
+                    <div className="font-mono text-[10px] text-stone-400">
+                      Hardware ID: {selectedReqForApproval.deviceFingerprint ? selectedReqForApproval.deviceFingerprint.slice(0, 24) + '...' : '—'}
+                    </div>
+                  </div>
+                </div>
+                <span className="font-mono text-[11px] font-bold bg-white px-2.5 py-1 rounded-lg border border-stone-200 text-stone-700">
+                  {selectedReqForApproval.pairingToken || 'REQ-DEV'}
+                </span>
+              </div>
+
+              {/* 1. Wybór Kawiarni */}
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1">
+                  1. Przypisz Kawiarnię (Baza danych & MPK):
+                </label>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={storeSearchInModal}
+                      onChange={(e) => setStoreSearchInModal(e.target.value)}
+                      placeholder="Szukaj kawiarni po nazwie, mieście lub numerze..."
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#006241]"
+                    />
+                  </div>
+                  <select
+                    value={approvalStoreId}
+                    onChange={(e) => setApprovalStoreId(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241]"
+                    size={4}
+                  >
+                    {STARBUCKS_STORES_CATALOG
+                      .filter((s) => {
+                        if (!storeSearchInModal.trim()) return true;
+                        const q = normalizeDiacritics(storeSearchInModal.toLowerCase());
+                        return (
+                          normalizeDiacritics(s.name.toLowerCase()).includes(q) ||
+                          normalizeDiacritics(s.city.toLowerCase()).includes(q) ||
+                          s.id.includes(q) ||
+                          s.unitCode.includes(q)
+                        );
+                      })
+                      .map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name} ({store.city}) — Unit {store.unitCode}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* 2. Wybór Roli */}
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1">
+                  2. Stanowisko / Rola Kierownicza:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['STORE_MANAGER', 'ASSISTANT_STORE_MANAGER', 'DISTRICT_MANAGER'] as AppUserRole[]).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => handleApprovalRoleChange(r)}
+                      className={`py-2 px-3 rounded-xl border font-bold text-[11px] transition-all cursor-pointer text-center ${
+                        approvalRole === r
+                          ? 'bg-[#006241] text-white border-[#006241] shadow-xs'
+                          : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                      }`}
+                    >
+                      {r === 'STORE_MANAGER' ? 'Store Manager (SM)' : r === 'ASSISTANT_STORE_MANAGER' ? 'Assistant SM (ASM)' : 'District Manager (DM)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Granularne Uprawnienia do Danych */}
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-2">
+                  3. Zakres dostępu do danych (Granularne Uprawnienia):
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {/* Moduł 1 */}
+                  <div className="p-3 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2">
+                    <div className="font-bold text-stone-800 text-[11px] uppercase tracking-wider text-[#006241]">
+                      Moduł 1: Forecast TPLH & AOP
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canViewFinancialSales}
+                        onChange={() => handleTogglePermission('canViewFinancialSales')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Wgląd w finanse i sprzedaż PLN</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canEditForecastTarget}
+                        onChange={() => handleTogglePermission('canEditForecastTarget')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Edycja celów miesięcznych AOP</span>
+                    </label>
+                  </div>
+
+                  {/* Moduł 2 */}
+                  <div className="p-3 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2">
+                    <div className="font-bold text-stone-800 text-[11px] uppercase tracking-wider text-[#006241]">
+                      Moduł 2: Grafik & TOR & Kadry
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canViewWageRates}
+                        onChange={() => handleTogglePermission('canViewWageRates')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700 font-semibold text-rose-700">Wgląd w stawki płac PLN/h (Poufne)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canViewMedicalLeaves}
+                        onChange={() => handleTogglePermission('canViewMedicalLeaves')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Zwolnienia lekarskie L4 & kody medyczne</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canPublishSchedule}
+                        onChange={() => handleTogglePermission('canPublishSchedule')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Publikacja grafiku do załogi</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canApproveTor}
+                        onChange={() => handleTogglePermission('canApproveTor')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Zatwierdzanie kwartalne bilansu TOR</span>
+                    </label>
+                  </div>
+
+                  {/* Moduł 3 */}
+                  <div className="p-3 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2">
+                    <div className="font-bold text-stone-800 text-[11px] uppercase tracking-wider text-[#006241]">
+                      Moduł 3: Szkolenia (Barista Journey)
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={true}
+                        disabled
+                        className="rounded text-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Szablony zmian T1–T10 i karty ocen</span>
+                    </label>
+                  </div>
+
+                  {/* Moduł 4 */}
+                  <div className="p-3 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2">
+                    <div className="font-bold text-stone-800 text-[11px] uppercase tracking-wider text-[#006241]">
+                      Moduł 4: Finanse & Koszty Pracy P&L
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canViewColPnl}
+                        onChange={() => handleTogglePermission('canViewColPnl')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Rachunek zysków i strat (P&L COL %)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canViewZusRates}
+                        onChange={() => handleTogglePermission('canViewZusRates')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Narzut ZUS 19.48% & koszty pracodawcy</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={approvalPermissions.canSimulateWhatIf}
+                        onChange={() => handleTogglePermission('canSimulateWhatIf')}
+                        className="rounded text-[#006241] focus:ring-[#006241]"
+                      />
+                      <span className="text-[11px] text-stone-700">Symulator What-If stawek i premii</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-stone-100 border-t border-stone-200 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setSelectedReqForApproval(null)}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-xs font-bold text-stone-700 hover:bg-stone-200 transition-colors cursor-pointer"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmApproval}
+                disabled={isApprovingRequest}
+                className="px-5 py-2.5 rounded-xl bg-[#006241] hover:bg-[#00754A] text-white text-xs font-black uppercase tracking-wider shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              >
+                {isApprovingRequest ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Zatwierdź i Przydziel Klucz Sprzętowy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: ODRZUCENIE WNIOSKU */}
+      {selectedReqForReject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl border border-stone-200 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3 text-rose-700">
+              <XCircle className="w-6 h-6" />
+              <h3 className="text-sm font-bold">Odrzucenie Wniosku o Dostęp</h3>
+            </div>
+            <p className="text-xs text-stone-600">
+              Czy na pewno chcesz odrzucić wniosek dla <strong>{selectedReqForReject.fullName}</strong> ({selectedReqForReject.email})?
+            </p>
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">Powód odrzucenia:</label>
+              <input
+                type="text"
+                value={rejectReasonInput}
+                onChange={(e) => setRejectReasonInput(e.target.value)}
+                placeholder="np. Błędny pracownik lub brak upoważnienia..."
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setSelectedReqForReject(null)}
+                className="px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-bold text-stone-600 hover:bg-stone-50 cursor-pointer"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={handleConfirmReject}
+                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                Potwierdź odrzucenie
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1E3932] text-white px-4 py-3 rounded-2xl shadow-xl border border-emerald-400/30 flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 text-xs font-medium">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 };
