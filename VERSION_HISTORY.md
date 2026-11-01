@@ -7,6 +7,8 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.2](#v2.9.2--2026-11-02)** | 2026-11-02 | Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master | `feature` | 🚀 Opublikowana |
+| **[v2.9.1](#v2.9.1--2026-11-01)** | 2026-11-01 | Hot-Patch OTA: Eliminacja Node require('crypto') w bundle frontendu, Universal WebCrypto (@noble/hashes) & Poprawka CSP Google Fonts | `patch` | 🚀 Opublikowana |
 | **[v2.9.0](#v2.9.0--2026-11-01)** | 2026-11-01 | Enterprise Security & Fleet Management (Podwójne Profile, Klucze Sprzętowe, MFA, Auto-Lock & Disaster Recovery BIP-39) | `major` | 🚀 Opublikowana |
 | **[v2.8.70](#v2.8.70--2026-10-26)** | 2026-10-26 | Poprawka Schematu REST API Firestore dla Migracji Chmurowej AES-256 (Protobuf Document Fields) | `patch` | 🚀 Opublikowana |
 | **[v2.8.69](#v2.8.69--2026-10-26)** | 2026-10-26 | Naprawa Punktu Wejścia IPC Migracji Chmurowej w Oknie Kawiarni | `patch` | 🚀 Opublikowana |
@@ -41,7 +43,46 @@
 
 ## Szczegółowa Historia Wydań
 
-### [v2.9.0] — 2026-11-01
+### [v2.9.2] — 2026-11-02
+**Tytuł:** Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+**Status:** 🚀 Wdrożona na GitHub Releases (`sos-patch-2.9.2.zip`, 12.39 MB, SHA256: `52a5745b59...`)
+
+#### 🎯 Kluczowe Wdrożenia:
+1. **Rejestracja Kierownika i Weryfikacja E-mail OTP (`ActivationModal.tsx`)**:
+   - Świeża instalacja aplikacji na laptopie Store Managera nie wymaga wpisywania surowych kluczy z palca.
+   - Formularz rejestracji: Imię i Nazwisko, służbowy e-mail (`@amrest.eu` / `@starbucks.com`) oraz wnioskowana rola.
+   - Generowanie i weryfikacja 6-cyfrowego kodu autoryzacyjnego OTP z odliczaniem czasu (5 min) i ochroną przed brute-force.
+2. **Ekran Oczekiwania na Autoryzację (*Pending Approval & Hardware Pairing*)**:
+   - Po potwierdzeniu maila aplikacja automatycznie powiązuje unikalny Hardware ID laptopa i tworzy zgłoszenie o dostęp (`pairingToken`).
+   - Ekran statusu: informuje kierownika o oczekiwaniu na decyzję Managera Zarządzającego wraz z automatycznym odpytywaniem o status w tle co 5 sekund.
+3. **Panel Managera Zarządzającego — Zakładka Wniosków i Konfigurator Uprawnień (`FleetMasterDashboard.tsx`)**:
+   - Nowa zakładka: **Wnioski Kierowników** z licznikiem zgłoszeń oczekujących.
+   - Karta zgłoszenia z tożsamością kierownika, potwierdzonym mailem i danymi komputera.
+   - Modal zatwierdzania:
+     - Przypisanie Kawiarni ze 100+ lokali Starbucks w Polsce.
+     - Rola (Store Manager / Assistant SM / District Manager).
+     - Granularne uprawnienia do danych: wgląd w sprzedaż i finanse, stawki poufne PLN/h, zwolnienia lekarskie L4, publikacja grafiku, zatwierdzanie TOR, P&L COL %, narzut ZUS 19.48%, symulator What-If.
+   - Po zatwierdzeniu: automatyczne wygenerowanie klucza sprzętowego i oznaczenie wniosku jako `APPROVED`.
+4. **Automatyczne Odblokowanie na Laptopie Kierownika**:
+   - Po wykryciu zgody w tle laptop Store Managera natychmiast aktywuje stację wygenerowanym kluczem, inicjalizuje bazę i wita kierownika w przydzielonej kawiarni.
+5. **Serwis `enrollmentService.ts` i Testy Bezpieczeństwa**:
+   - Nowy serwis zarządzający cyklem życia wniosków i synchronizacją chmurową/lokalną.
+   - 192 / 192 testy bezpieczeństwa zaliczone ze statusem zielonym (`npm run test:security`).
+
+---
+
+### [v2.9.1] — 2026-11-01
+**Tytuł:** Hot-Patch OTA: Eliminacja Node require('crypto') w bundle frontendu, Universal WebCrypto (@noble/hashes) & Poprawka CSP Google Fonts  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+**Status:** 🚀 Wdrożona na GitHub Releases (`sos-patch-2.9.1.zip`)
+
+#### 🎯 Kluczowe Wdrożenia:
+1. Rozwiązanie problemu białego ekranu po starcie aplikacji poprzez wyeliminowanie wywołań Node `require('crypto')` z kodu renderera.
+2. Wdrożenie uniwersalnego modułu `cryptoUtils.ts` opartego na `@noble/hashes` (SHA-256, HMAC-SHA256) oraz Web Crypto API.
+3. Aktualizacja nagłówków CSP dla Google Fonts (`fonts.googleapis.com` i `fonts.gstatic.com`).
+
+---
 **Tytuł:** Enterprise Security & Fleet Management (Podwójne Profile, Klucze Sprzętowe, MFA, Auto-Lock & Disaster Recovery BIP-39)  
 **Autorzy:** Dawid Apel & Antigravity Agent Squad  
 
