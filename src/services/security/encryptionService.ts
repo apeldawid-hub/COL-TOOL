@@ -14,6 +14,9 @@
 
 import crypto from 'crypto';
 import { StoreService } from '../storeService';
+import { StoreKeyCache } from './storeKeyCache';
+
+export { StoreKeyCache };
 
 export interface EncryptedEnvelope {
   version: 'v1';
@@ -91,93 +94,6 @@ export function canonicalSha256(data: any): string {
  * In-memory Store Encryption Key (SEK) cache to avoid redundant 600,000 PBKDF2 iterations.
  * Key format: `${storeId}:${unitCode}:${passphraseHash}`
  */
-export class StoreKeyCache {
-  private static cache = new Map<string, { key: Buffer; expiresAt: number }>();
-  private static readonly TTL_MS = 60 * 60 * 1000; // 1 hour
-  private static readonly MAX_ENTRIES = 256;
-
-  public static get(storeId: string, unitCode: string, passphraseHash: string): Buffer | null {
-    const cacheKey = `${storeId}:${unitCode}:${passphraseHash}`;
-    const entry = this.cache.get(cacheKey);
-    if (!entry) return null;
-    if (Date.now() > entry.expiresAt) {
-      if (entry.key) {
-        entry.key.fill(0);
-      }
-      this.cache.delete(cacheKey);
-      return null;
-    }
-    // Refresh LRU order on access
-    this.cache.delete(cacheKey);
-    this.cache.set(cacheKey, entry);
-    return entry.key;
-  }
-
-  public static set(storeId: string, unitCode: string, passphraseHash: string, key: Buffer): void {
-    const cacheKey = `${storeId}:${unitCode}:${passphraseHash}`;
-    const existing = this.cache.get(cacheKey);
-    if (existing && existing.key !== key) {
-      if (existing.key) {
-        existing.key.fill(0);
-      }
-      this.cache.delete(cacheKey);
-    }
-
-    // LRU eviction if cache size exceeds capacity
-    if (this.cache.size >= this.MAX_ENTRIES) {
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey) {
-        const oldestEntry = this.cache.get(oldestKey);
-        if (oldestEntry?.key) {
-          oldestEntry.key.fill(0);
-        }
-        this.cache.delete(oldestKey);
-      }
-    }
-
-    this.cache.set(cacheKey, {
-      key,
-      expiresAt: Date.now() + this.TTL_MS,
-    });
-  }
-
-  public static invalidateStore(storeId: string): void {
-    const prefix = `${storeId}:`;
-    for (const [k, entry] of this.cache.entries()) {
-      if (k.startsWith(prefix)) {
-        if (entry?.key) {
-          entry.key.fill(0);
-        }
-        this.cache.delete(k);
-      }
-    }
-  }
-
-  public static clear(): void {
-    for (const entry of this.cache.values()) {
-      if (entry?.key) {
-        entry.key.fill(0);
-      }
-    }
-    this.cache.clear();
-  }
-
-  public static setStoreKey(storeId: string, key: Buffer): void {
-    this.set(storeId, storeId, 'default', key);
-  }
-
-  public static hasStoreKey(storeId: string): boolean {
-    const prefix = `${storeId}:`;
-    for (const k of this.cache.keys()) {
-      if (k.startsWith(prefix)) return true;
-    }
-    return false;
-  }
-
-  public static size(): number {
-    return this.cache.size;
-  }
-}
 
 /**
  * Resolves default master passphrase based on execution environment.

@@ -87,6 +87,8 @@ async function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  // Automatyczne otwarcie DevTools w celu diagnostyki
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });

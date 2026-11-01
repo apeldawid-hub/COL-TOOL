@@ -10,7 +10,12 @@
  * - Cross-environment resilience (Electron Main/Renderer, Node test runner, Browser)
  */
 
-import crypto from 'crypto';
+import {
+  cryptoSha256Hex,
+  cryptoHmacSha256Hex,
+  cryptoRandomHex,
+  cryptoConstantTimeEqual
+} from './cryptoUtils';
 import type {
   LicenseTier,
   StationLicenseStatus,
@@ -39,30 +44,9 @@ export type {
 
 /**
  * Constant-time string equality check to prevent side-channel timing attacks.
- * Uses crypto.timingSafeEqual when available, with a bitwise XOR accumulator fallback.
  */
 export function timingSafeStringEqual(a: string, b: string): boolean {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
-  if (a.length !== b.length) return false;
-
-  if (typeof crypto !== 'undefined' && typeof (crypto as any).timingSafeEqual === 'function') {
-    try {
-      const bufA = Buffer.from(a, 'utf8');
-      const bufB = Buffer.from(b, 'utf8');
-      if (bufA.length === bufB.length) {
-        return (crypto as any).timingSafeEqual(bufA, bufB);
-      }
-    } catch {
-      // Fall through to constant-time loop
-    }
-  }
-
-  // Strict constant-time XOR accumulator loop
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
+  return cryptoConstantTimeEqual(a, b);
 }
 
 /**
@@ -169,7 +153,7 @@ export class DefaultHardwareProvider implements IHardwareFingerprintProvider {
         let cached = localStorage.getItem('sbx_station_hw_fingerprint');
         if (!cached) {
           const seed = `hw_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-          cached = crypto.createHash('sha256').update(seed, 'utf8').digest('hex');
+          cached = cryptoSha256Hex(seed);
           localStorage.setItem('sbx_station_hw_fingerprint', cached);
         }
         return cached;
@@ -243,12 +227,12 @@ export class LicensingService implements ILicensingService {
     }
 
     const tierByte = tier === 'FLEET_MASTER' ? 'FF' : '01';
-    const entropyHex = crypto.randomBytes(7).toString('hex').toUpperCase();
+    const entropyHex = cryptoRandomHex(7).toUpperCase();
     const randomHex = `${tierByte}${entropyHex}`; // Exactly 16 chars
 
     const payload = `SBX:${tier}:${normStoreId}:${randomHex}`;
     const secret = customSecret || this.signingSecret;
-    const hmac = crypto.createHmac('sha256', secret).update(payload, 'utf8').digest('hex').toUpperCase();
+    const hmac = cryptoHmacSha256Hex(secret, payload).toUpperCase();
     const checksum = hmac.substring(0, 10); // 10 chars
 
     return `SBX-${normStoreId}-${randomHex}-${checksum}`;
@@ -348,7 +332,7 @@ export class LicensingService implements ILicensingService {
 
     const payload = `SBX:${tier}:${normStoreId}:${randomHex}`;
     const secret = customSecret || this.signingSecret;
-    const hmac = crypto.createHmac('sha256', secret).update(payload, 'utf8').digest('hex').toUpperCase();
+    const hmac = cryptoHmacSha256Hex(secret, payload).toUpperCase();
     const expectedChecksum = hmac.substring(0, 10);
 
     return timingSafeStringEqual(checksum, expectedChecksum);
@@ -431,10 +415,7 @@ export class LicensingService implements ILicensingService {
 
     // Compute envelope HMAC signature
     const envelopePayload = this.computeEnvelopePayload(license);
-    const envelopeSig = crypto
-      .createHmac('sha256', this.signingSecret)
-      .update(envelopePayload, 'utf8')
-      .digest('hex');
+    const envelopeSig = cryptoHmacSha256Hex(this.signingSecret, envelopePayload);
 
     license.signature = envelopeSig;
 
@@ -535,10 +516,7 @@ export class LicensingService implements ILicensingService {
 
     // Verify envelope HMAC signature
     const envelopePayload = this.computeEnvelopePayload(license);
-    const expectedSig = crypto
-      .createHmac('sha256', this.signingSecret)
-      .update(envelopePayload, 'utf8')
-      .digest('hex');
+    const expectedSig = cryptoHmacSha256Hex(this.signingSecret, envelopePayload);
 
     if (!timingSafeStringEqual(license.signature, expectedSig)) {
       console.warn('⚠️ [LicensingService] Wykryto manipulację w kopercie licencji (Signature mismatch).');
@@ -637,10 +615,7 @@ export class LicensingService implements ILicensingService {
         license.revokedAt = new Date().toISOString();
         license.revokeReason = reason;
         const envelopePayload = this.computeEnvelopePayload(license);
-        license.signature = crypto
-          .createHmac('sha256', this.signingSecret)
-          .update(envelopePayload, 'utf8')
-          .digest('hex');
+        license.signature = cryptoHmacSha256Hex(this.signingSecret, envelopePayload);
         await this.storageProvider.saveLicense(JSON.stringify(license));
       } catch (_) {}
     }

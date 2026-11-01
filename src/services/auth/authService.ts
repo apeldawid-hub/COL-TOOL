@@ -15,10 +15,10 @@
  * 8. Zero-Leak audit logging and session isolation
  */
 
-import crypto from 'crypto';
 import { AppUserRole, GranularUserPermissions, ManagedAppUser, PendingAccessRequest } from '../../types/admin';
 import { AdminService, ROLE_DEFAULT_PERMISSIONS } from '../admin/adminService';
 import { timingSafeStringEqual } from '../security/licensingService';
+import { cryptoSha256Hex, cryptoRandomHex, cryptoRandomInt } from '../security/cryptoUtils';
 
 export interface AuthUserSession {
   userId: string;
@@ -175,39 +175,21 @@ export function validateCorporateEmail(email: string): CorporateEmailValidationR
  * Generates a cryptographically strong 6-digit OTP token (100000 - 999999).
  */
 export function generateCsprngOtp(): string {
-  if (typeof crypto !== 'undefined') {
-    if (typeof (crypto as any).randomInt === 'function') {
-      return (crypto as any).randomInt(100000, 1000000).toString();
-    }
-    if (typeof crypto.getRandomValues === 'function') {
-      const arr = new Uint32Array(1);
-      crypto.getRandomValues(arr);
-      return (100000 + (arr[0] % 900000)).toString();
-    }
-  }
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return cryptoRandomInt(100000, 1000000).toString();
 }
 
 /**
  * Generates random hexadecimal salt for OTP hashing.
  */
 export function generateSalt(length = 16): string {
-  if (typeof crypto !== 'undefined' && typeof (crypto as any).randomBytes === 'function') {
-    return (crypto as any).randomBytes(length / 2).toString('hex');
-  }
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    const arr = new Uint8Array(length / 2);
-    crypto.getRandomValues(arr);
-    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
-  }
-  return Math.random().toString(36).substring(2, 10);
+  return cryptoRandomHex(Math.ceil(length / 2)).slice(0, length);
 }
 
 /**
  * Computes SHA-256 hash.
  */
 export function computeSha256(data: string): string {
-  return crypto.createHash('sha256').update(data, 'utf8').digest('hex');
+  return cryptoSha256Hex(data);
 }
 
 export class AuthService {

@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { StoreKeyCache } from '../services/security/encryptionService';
+import { StoreKeyCache } from '../services/security/storeKeyCache';
 import { licensingService } from '../services/security/licensingService';
 
 export const DEFAULT_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 900,000 ms (15 minutes)

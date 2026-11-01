@@ -10,7 +10,7 @@ import { licensingService } from '../services/security/licensingService';
 import type { ActiveLicenseRecord, LicenseStatusResult, ActivationResult } from '../types/licensing';
 import { AuthService, AuthUserSession } from '../services/auth/authService';
 import { AppUserRole } from '../types/admin';
-import { StoreKeyCache } from '../services/security/encryptionService';
+import { StoreKeyCache } from '../services/security/storeKeyCache';
 import { AdminService } from '../services/admin/adminService';
 
 export type AppRuntimeMode = 'FLEET_MASTER' | 'STORE_CLIENT';

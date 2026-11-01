@@ -8,7 +8,7 @@
 import { StarbucksStore, normalizeDiacritics } from '../../constants/starbucksStores';
 import { StoreService } from '../storeService';
 import { LicensingService } from '../security/licensingService';
-import { StoreKeyCache } from '../security/encryptionService';
+import { StoreKeyCache } from '../security/storeKeyCache';
 import { firebaseTelemetryService } from '../firebaseTelemetryService';
 import { APP_VERSION } from '../../version';
 import type {
