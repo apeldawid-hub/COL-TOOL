@@ -76,7 +76,72 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AppUserRole, GranularUserPermissio
 
 import { StoreStorage } from '../storeStorage';
 
+const PROTOTYPE_MOCK_EMAILS = new Set([
+  'kamil.kaminski@amrest.eu',
+  'zuzanna.makowska@amrest.eu',
+  'piotr.wisniewski@amrest.eu',
+  'kacper.wisniewski@amrest.eu',
+  'maja.zielinska@amrest.eu',
+]);
+
+const PROTOTYPE_MOCK_IDS = new Set([
+  'usr_ssv_kamil_k',
+  'usr_ssv_zuzanna_m',
+  'usr_ssv_piotr_w',
+]);
+
 export class AdminService {
+  private static purgePrototypeData(): void {
+    if (typeof localStorage === 'undefined') return;
+
+    const isMock = (u: any) => {
+      if (!u || typeof u !== 'object') return false;
+      if (u.id && PROTOTYPE_MOCK_IDS.has(u.id)) return true;
+      if (typeof u.email === 'string' && PROTOTYPE_MOCK_EMAILS.has(u.email.toLowerCase())) return true;
+      return false;
+    };
+
+    // 1. Oczyszczenie partycji StoreStorage dla aktywnej kawiarni
+    try {
+      const users = StoreStorage.getItem<ManagedAppUser[]>('admin_managed_users');
+      if (Array.isArray(users)) {
+        const cleaned = users.filter((u) => !isMock(u));
+        if (cleaned.length !== users.length) {
+          StoreStorage.setItem('admin_managed_users', cleaned);
+        }
+      }
+
+      const reqs = StoreStorage.getItem<PendingAccessRequest[]>('admin_pending_requests');
+      if (Array.isArray(reqs)) {
+        const cleaned = reqs.filter((r) => !isMock(r));
+        if (cleaned.length !== reqs.length) {
+          StoreStorage.setItem('admin_pending_requests', cleaned);
+        }
+      }
+    } catch {}
+
+    // 2. Oczyszczenie wszystkich partycji kawiarni i kluczy globalnych w localStorage
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('admin_managed_users') || key.includes('admin_pending_requests'))) {
+          try {
+            const raw = localStorage.getItem(key);
+            if (raw && raw.startsWith('[')) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                const cleaned = parsed.filter((item) => !isMock(item));
+                if (cleaned.length !== parsed.length) {
+                  localStorage.setItem(key, JSON.stringify(cleaned));
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
   private static initDefaults(): void {
     if (StoreStorage.getItem('admin_managed_users') === null) {
       StoreStorage.setItem('admin_managed_users', []);
@@ -87,15 +152,47 @@ export class AdminService {
     if (StoreStorage.getItem('admin_security_logs') === null) {
       StoreStorage.setItem('admin_security_logs', []);
     }
+    this.purgePrototypeData();
   }
 
   public static getUsers(): ManagedAppUser[] {
     this.initDefaults();
     try {
-      return StoreStorage.getItem<ManagedAppUser[]>('admin_managed_users') || [];
+      const users = StoreStorage.getItem<ManagedAppUser[]>('admin_managed_users') || [];
+      return users.filter(u => !PROTOTYPE_MOCK_IDS.has(u.id) && !PROTOTYPE_MOCK_EMAILS.has(u.email?.toLowerCase()));
     } catch {
       return [];
     }
+  }
+
+  public static deleteUser(userId: string, adminName: string): boolean {
+    const users = this.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index === -1) return false;
+
+    const removed = users.splice(index, 1)[0];
+    StoreStorage.setItem('admin_managed_users', users);
+
+    // Oczyszczenie w pamięci lokalnej
+    try {
+      const rawUsers = localStorage.getItem('sbx_admin_managed_users');
+      if (rawUsers) {
+        const parsed: ManagedAppUser[] = JSON.parse(rawUsers);
+        const filtered = parsed.filter(u => u.id !== userId);
+        localStorage.setItem('sbx_admin_managed_users', JSON.stringify(filtered));
+      }
+    } catch {}
+
+    this.addAuditLog({
+      actorName: adminName,
+      actorRole: 'STORE_MANAGER',
+      actionType: 'KILL_SWITCH_REVOKE',
+      targetResource: `user:${removed.email}`,
+      details: `Trwale usunięto profil pracownika: ${removed.fullName} (${removed.email})`,
+      deviceName: removed.deviceName,
+    });
+
+    return true;
   }
 
   public static getPendingRequests(): PendingAccessRequest[] {

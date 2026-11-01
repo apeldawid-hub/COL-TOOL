@@ -24,6 +24,7 @@ import {
   Mail,
   X,
   Info,
+  Trash2,
 } from 'lucide-react';
 import { AppUserRole, GranularUserPermissions, ManagedAppUser, PendingAccessRequest, SecurityAuditLog } from '../../types/admin';
 import { AdminService } from '../../services/admin/adminService';
@@ -88,6 +89,12 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
     setKillSwitchConfirmId(null);
     loadData();
     showToast('⚡ ZASTOSOWANO KILL-SWITCH: Dostęp pracownika został natychmiast odcięty!');
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    AdminService.deleteUser(userId, adminName);
+    loadData();
+    showToast('🗑️ Trwale usunięto konto pracownika z bazy danych.');
   };
 
   const handleRoleChange = (userId: string, newRole: AppUserRole) => {
@@ -445,14 +452,23 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
                                 </button>
                               </div>
                             ) : (
-                              <button
-                                onClick={() => setKillSwitchConfirmId(user.id)}
-                                className="px-2.5 py-1 bg-stone-100 hover:bg-rose-100 text-stone-700 hover:text-rose-800 rounded-lg text-xs font-black border border-stone-200 transition-colors inline-flex items-center gap-1"
-                                title="Natychmiastowe odcięcie dostępu (Kill-Switch)"
-                              >
-                                <Zap className="w-3.5 h-3.5 text-rose-600" />
-                                <span>Kill-Switch</span>
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => setKillSwitchConfirmId(user.id)}
+                                  className="px-2.5 py-1 bg-stone-100 hover:bg-rose-100 text-stone-700 hover:text-rose-800 rounded-lg text-xs font-black border border-stone-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                  title="Natychmiastowe odcięcie dostępu (Kill-Switch)"
+                                >
+                                  <Zap className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Kill-Switch</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="Trwale usuń profil pracownika z bazy"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>

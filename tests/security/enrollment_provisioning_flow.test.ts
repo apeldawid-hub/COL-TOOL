@@ -3,7 +3,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import { enrollmentService } from '../../src/services/admin/enrollmentService';
 import { LicensingService } from '../../src/services/security/licensingService';
-import { ROLE_DEFAULT_PERMISSIONS } from '../../src/services/admin/adminService';
+import { ROLE_DEFAULT_PERMISSIONS, AdminService } from '../../src/services/admin/adminService';
 
 // Mock storage for headless Node test environment
 const mockLocalStorage: Record<string, string> = {};
@@ -144,5 +144,24 @@ describe('Store Manager Laptop Onboarding & Provisioning Flow', () => {
     assert.ok(clientEnrollment);
     assert.strictEqual(clientEnrollment!.status, 'REJECTED');
     assert.strictEqual(clientEnrollment!.rejectionReason, 'Brak uprawnień do korzystania z aplikacji');
+  });
+
+  test('Purge: Automatyczne oczyszczenie wszelkich starych danych prototypowych/mocków', () => {
+    // Symulacja obecności starych danych z wersji v2.8.65 w localStorage
+    const legacyMockUsers = [
+      { id: 'usr_sm_dawid', fullName: 'Dawid Apel', email: 'dawid.apel@amrest.eu', role: 'STORE_MANAGER' },
+      { id: 'usr_ssv_kamil_k', fullName: 'Kamil Kamiński', email: 'kamil.kaminski@amrest.eu', role: 'SHIFT_SUPERVISOR' },
+      { id: 'usr_ssv_zuzanna_m', fullName: 'Zuzanna Makowska', email: 'zuzanna.makowska@amrest.eu', role: 'SHIFT_SUPERVISOR' },
+    ];
+    (global as any).localStorage.setItem('sbx_store_108120_admin_managed_users', JSON.stringify(legacyMockUsers));
+    (global as any).localStorage.setItem('sbx_admin_managed_users', JSON.stringify(legacyMockUsers));
+
+    const users = AdminService.getUsers();
+
+    // Żaden z mockowych użytkowników nie może się pojawić w wynikach
+    assert.strictEqual(users.some((u: any) => u.id === 'usr_ssv_kamil_k'), false);
+    assert.strictEqual(users.some((u: any) => u.id === 'usr_ssv_zuzanna_m'), false);
+    assert.strictEqual(users.some((u: any) => u.email === 'kamil.kaminski@amrest.eu'), false);
+    assert.strictEqual(users.some((u: any) => u.email === 'zuzanna.makowska@amrest.eu'), false);
   });
 });

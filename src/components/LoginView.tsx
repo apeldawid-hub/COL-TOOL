@@ -616,7 +616,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                       required
                       value={regFullName}
                       onChange={(e) => setRegFullName(e.target.value)}
-                      placeholder="np. Piotr Wiśniewski"
+                      placeholder="np. Imię i Nazwisko"
                       className="w-full px-3.5 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006241] focus:bg-white"
                     />
                   </div>

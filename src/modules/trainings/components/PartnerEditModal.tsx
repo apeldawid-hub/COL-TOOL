@@ -120,7 +120,7 @@ export const PartnerEditModal: React.FC<PartnerEditModalProps> = ({
               required
               value={formData.name || ''}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="np. Kacper Wiśniewski"
+              placeholder="np. Imię i Nazwisko"
               className="w-full p-2.5 bg-white border border-stone-300 rounded-lg font-medium text-stone-800 focus:border-emerald-600 focus:outline-hidden"
             />
           </div>
