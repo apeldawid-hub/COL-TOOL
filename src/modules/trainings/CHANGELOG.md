@@ -4,6 +4,13 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 ---
 
+
+## [v2.9.7] — 2026-11-02
+- Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.7] — 2026-11-02
+- **Dostosowanie Floty**: Kompatybilność modułu szkoleń z katalogiem floty (Janki & Kalisz Amber).
+
 ## [v2.9.6] — 2026-11-02
 - **Synchronizacja Architektury**: Uzupełniono specyfikację techniczną w `AGENTS.md` o kompletne drzewo plików (`types/index.ts`, serwisy, komponenty).
 - **Systemowa Organizacja Stałych**: Utworzono `constants/index.ts` dla cyklu First 30 Days, kodów T1-T10 i modułów Skill Check.

@@ -4,6 +4,9 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 ---
 
+## [v2.9.7] — 2026-11-02
+- **Dostosowanie Floty**: Integracja z dwukawiarniowym katalogiem floty (Janki `108120` & Kalisz Amber `108170`) oraz ujednolicenie liczników kawiarni.
+
 ## [v2.9.6] — 2026-11-02
 - **Harmonizacja Bazy Floor**: Zaktualizowano dokumentację techniczną do nienaruszalnego standardu 224.0h/tydzień (32.0h/dzień: 1 MGR + 1 Barista rano i wieczorem).
 - **Synchronizacja Drzewa Komponentów**: Uzupełniono specyfikację techniczną o `LaborForecastView.tsx`, `ManagerLaborBridgeModal.tsx`, `MondayProjectionModal.tsx` oraz `LaborForecastWidget.tsx`.

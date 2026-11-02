@@ -4,6 +4,13 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 ---
 
+
+## [v2.9.7] — 2026-11-02
+- Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.7] — 2026-11-02
+- **Dostosowanie Floty**: Kompatybilność wsparcia międzykawiarnianego z nowym katalogiem floty i dynamicznym licznikiem jednostek.
+
 ## [v2.9.6] — 2026-11-02
 - **Synchronizacja Architektury**: Uzupełniono specyfikację techniczną w `AGENTS.md` o moduł wsparcia międzykawiarnianego (`InterStoreSupportModal.tsx`, `interStoreSupportEngine.ts`) oraz stałe zmian (`constants/defaultShifts.ts`).
 - **Korekta Parametrów AutoScheduler AI**: Ujednolicono w dokumentacji domyślną liczbę iteracji do 2 000 prób (`2k`) zgodnie z implementacją w `autoSchedulerEngine.ts`.

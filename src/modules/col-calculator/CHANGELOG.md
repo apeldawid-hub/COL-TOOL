@@ -4,6 +4,13 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 ---
 
+
+## [v2.9.7] — 2026-11-02
+- Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.7] — 2026-11-02
+- **Dostosowanie Floty**: Kompatybilność modułu finansowego COL z bazą flotową Janki & Kalisz Amber.
+
 ## [v2.9.6] — 2026-11-02
 - **Pełna Specyfikacja Architektury**: Uzupełniono `AGENTS.md` o kompletne drzewo plików modułu (7 komponentów arkusza Excel Replica, silniki, typy).
 - **Architektura Multi-Store Fleet**: Przejście z pojedynczej kawiarni testowej na uniwersalny model flotowy obsługujący dowolną kawiarnię sieci Starbucks w Polsce.
