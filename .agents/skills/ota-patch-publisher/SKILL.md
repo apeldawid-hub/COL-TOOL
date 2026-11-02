@@ -54,4 +54,12 @@ Skrypt automatycznie:
 ---
 
 ## 🔒 3. Bezpieczeństwo i Izolacja Danych
-Wdrożenie mikropatcha OTA nigdy nie modyfikuje pliku bazy danych SQLite użytkownika (`tplh_forecast.db`), gwarantując ciągłość pracy kawiarni.
+Wdrożenie mikropatcha OTA nigdy nie modyfikuje pliku bazy danych SQLite użytkownika (`store_${safeId}.db`), gwarantując ciągłość pracy kawiarni.
+
+---
+
+## 📝 4. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Przed zatwierdzeniem i publikacją mikropatcha OTA (`npm run patch`):
+1. Upewnij się, że dokumentacja `AGENTS.md` oraz `CHANGELOG.md` wszystkich zmienionych modułów jest w 100% zaktualizowana i zgodna z kodem.
+2. Zarejestruj nową wersję w `VERSION_HISTORY.md` oraz `src/constants/changelog.ts`.
+3. Bezwzględny zakaz publikacji patcha z pominięciem aktualizacji dokumentacji technicznej agentów.

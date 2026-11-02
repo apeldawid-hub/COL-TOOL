@@ -53,4 +53,12 @@ W poniedziałek (dzień układania grafiku W+2), zanim zjadą wieczorne logowani
 
 Gdy tydzień biznesowy (wtorek–poniedziałek) przekracza granicę miesięcy kalendarzowych:
 - Silnik scala dni końcówki starego miesiąca (trailing) i początku nowego (leading) w spójny 7-dniowy grafik.
-- Weryfikuje ochronę dobowego Floor Hours (32h) na styku miesięcy.
+- Weryfikuje ochronę dobowego Floor Hours (32h) na styku miesięcy (baza 224.0h dla pełnego tygodnia).
+
+---
+
+## 📝 5. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej zmianie parsera MAPAL Fichajes, importu raportów, detekcji kolizji RCP vs L4/H lub mostów przełomu:
+1. Natychmiast zaktualizuj niniejszy plik `SKILL.md` oraz `src/modules/labor-forecast/AGENTS.md` / `src/modules/managers-schedule/AGENTS.md`.
+2. Zarejestruj wpis w `src/modules/{modul}/CHANGELOG.md`.
+3. Zaktualizuj `VERSION_HISTORY.md` przy publikacji wydania/patcha.

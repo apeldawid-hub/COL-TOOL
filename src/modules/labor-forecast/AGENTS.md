@@ -7,8 +7,8 @@ Plik definiuje kontekst domenowy, algorytmy obliczeniowe, strukturę bazy danych
 ## ☕ 1. Kontekst Domenowy i Biznesowy
 
 - **Status modułu**: ✅ **v1.0 Stable** (zamknięty, zoptymalizowany, zarchiwizowany w `backups/module_labor_forecast_v1_stable/`).
-- **Cel modułu**: Autonomiczne wsparcie Store Managera (SM) oraz District Managera (DM) w zarządzaniu robocizną (Labor Planning), prognozowaniu transakcji oraz bezpiecznym układaniu tygodniowych grafików.
-- **Kawiarnia bazowa**: `108120 SBX Warszawa Janki` (Kod jednostki: `384`).
+- **Cel modułu**: Autonomiczne wsparcie Store Managera (SM) oraz District Managera (DM) w zarządzaniu robocizną (Labor Planning), prognozowaniu transakcji oraz bezpiecznym układaniu tygodniowych grafików dla dowolnej kawiarni Starbucks.
+- **Architektura**: Pełne wsparcie Multi-Store (przełączanie MPK / Unit Code, dedykowane pliki bazodanowe `store_${safeId}.db`).
 - **Horyzont czasowy**: 2021–2036 (16 lat, 192 miesiące AOP, 1 152 tygodnie biznesowe w cyklu wtorek–poniedziałek).
 - **Złota reguła bezpieczeństwa Floor Hours**: **Floor = 32.0 h/dzień (1 Manager + 1 Barista rano/AM + 1 Manager + 1 Barista wieczorem/PM = 4 osoby x 8h = 32h/dzień)**. Dla pełnego 7-dniowego tygodnia daje to **224.0 h bazy Floor**. Grafik kawiarni nie może spaść poniżej tej bariery dobowej.
 - **Pula Flex (Manipulacja Zmianami w każdym tygodniu)**: Wszystkie godziny ponad bazę Floor ($H_{\text{Tydzień}} - H_{\text{Floor}}$) tworzą pulę zmienną (Flex Labor). Silnik uczenia trendów analizuje historię popytu z poprzednich miesięcy/lat (MAPAL Fichajes) i w każdym tygodniu (W1–W5) wylicza dobowy rozkład oraz widełki manipulacji zmianami baristów (np. wzmocnienie w Sobotę i Piątek, oszczędności w dni powszednie).
@@ -19,13 +19,21 @@ Plik definiuje kontekst domenowy, algorytmy obliczeniowe, strukturę bazy danych
 
 ```
 src/modules/labor-forecast/
+├── types/
+│   └── index.ts                     # Dedykowane interfejsy TypeScript Modułu 1 (AOP, RCP, HANW, wagi)
+├── constants/
+│   └── index.ts                     # Stałe domenowe: Floor Hours (32h/224h), niedziele handlowe, progi TPLH
 ├── components/
 │   ├── AopManagerModal.tsx          # Modal edycji celów rocznych i miesięcznych AOP
 │   ├── CrossMonthBridgeCard.tsx     # Karta przełomu miesięcy (Split-Week Bridge)
 │   ├── FloorHoursModal.tsx          # Konfiguracja reguł Floor Hours per dzień tygodnia
 │   ├── ImportModal.tsx              # Inteligentny import raportów z auto-detekcją (AOP P&L + MAPAL Fichajes)
 │   ├── KpiSummaryCards.tsx          # 4 główne kafelki KPI (AOP, RCP, Trend, Rekomendacja)
+│   ├── LaborForecastView.tsx        # Główny widok modułu (nagłówek, kafelki, wykresy, tabela W1-W5)
+│   ├── LaborForecastWidget.tsx      # Skrótowy widget KPI i stanu robocizny do dashboardu
 │   ├── LaborLogViewerModal.tsx      # Przeglądarka ewidencji logowań MAPAL z 2-arkuszowym eksportem Excel
+│   ├── ManagerLaborBridgeModal.tsx  # Interaktywny most z grafikiem menedżerskim (bilans MGR + Barista Pool)
+│   ├── MondayProjectionModal.tsx    # Modal estymacji zamknięcia poniedziałku (Flash Forecast Sposób 1)
 │   ├── OperationalAlert.tsx         # Banery alertów operacyjnych i rekomendacji SM
 │   ├── SettingsModal.tsx            # Ustawienia AOP (2021-2036) i reguły Non-Coverage (NC)
 │   ├── TrendCharts.tsx              # Interaktywne wykresy Recharts (TRX, TPLH, Godziny)
@@ -35,6 +43,7 @@ src/modules/labor-forecast/
 │   ├── calculationEngine.ts         # Główny silnik obliczeniowy AOP, MTD i HANW
 │   └── trendLearningEngine.ts       # Adaptacyjny silnik analizy trendów historycznych
 ├── index.ts                         # Barrel export modułu
+├── CHANGELOG.md                     # Dedykowana historia zmian i wydań Modułu 1
 ├── AGENTS.md                        # Niniejsze instrukcje techniczne agenta
 └── README.md                        # Dokumentacja użytkowa modułu
 ```
@@ -76,12 +85,12 @@ Klasyfikacja miesiąca wg zegara systemowego (`SystemClock.getMonthTemporalStatu
 
 ### Algorytm 4: Ochrona Bezwzględna Floor Hours
 $$\text{HANW Final} = \max(\text{HANW Raw}, \text{Floor Hours})$$
-- Jeśli $\text{HANW Raw} < \text{Floor Hours}$: Aplikacja aktywuje czerwony alert krytyczny (`🚨 KRYTYCZNY DEFICYT: Sprzedaż wymusza cięcia poniżej Floor Hours. Grafik zablokowany na poziomie 272.0 h. Wymagana akceptacja District Managera.`).
+- Jeśli $\text{HANW Raw} < \text{Floor Hours}$: Aplikacja aktywuje czerwony alert krytyczny (`🚨 KRYTYCZNY DEFICYT: Sprzedaż wymusza cięcia poniżej Floor Hours. Grafik zablokowany na poziomie 224.0 h. Wymagana akceptacja District Managera.`).
 
 ### Algorytm 5: Dwukierunkowa Integracja z Grafikiem Managerskim (Manager Labor Bridge)
 W ramach integracji z Modułem 2 (Grafik Managerski), zaplanowane zmiany kierownicze zasilają Moduł 1 i determinują pulę robocizny dla baristów:
-1. **Reguły Lokalizacyjne (SBX Janki 384)**:
-   - Zmiany wsparcia na innych kawiarniach (`SAM`, `SPM`, `SUP`) są bezwzględnie wykluczane z czasu pracy lokalu 384 oraz obsady otwarć/zamknięć lokalu.
+1. **Reguły Lokalizacyjne (Kawiarnia Macierzysta vs Wsparcia Zewnętrzne)**:
+   - Zmiany wsparcia na innych kawiarniach (`SAM`, `SPM`, `SUP`) są bezwzględnie wykluczane z czasu pracy kawiarni macierzystej oraz obsady otwarć/zamknięć lokalu.
    - Absencje (`OFF`, `L4`, `H`) oraz dyspozycje (`M`, `Z`, `FULL`) nie generują godzin roboczych na sali.
 2. **Kalkulator Puli Baristów (Remaining Barista Hours Pool)**:
    - Godziny rekomendowane lub zaplanowane zostają pomniejszone o zaplanowane godziny kierowników w danym tygodniu biznesowym:
@@ -98,7 +107,7 @@ W ramach integracji z Modułem 2 (Grafik Managerski), zaplanowane zmiany kierown
 5. **Pełny Cykl Przełomów Miesięcy (Split-Week Cross-Month Bridge)**:
    - Obsługa scalania tygodni cząstkowych z przełomu miesięcy kalendarzowych (cykl wtorek–poniedziałek, np. W5 Września 29–30.09 i W1 Października 01–05.10) w jeden spójny 7-dniowy cykl operacyjny.
    - Dwukierunkowy most w `CalculationEngine`: obsługa typu `trailing` (koniec miesiąca) oraz `leading` (początek miesiąca) z automatycznym pobieraniem zmian granicznych `boundaryShifts` (`electron/main.ts` z buforem 7 dni).
-   - Scalone podsumowanie robocizny: łączne godziny menedżerów obu części ($H_{\text{MGR Part 1}} + H_{\text{MGR Part 2}}$), łączna Pula Baristów ($272\text{h} - H_{\text{MGR Łącznie}}$), 7-dniowa siatka obsady AM/PM z detekcją luk oraz interaktywny przełącznik widoku w `CrossMonthBridgeCard` i `ManagerLaborBridgeModal`.
+   - Scalone podsumowanie robocizny: łączne godziny menedżerów obu części ($H_{\text{MGR Part 1}} + H_{\text{MGR Part 2}}$), łączna Pula Baristów ($224\text{h} - H_{\text{MGR Łącznie}}$), 7-dniowa siatka obsady AM/PM z detekcją luk oraz interaktywny przełącznik widoku w `CrossMonthBridgeCard` i `ManagerLaborBridgeModal`.
 
 ### Algorytm 6: Flash Forecast / Pre-closing Projection dla Poniedziałku (Sposób 1)
 W rytmie planowania Starbucks poniedziałek jest dniem publikacji grafiku na kolejny tydzień ($W+2$). Trwający tydzień kończy się jednak dopiero w poniedziałek wieczorem, więc pełne logowania z systemu MAPAL Fichajes spływają we wtorek rano.
@@ -142,3 +151,11 @@ W rytmie planowania Starbucks poniedziałek jest dniem publikacji grafiku na kol
 - `weekly_actual_trx`: rzeczywiste transakcje i ułożone grafiki SM.
 - `floor_rules` & `nc_rules`: parametry bezpieczeństwa i zadania stałe.
 - Indeksy: `idx_labor_week_key`, `idx_labor_date`, `idx_labor_year_month`, `idx_calendar_year_month`.
+
+---
+
+## 📝 6. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej modyfikacji kodu źródłowego, algorytmów obliczeniowych, komponentów UI lub bazy danych w Module 1:
+1. Natychmiast zaktualizuj niniejszy plik `AGENTS.md` (struktura plików, opis serwisów, formuły).
+2. Zarejestruj zmiany w historii modułu: `src/modules/labor-forecast/CHANGELOG.md`.
+3. Zsynchronizuj powiązane umiejętności w `.agents/skills/` (np. `fichajes-pipeline`, `integrity-sentinel`).

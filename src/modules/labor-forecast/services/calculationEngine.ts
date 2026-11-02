@@ -230,14 +230,14 @@ export class CalculationEngine {
       return Boolean(d.date && tradingSundays.has(d.date));
     });
 
-    // Domyślne wagi rozkładu godzin flex ponad bazowy floor 32.0h/dzień dla kawiarni 108120 Janki:
+    // Domyślne wagi rozkładu godzin flex ponad bazowy floor 32.0h/dzień:
     // W przypadku Niedzieli Handlowej niedziela otrzymuje 20.0% puli flex (ruch ~250% normy niedzielnej).
-    // W przypadku Niedzieli Wolnej od handlu niedziela otrzymuje 0% flex (zamknięte CH, czysty Floor 32h),
-    // a zaoszczędzone godziny zasilają piątkowo-sobotni peak w CH Janki!
+    // W przypadku Niedzieli Wolnej od handlu niedziela w lokalach CH otrzymuje 0% flex (zamknięte CH, czysty Floor 32h),
+    // a zaoszczędzone godziny zasilają piątkowo-sobotni peak zakupowy!
     let weightsToUse: Record<string, number> = hasTradingSunday
       ? {
           'Sob': 0.220, // Sobota: 22.0% puli flex (największy szczyt handlowy)
-          'Nd': 0.200,  // Niedziela Handlowa: 20.0% puli flex (CH Janki w pełni otwarte)
+          'Nd': 0.200,  // Niedziela Handlowa: 20.0% puli flex (pełny ruch handlowy)
           'Pt': 0.170,  // Piątek: 17.0% puli flex (szczyt popołudniowy)
           'Wt': 0.140,  // Wtorek: 14.0% puli flex
           'Pn': 0.090,  // Poniedziałek: 9.0% puli flex

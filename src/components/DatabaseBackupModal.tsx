@@ -210,7 +210,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
   };
 
   const handleCloudVaultMigration = async () => {
-    const storeId = currentStore?.id || '108120';
+    const storeId = currentStore?.id || 'default';
     setIsMigratingCloud(true);
     setSuccessMessage(null);
     setErrorMessage(null);
@@ -720,7 +720,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                       Migracja do Chmury (AES-256)
                     </div>
                     <p className="text-[10px] text-stone-600">
-                      Zaszyfruj i przenieś bazę lokalu <strong>{currentStore?.shortName || '108120'}</strong> do skarbców Firebase.
+                      Zaszyfruj i przenieś bazę lokalu <strong>{currentStore?.shortName || currentStore?.name || 'aktywnej kawiarni'}</strong> do skarbców Firebase.
                     </p>
                     {migrationStatus && (
                       <div className="mt-2 text-[10px] text-emerald-800 bg-emerald-100/70 p-1.5 rounded flex items-center gap-1.5">

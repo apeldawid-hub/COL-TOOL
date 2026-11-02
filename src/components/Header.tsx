@@ -48,7 +48,7 @@ interface HeaderProps {
 }
 
 const MODULE_TITLES: Record<AppModule, { title: string; icon: React.ComponentType<{ className?: string }> }> = {
-  fleet_master: { title: 'Centrala Floty (100+)', icon: ShieldCheck },
+  fleet_master: { title: 'Centrala Floty', icon: ShieldCheck },
   dashboard: { title: 'Podsumowanie', icon: LayoutDashboard },
   labor_forecast: { title: 'TPLH Forecast & Labor Balancing', icon: BarChart3 },
   managers_schedule: { title: 'Grafik Managerski', icon: CalendarDays },

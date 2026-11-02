@@ -1,7 +1,7 @@
 // src/types/admin.ts
 /**
  * Typy danych dla Panelu Administratora (Admin Console)
- * Starbucks Operations Suite — 108120 SBX Warszawa Janki (Unit 18120)
+ * Starbucks Operations Suite — Zarządzanie Flotą Kawiarni (Multi-Store Fleet)
  */
 
 export type AppUserRole = 'STORE_MANAGER' | 'ASSISTANT_STORE_MANAGER' | 'SHIFT_SUPERVISOR' | 'BARISTA' | 'DISTRICT_MANAGER';

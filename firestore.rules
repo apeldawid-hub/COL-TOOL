@@ -66,6 +66,24 @@ rules_version = '2';
 //    - /cloud_operational_docs/{docId} (Read-only operational standards)
 //    - /app_installations/{installId} (Isolated station telemetry)
 //
+// 7. Collection: /users/{userId}/settings/{docId}
+//    Document ID: {docId} (e.g. 'preferences')
+//    Description: Cross-device user preferences & system configuration (Zero-Leak per user).
+//                 Strict personal access: Only the owning user (matching safeUserId or uid) can read/write.
+//    Fields:
+//      - theme: string ('dark', 'light', 'system', optional)
+//      - defaultStoreId: string (1-32 chars, optional)
+//      - zoomLevel: int (25-500, optional)
+//      - notificationsEnabled: bool (optional)
+//      - soundAlerts: bool (optional)
+//      - laborLawStrictTolerance: bool (optional)
+//      - scheduleViewDensity: string ('compact', 'comfortable', optional)
+//      - updatedAt: timestamp or ISO string (1-64 chars, optional)
+//      - userId: string (1-128 chars, optional, immutable)
+//      - docId: string (1-64 chars, optional, immutable)
+//      - locale: string (2-16 chars, optional)
+//      - autoSave: bool (optional)
+//
 // =========================================================================================
 
 service cloud.firestore {
@@ -91,6 +109,51 @@ service cloud.firestore {
 
     function isDocOwner(uidField) {
       return isAuthenticated() && request.auth.uid == uidField;
+    }
+
+    // Resolves and matches safeUserId derived from corporate email or token claim
+    function isSafeUserIdEmailMatch(userId) {
+      return request.auth.token.email != null && (
+        request.auth.token.email == userId ||
+        ('safeUserId' in request.auth.token && request.auth.token.safeUserId == userId) ||
+        (request.auth.token.email.split('@').size() == 2 &&
+         ((request.auth.token.email.lower().split('@')[1] == 'amrest.eu' &&
+           (
+             (request.auth.token.email.split('@')[0].split('.').size() == 2 &&
+              userId == (request.auth.token.email.lower().split('@')[0].split('.')[0] + '_' +
+                         request.auth.token.email.lower().split('@')[0].split('.')[1] + '_amrest_eu')) ||
+             (request.auth.token.email.split('@')[0].split('.').size() == 1 &&
+              userId == (request.auth.token.email.lower().split('@')[0] + '_amrest_eu')) ||
+             (request.auth.token.email.split('@')[0].split('.').size() == 3 &&
+              userId == (request.auth.token.email.lower().split('@')[0].split('.')[0] + '_' +
+                         request.auth.token.email.lower().split('@')[0].split('.')[1] + '_' +
+                         request.auth.token.email.lower().split('@')[0].split('.')[2] + '_amrest_eu'))
+           )) ||
+          (request.auth.token.email.lower().split('@')[1] == 'starbucks.com' &&
+           (
+             (request.auth.token.email.split('@')[0].split('.').size() == 2 &&
+              userId == (request.auth.token.email.lower().split('@')[0].split('.')[0] + '_' +
+                         request.auth.token.email.lower().split('@')[0].split('.')[1] + '_starbucks_com')) ||
+             (request.auth.token.email.split('@')[0].split('.').size() == 1 &&
+              userId == (request.auth.token.email.lower().split('@')[0] + '_starbucks_com')) ||
+             (request.auth.token.email.split('@')[0].split('.').size() == 3 &&
+              userId == (request.auth.token.email.lower().split('@')[0].split('.')[0] + '_' +
+                         request.auth.token.email.lower().split('@')[0].split('.')[1] + '_' +
+                         request.auth.token.email.lower().split('@')[0].split('.')[2] + '_starbucks_com'))
+           ))
+         )
+        )
+      );
+    }
+
+    // Zero-Leak user ownership: authenticated corporate user matching uid or safeUserId
+    function isUserSettingsOwner(userId) {
+      return isCorporateUser() &&
+             validString(userId, 1, 128) &&
+             (
+               request.auth.uid == userId ||
+               isSafeUserIdEmailMatch(userId)
+             );
     }
 
     // Strict Tenant Isolation: User must have matching storeId in Custom Claims token
@@ -318,6 +381,23 @@ service cloud.firestore {
              (!('notes' in data) || validOptionalString(data.notes, 0, 500));
     }
 
+    function isValidUserSettings(data) {
+      return hasOnlyAllowedFields(['theme', 'defaultStoreId', 'zoomLevel', 'notificationsEnabled', 'soundAlerts', 'laborLawStrictTolerance', 'scheduleViewDensity', 'updatedAt', 'docId', 'userId', 'locale', 'autoSave']) &&
+             (!('theme' in data) || (data.theme in ['dark', 'light', 'system'])) &&
+             (!('defaultStoreId' in data) || validString(data.defaultStoreId, 1, 32)) &&
+             (!('zoomLevel' in data) || (data.zoomLevel is int && data.zoomLevel >= 25 && data.zoomLevel <= 500)) &&
+             (!('notificationsEnabled' in data) || data.notificationsEnabled is bool) &&
+             (!('soundAlerts' in data) || data.soundAlerts is bool) &&
+             (!('laborLawStrictTolerance' in data) || data.laborLawStrictTolerance is bool) &&
+             (!('scheduleViewDensity' in data) || (data.scheduleViewDensity in ['compact', 'comfortable'])) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() >= 1 && data.updatedAt.size() <= 64))) &&
+             (!('userId' in data) || validString(data.userId, 1, 128)) &&
+             (!('docId' in data) || validString(data.docId, 1, 64)) &&
+             (!('locale' in data) || validString(data.locale, 2, 16)) &&
+             (!('autoSave' in data) || data.autoSave is bool) &&
+             data.keys().size() >= 1;
+    }
+
     // =====================================================================================
     // DEFAULT DENY: Całkowita blokada nieautoryzowanego dostępu na poziomie bazy
     // =====================================================================================
@@ -485,6 +565,26 @@ service cloud.firestore {
                                request.resource.data.userEmail == request.auth.token.email;
       allow delete: if isCorporateUser() &&
                        request.auth.token.email == resource.data.userEmail;
+    }
+
+    // =====================================================================================
+    // Profile Użytkowników & Ustawienia (/users/{userId}/settings/{docId})
+    // =====================================================================================
+    match /users/{userId} {
+      // User root documents cannot be directly read, listed or modified
+      allow read, write: if false;
+
+      match /settings/{docId} {
+        // Zero-Leak: Corporate users can ONLY read and write their own settings (safeUserId or uid)
+        allow read: if isUserSettingsOwner(userId);
+        allow create: if isUserSettingsOwner(userId) &&
+                         isValidUserSettings(request.resource.data) &&
+                         validString(docId, 1, 64);
+        allow update: if isUserSettingsOwner(userId) &&
+                         isValidUserSettings(request.resource.data) &&
+                         areImmutableFieldsUnchanged(['userId', 'docId']);
+        allow delete: if isUserSettingsOwner(userId);
+      }
     }
   }
 }

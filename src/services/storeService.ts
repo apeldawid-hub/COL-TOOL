@@ -523,6 +523,16 @@ export class StoreService {
         } catch {}
       }
 
+      // 2.1. Automatyczna alokacja obszaru kawiarni w chmurze (Multi-Tenant Cloud Area Provisioning)
+      try {
+        const { CloudSyncService } = await import('./sync/cloudSyncService');
+        CloudSyncService.provisionStoreCloudArea(storeToSave).catch((cloudErr) => {
+          logger.warn('SYNC', `[ProvisionStore] Ostrzeżenie: tło alokacji kawiarni w chmurze: ${cloudErr?.message}`);
+        });
+      } catch (importErr) {
+        // Ignoruj błędy importu w środowiskach testowych
+      }
+
       // 3. Aktywacja nowej kawiarni
       if (activate) {
         return await this.setCurrentStore(storeToSave, { appMode: 'FLEET_MASTER' });

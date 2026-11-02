@@ -1,4 +1,5 @@
 export * from './types/colTypes';
+export * from './constants';
 export * from './services/colEngine';
 export * from './services/colDefaultData';
 export * from './components/ColCalculatorView';

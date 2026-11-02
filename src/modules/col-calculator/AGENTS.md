@@ -1,6 +1,6 @@
 # AGENTS.md — Moduł 4: COL Calculator (Cost of Labor Suite)
 
-Dokument stanowi techniczną specyfikację architektoniczną i algorytmiczną dla modułu **COL Calculator** w repozytorium **Starbucks Operations Suite** (`108120 SBX Warszawa Janki`).
+Dokument stanowi techniczną specyfikację architektoniczną i algorytmiczną dla modułu **COL Calculator** w repozytorium **Starbucks Operations Suite**.
 
 ---
 
@@ -8,7 +8,7 @@ Dokument stanowi techniczną specyfikację architektoniczną i algorytmiczną dl
 
 Kalkulator operuje w spójnym trójfilarowym modelu kalkulacyjnym:
 1. **🏛️ AOP (Plan Roczny)**:
-   - Oficjalny budżet roczny zaplanowany przez centralę Starbucks / AmRest dla jednostki `18120`.
+   - Oficjalny budżet roczny zaplanowany przez centralę Starbucks / AmRest dla danej jednostki biznesowej.
    - `Sales AOP`, `TRX AOP`, `TPLH AOP`, `Budżet Robocizny AOP` oraz `COL % AOP`.
 2. **🎯 TARGET (Plan Miesięczny)**:
    - Operacyjny plan miesięczny tworzony przez Store Managera (SM).
@@ -23,7 +23,34 @@ Kalkulator operuje w spójnym trójfilarowym modelu kalkulacyjnym:
 
 ---
 
-## 🧮 2. Model Obliczeniowy i Formuły Matematyczne (`colEngine.ts`)
+## 📁 2. Struktura Plików Modułu (`src/modules/col-calculator/`)
+
+```
+src/modules/col-calculator/
+├── types/
+│   └── colTypes.ts                  # Typy TypeScript dla 6 arkuszy Excel Replica i wskaźników P&L
+├── constants/
+│   └── index.ts                     # Stałe finansowe: narzuty ZUS 19.48%, PPK 1.5%, rezerwa urlopowa 9.24%
+├── components/
+│   ├── ColBonusSheet.tsx            # Arkusz BONUS (kalkulator premii SM, ASM, SSV)
+│   ├── ColCalculatorView.tsx        # Główny widok modułu (nawigacja po 6 zakładkach)
+│   ├── ColDaneSheet.tsx             # Arkusz DANE (nominały, stawki ZUS, min. płaca, lista kawiarni)
+│   ├── ColFieldsDescriptionSheet.tsx # Arkusz Fields Description (słownik 66 wskaźników)
+│   ├── ColSpreadsheetGrid.tsx       # Arkusz CALCULATOR (4-kolumnowy arkusz P&L + panele personelu)
+│   ├── ColUserGuideSheet.tsx        # Arkusz USER GUIDE (wytyczne krok po kroku dla SM)
+│   └── ColVacationReserveSheet.tsx  # Arkusz Rezerwa urlopowa (wycena niewykorzystanego urlopu MGR)
+├── services/
+│   ├── colDefaultData.ts            # Wzorcowe dane AOP, TARGET, słowniki i wartości domyślne
+│   └── colEngine.ts                 # Silnik kalkulacyjny kosztów pracy, P&L, narzutów ZUS i What-If
+├── index.ts                         # Barrel export modułu
+├── CHANGELOG.md                     # Dedykowana historia zmian i wydań Modułu 4
+├── AGENTS.md                        # Niniejsze instrukcje techniczne agenta
+└── README.md                        # Dokumentacja użytkowa modułu
+```
+
+---
+
+## 🧮 3. Model Obliczeniowy i Formuły Matematyczne (`colEngine.ts`)
 
 ### A. Główne Wskaźniki Efektywności
 - **TOTAL COL %**:
@@ -58,7 +85,7 @@ Kalkulator operuje w spójnym trójfilarowym modelu kalkulacyjnym:
 
 ---
 
-## 📑 3. Struktura Zakładek Arkusza (Excel Replica)
+## 📑 4. Struktura Zakładek Arkusza (Excel Replica)
 
 1. **`CALCULATOR`**: Czterokolumnowy układ wskaźników (Wskaźnik, AOP, Target, Estymacja) + prawy panel tabel personelu.
 2. **`BONUS`**: Kalkulator premii SM, ASM i SSV na podstawie wskaźników Sales vs AOP oraz Ops Profit vs AOP.
@@ -69,8 +96,16 @@ Kalkulator operuje w spójnym trójfilarowym modelu kalkulacyjnym:
 
 ---
 
-## 🔄 4. Most Integracyjny z Modułami Suite
+## 🔄 5. Most Integracyjny z Modułami Suite
 
 - **Moduł 1 (Labor Forecast)**: Zasilanie `Sales AOP`, `Transactions AOP`, `TPLH AOP`, predykcji MTD Velocity oraz wyliczonego `HANW`.
 - **Moduł 2 (Managers Schedule)**: Automatyczny import składu kierowników (`manager_monthly_roster`), ich stawek, etatów, godzin dyżurów, urlopów (H), zwolnień (L4) oraz **rzeczywistych logowań RCP (MAPAL Fichajes)** zasilających kolumnę Estymacji.
 - **Moduł 3 (Szkolenia)**: Zmiany T (T1-T10) zasilają w 100% pozycję `TRAINING` (75h) w budżecie Non-Coverage.
+
+---
+
+## 📝 6. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej modyfikacji kodu źródłowego, formuł P&L, zakładek arkusza lub serwisów w Module 4:
+1. Natychmiast zaktualizuj niniejszy plik `AGENTS.md` (struktura plików, wskaźniki, mosty).
+2. Zarejestruj zmiany w historii modułu: `src/modules/col-calculator/CHANGELOG.md`.
+3. Zsynchronizuj powiązane umiejętności w `.agents/skills/` (np. `col-finance`, `integrity-sentinel`).

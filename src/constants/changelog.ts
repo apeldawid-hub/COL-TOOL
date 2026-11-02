@@ -24,6 +24,30 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.7',
+    date: '2026-11-02',
+    title: 'Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Redukcja Domyślnego Katalogu Floty: Ograniczenie wbudowanych kawiarni do 2 aktywnych jednostek (108120 Janki i 108170 Kalisz Amber).',
+      'Dynamiczne Liczniki & Etykiety: Usunięcie statycznych oznaczeń (100+) w nawigacji, nagłówku i konsoli administracyjnej.',
+      'Bezpieczeństwo Danych: Zero wrażliwych danych w repozytorium Git, odseparowanie bazy SQLite.'
+    ],
+    items: [
+      {
+        type: 'enhancement',
+        description: 'Redukcja STARBUCKS_STORES_CATALOG do 2 domyślnych lokali z automatyczną alokacją obszarów kawiarni w Firestore.',
+        module: 'system',
+      },
+      {
+        type: 'enhancement',
+        description: 'Dostosowanie nagłówka, menu bocznego i widoku floty do dynamicznej liczby jednostek.',
+        module: 'all',
+      }
+    ]
+  },
+  {
     version: '2.8.67',
     date: '2026-10-24',
     title: 'Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync',

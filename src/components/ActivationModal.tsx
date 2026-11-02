@@ -834,7 +834,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                       setRawInput(e.target.value);
                       setParsed(parseActivationInput(e.target.value));
                     }}
-                    placeholder="SBX-108120-XXXXXXXX-YYYY"
+                    placeholder="SBX-STOREID-XXXXXXXX-YYYY"
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-300 font-mono text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#006241]"
                   />
                   <button

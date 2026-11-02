@@ -92,11 +92,11 @@ export class InterStoreSupportEngine {
       });
     });
 
-    // Zlicz aktualną obsadę kawiarni Janki na wybrany dzień
-    let jankiAmCount = 0;
-    let jankiPmCount = 0;
-    let jankiMidCount = 0;
-    let jankiSupCount = 0;
+    // Zlicz aktualną obsadę kawiarni macierzystej na wybrany dzień
+    let homeAmCount = 0;
+    let homePmCount = 0;
+    let homeMidCount = 0;
+    let homeSupCount = 0;
     const workingOnDay: { employee: ManagerEmployee; shift: ManagerScheduleShift }[] = [];
     const offOnDay: { employee: ManagerEmployee; shift: ManagerScheduleShift }[] = [];
 
@@ -105,10 +105,10 @@ export class InterStoreSupportEngine {
       if (!s) return;
       if (s.hours > 0 && s.shift_code !== 'OFF') {
         workingOnDay.push({ employee: emp, shift: s });
-        if (s.shift_code === 'AM' || s.shift_code === 'AMN' || s.shift_code === 'AMB') jankiAmCount++;
-        else if (s.shift_code === 'PM' || s.shift_code === 'PMN' || s.shift_code === 'PMB') jankiPmCount++;
-        else if (s.shift_code === 'MIB' || s.shift_code === 'MID') jankiMidCount++;
-        else if (s.shift_code === 'SUP' || s.shift_code === 'SAM' || s.shift_code === 'SPM') jankiSupCount++;
+        if (s.shift_code === 'AM' || s.shift_code === 'AMN' || s.shift_code === 'AMB') homeAmCount++;
+        else if (s.shift_code === 'PM' || s.shift_code === 'PMN' || s.shift_code === 'PMB') homePmCount++;
+        else if (s.shift_code === 'MIB' || s.shift_code === 'MID') homeMidCount++;
+        else if (s.shift_code === 'SUP' || s.shift_code === 'SAM' || s.shift_code === 'SPM') homeSupCount++;
       } else {
         offOnDay.push({ employee: emp, shift: s });
       }
@@ -122,7 +122,7 @@ export class InterStoreSupportEngine {
 
     // =========================================================================
     // SCENARIUSZ 1: Bezpośrednie Przekazanie Nadwyżki (Direct Surplus)
-    // Jeśli w Jankach jest już: podwójny AM, podwójny PM, zmiana MID/MIB lub SUP
+    // Jeśli w kawiarni domowej jest już: podwójny AM, podwójny PM, zmiana MID/MIB lub SUP
     // =========================================================================
     workingOnDay.forEach(({ employee: emp, shift: s }) => {
       let isSurplus = false;
@@ -130,16 +130,16 @@ export class InterStoreSupportEngine {
 
       if (s.shift_code === 'MIB' || s.shift_code === 'MID') {
         isSurplus = true;
-        surplusReason = `Menedżer ma zaplanowaną zmianę środkową (${s.shift_code}) — Janki mają już pełne otwarcie i zamknięcie.`;
+        surplusReason = `Menedżer ma zaplanowaną zmianę środkową (${s.shift_code}) — kawiarnia ma już pełne otwarcie i zamknięcie.`;
       } else if (s.shift_code === 'SUP') {
         isSurplus = true;
         surplusReason = `Menedżer ma już zaplanowany bufor Support (${s.shift_code}) do dyspozycji.`;
-      } else if ((s.shift_code === 'AM' || s.shift_code === 'AMN') && jankiAmCount > 1) {
+      } else if ((s.shift_code === 'AM' || s.shift_code === 'AMN') && homeAmCount > 1) {
         isSurplus = true;
-        surplusReason = `W Jankach jest zaplanowane podwójne otwarcie AM (2 osoby) — można bezpiecznie oddać drugiego kierownika.`;
-      } else if ((s.shift_code === 'PM' || s.shift_code === 'PMN') && jankiPmCount > 1) {
+        surplusReason = `W kawiarni jest zaplanowane podwójne otwarcie AM (2 osoby) — można bezpiecznie oddać drugiego kierownika.`;
+      } else if ((s.shift_code === 'PM' || s.shift_code === 'PMN') && homePmCount > 1) {
         isSurplus = true;
-        surplusReason = `W Jankach jest zaplanowane podwójne zamknięcie PM (2 osoby) — można bezpiecznie oddać drugiego kierownika.`;
+        surplusReason = `W kawiarni jest zaplanowane podwójne zamknięcie PM (2 osoby) — można bezpiecznie oddać drugiego kierownika.`;
       }
 
       if (isSurplus) {
@@ -309,7 +309,7 @@ export class InterStoreSupportEngine {
         const compShift = currentScheduleMap.get(`${emp.id}_${compDay}`);
         if (!compShift || compShift.hours === 0 || compShift.shift_code === 'OFF' || compShift.shift_code === 'H' || compShift.shift_code === 'L4') continue;
 
-        // Sprawdź czy w dniu compDay po zwolnieniu emp kawiarnia Janki zachowa 1 AM + 1 PM
+        // Sprawdź czy w dniu compDay po zwolnieniu emp kawiarnia domowa zachowa 1 AM + 1 PM
         let compAm = 0;
         let compPm = 0;
         employees.forEach(other => {
@@ -371,7 +371,7 @@ export class InterStoreSupportEngine {
     });
 
     if (options.length === 0) {
-      blockers.push(`Brak możliwości wydelegowania wsparcia w dniu ${targetDayName} bez naruszenia minimalnej obsady Janki (1 AM + 1 PM) lub przepisów Kodeksu Pracy (odpoczynek 11h).`);
+      blockers.push(`Brak możliwości wydelegowania wsparcia w dniu ${targetDayName} bez naruszenia minimalnej obsady kawiarni macierzystej (1 AM + 1 PM) lub przepisów Kodeksu Pracy (odpoczynek 11h).`);
     }
 
     return {

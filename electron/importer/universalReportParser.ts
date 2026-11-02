@@ -865,7 +865,7 @@ export class UniversalReportParser {
       const minDate = dates[0];
       const maxDate = dates[dates.length - 1];
 
-      // Pobranie unikalnych pracowników Janki w importowanym zbiorze
+      // Pobranie unikalnych pracowników w importowanym zbiorze
       const managerNames = Array.from(new Set(records.map(r => r.employee)));
       const employeePlaceholders = managerNames.map(() => '?').join(',');
       const { unitCode: activeUnitCode, mpk: activeMpk, storeName: activeStoreName } = dbManager.getActiveStoreIdentifiers();

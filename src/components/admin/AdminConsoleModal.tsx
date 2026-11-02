@@ -76,7 +76,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
     setIsCloudBusy(true);
     showToast('Szyfrowanie sejfów i wysyłanie do Google Cloud Firestore...');
     try {
-      const res = await CloudSyncService.pushStoreToCloud(storeUnitCode || '108120', adminName);
+      const res = await CloudSyncService.pushStoreToCloud(storeUnitCode || 'default', adminName);
       showToast(res.message);
       CloudSyncService.checkCloudConnection().then(setCloudStatus).catch(() => {});
     } catch (e: any) {
@@ -90,7 +90,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
     setIsCloudBusy(true);
     showToast('Pobieranie i odszyfrowywanie bazy z Google Cloud...');
     try {
-      const res = await CloudSyncService.pullStoreFromCloud(storeUnitCode || '108120');
+      const res = await CloudSyncService.pullStoreFromCloud(storeUnitCode || 'default');
       showToast(res.message);
       loadData();
       CloudSyncService.checkCloudConnection().then(setCloudStatus).catch(() => {});
@@ -589,7 +589,7 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
                         </span>
                       </h4>
                       <p className="text-xs text-stone-500">
-                        Centralne repozytorium szyfrowanych danych operacyjnych kawiarni ({storeUnitCode || '108120'}).
+                        Centralne repozytorium szyfrowanych danych operacyjnych kawiarni ({storeUnitCode || 'lokalna'}).
                       </p>
                     </div>
                   </div>

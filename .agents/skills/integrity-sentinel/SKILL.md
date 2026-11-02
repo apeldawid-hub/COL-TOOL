@@ -31,3 +31,11 @@ Agent odpowiada za matematyczną bezbłędność i spójność logiczną wszystk
 1. **Przeliczenie Formuł**: Weryfikacja plików w `src/modules/labor-forecast/services/calculationEngine.ts`, `src/modules/managers-schedule/services/managerScheduleEngine.ts`, `src/modules/managers-schedule/services/torEngine.ts`.
 2. **Weryfikacja Brzegowa**: Testowanie sytuacji nietypowych (np. luty 28/29 dni, zmiana czasu letni/zimowy, święto w sobotę obniżające wymiar czasu pracy).
 3. **Weryfikacja Dialogów i Tekstów**: Sprawdzenie czy komunikaty podają jasne instrukcje postępowania.
+
+---
+
+## 📝 Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po wykryciu i skorygowaniu jakichkolwiek rozbieżności obliczeniowych, zaokrągleń lub wzorów:
+1. Natychmiast zaktualizuj formuły matematyczne w `AGENTS.md` danego modułu.
+2. Zarejestruj wpis naprawczy w `CHANGELOG.md` danego modułu.
+3. Zaktualizuj `VERSION_HISTORY.md` przy publikacji patcha.

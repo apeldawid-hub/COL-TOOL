@@ -153,7 +153,7 @@ export class BackupManager {
       throw new Error(`Plik bazy danych nie istnieje na dysku: ${dbFilePath}`);
     }
 
-    const storeId = explicitStoreId || dbManager.getCurrentStoreId() || '108120';
+    const storeId = explicitStoreId || dbManager.getCurrentStoreId() || 'default';
     const filename = this.generateBackupFilename(storeId, reason);
     const targetPath = path.join(this.backupDir, filename);
 
@@ -188,7 +188,7 @@ export class BackupManager {
   public listBackups(filterStoreId?: string): DatabaseBackupRecord[] {
     this.ensureDirExists();
     const dbManager = DatabaseManager.getInstance();
-    const activeStoreId = filterStoreId || dbManager.getCurrentStoreId() || '108120';
+    const activeStoreId = filterStoreId || dbManager.getCurrentStoreId() || 'default';
     const safeActiveId = this.sanitizeId(activeStoreId);
     const isJanki = safeActiveId === '108120' || safeActiveId === '18120' || safeActiveId === '108120_janki';
 
@@ -369,7 +369,7 @@ export class BackupManager {
     }
 
     const dbManager = DatabaseManager.getInstance();
-    const currentStoreId = dbManager.getCurrentStoreId() || '108120';
+    const currentStoreId = dbManager.getCurrentStoreId() || 'default';
     const dbFilePath = dbManager.getDbFilePath();
 
     const buffer = fs.readFileSync(backupPath);
@@ -413,7 +413,7 @@ export class BackupManager {
    */
   public async restoreFromBuffer(buffer: ArrayBuffer | Buffer, forceRestore: boolean = false): Promise<{ success: boolean; message: string; inspection?: RestoreInspectionResult }> {
     const dbManager = DatabaseManager.getInstance();
-    const currentStoreId = dbManager.getCurrentStoreId() || '108120';
+    const currentStoreId = dbManager.getCurrentStoreId() || 'default';
     const dbFilePath = dbManager.getDbFilePath();
 
     const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
@@ -513,7 +513,8 @@ export class BackupManager {
   public checkAndPerformStartupBackup(): void {
     try {
       const dbManager = DatabaseManager.getInstance();
-      const currentStoreId = dbManager.getCurrentStoreId() || '108120';
+      const currentStoreId = dbManager.getCurrentStoreId();
+      if (!currentStoreId) return;
       const backups = this.listBackups(currentStoreId);
       const now = Date.now();
       const SIX_HOURS_MS = 6 * 60 * 60 * 1000;

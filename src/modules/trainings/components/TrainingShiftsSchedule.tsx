@@ -118,7 +118,7 @@ export const TrainingShiftsSchedule: React.FC<TrainingShiftsScheduleProps> = ({
       <div className="px-5 py-2.5 bg-emerald-50/70 border-b border-emerald-100 flex items-center gap-2 text-xs text-emerald-900">
         <Info className="w-4 h-4 text-emerald-700 shrink-0" />
         <span>
-          <b>Zasada Starbucks NC:</b> Zmiany T są w 100% rozliczane w budżecie <b>Non-Coverage (Szkolenia)</b>. Nie wliczają się do obsady Floor (32h/dzień) kawiarni Janki, chroniąc przepustowość operacyjną.
+          <b>Zasada Starbucks NC:</b> Zmiany T są w 100% rozliczane w budżecie <b>Non-Coverage (Szkolenia)</b>. Nie wliczają się do obsady Floor (32h/dzień) kawiarni macierzystej, chroniąc przepustowość operacyjną.
         </span>
       </div>
 

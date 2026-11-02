@@ -89,7 +89,7 @@ export const StoreClientView: React.FC<StoreClientViewProps> = ({
                 </span>
               </div>
               <span className="text-[10px] font-mono font-black text-emerald-800 bg-white px-1.5 py-0.5 rounded border border-emerald-300 shrink-0">
-                Unit {currentStore.unitCode || '18120'}
+                Unit {currentStore.unitCode || currentStore.id || '—'}
               </span>
               <span className="hidden md:inline-block text-[11px] text-stone-400 font-medium truncate">
                 {currentStore.city}

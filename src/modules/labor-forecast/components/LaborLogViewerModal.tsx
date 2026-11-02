@@ -434,7 +434,8 @@ export const LaborLogViewerModal: React.FC<LaborLogViewerModalProps> = ({
     const cleanLabel = (weekLabel || 'Logowania')
       .replace(/[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ_]/g, '_')
       .replace(/_+/g, '_');
-    const filename = `Ewidencja_RCP_SBX_Janki_${cleanLabel}.xlsx`;
+    const storePrefix = currentStore?.unitCode || currentStore?.id || 'SBX';
+    const filename = `Ewidencja_RCP_${storePrefix}_${cleanLabel}.xlsx`;
 
     XLSX.writeFile(workbook, filename);
   };

@@ -90,8 +90,8 @@ export interface WeeklyCalculatedRow {
   floorBreakdown: string;
 
   // Powiązanie z grafikiem menedżerskim (Moduł 2 ➔ Moduł 1)
-  managerHours?: number;                // Suma godzin menedżerów na Janki w danym tygodniu (Coverage + NC)
-  managerCoverageHours?: number;        // Godziny Coverage menedżerów na Janki (AM, PM, bar)
+  managerHours?: number;                // Suma godzin menedżerów w kawiarni w danym tygodniu (Coverage + NC)
+  managerCoverageHours?: number;        // Godziny Coverage menedżerów w kawiarni (AM, PM, bar)
   managerNcHours?: number;              // Godziny Non-Coverage menedżerów (NC, szkolenia, admin)
   baristaHoursPool?: number | null;     // Pula godzin dla baristów (HANW - managerHours)
   baristaScheduledHours?: number | null;// Godziny rozpisane baristom (scheduledHours - managerHours)
@@ -113,7 +113,7 @@ export interface MondayProjectionDetails {
   date: string;
   dayOfMonth: number;
   loggedHoursDays1to6: number;        // godziny rzeczywiste z wtorku–niedzieli (np. 281.8h)
-  projectedMgrHours: number;          // godziny kierowników zaplanowane w Janki na dziś (np. 32.0h)
+  projectedMgrHours: number;          // godziny kierowników zaplanowane w kawiarni na dziś (np. 32.0h)
   projectedBaristaHours: number;      // godziny baristów wyliczone z różnicy tygodnia
   projectedTotalMondayHours: number;  // suma na poniedziałek (projectedMgrHours + projectedBaristaHours)
   fullWeekProjectedHours: number;     // suma całego tygodnia (loggedHoursDays1to6 + projectedTotalMondayHours)
@@ -151,7 +151,7 @@ export interface ManagerDailyCoverageItem {
   maxBaristaHours?: number;             // Maksymalny limit godzin dla baristów
   manipulationTip?: string;             // Konkretna wskazówka operacyjna dla Store Managera
   isSunday?: boolean;                   // true dla niedzieli
-  isTradingSunday?: boolean;            // true dla oficjalnej niedzieli handlowej w CH Janki
+  isTradingSunday?: boolean;            // true dla oficjalnej niedzieli handlowej (np. w centrach handlowych)
 }
 
 export interface PlanningCadenceInfo {
@@ -290,7 +290,7 @@ export interface DayOfWeekHoursTrend {
   floorHours: number;      // np. 40.0
   sharePercent: number;    // np. 15.2%
   trendDirection: 'increasing' | 'stable' | 'decreasing';
-  isTradingSunday?: boolean;// Czy niedziela jest handlowa w CH Janki
+  isTradingSunday?: boolean;// Czy niedziela jest handlowa
   emaWeightPercent?: number;// Waga wykładnicza krocząca (EMA) w rozkładzie tygodnia
 }
 

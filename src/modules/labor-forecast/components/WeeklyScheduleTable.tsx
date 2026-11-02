@@ -701,7 +701,7 @@ export const WeeklyScheduleTable: React.FC<WeeklyScheduleTableProps> = ({
                             })()}
                             {r.managerHours !== undefined && r.managerHours > 0 && (
                               <div className="flex items-center gap-1 text-[9px] mt-0.5 whitespace-nowrap">
-                                <span className="px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold" title="Godziny kadry kierowniczej na Janki">
+                                <span className="px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold" title="Godziny kadry kierowniczej w kawiarni">
                                   MGR {r.managerHours.toFixed(1)}h
                                 </span>
                                 <span>+</span>

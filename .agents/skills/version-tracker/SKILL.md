@@ -74,3 +74,11 @@ node scripts/changelog-agent.js add --version X.Y.Z --title "Tytuł" --notes "Zm
 
 ## 🔒 Reguła Bezpieczeństwa
 Podobnie jak w `AGENTS.md`, rejestr wersji zawiera **WYŁĄCZNIE OPIS KODU I FUNKCJI PROGRAMU**. Bezwzględny zakaz wpisywania danych wrażliwych (danych osobowych pracowników, numerów PESEL, stawek poufnych, haseł ani zawartości lokalnych baz danych).
+
+---
+
+## 📝 Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Version Tracker nadzoruje spójność całej dokumentacji projektowej:
+1. Przed zarejestrowaniem wersji upewnij się, że dedykowany `CHANGELOG.md` każdego dotkniętego modułu (`src/modules/{modul}/CHANGELOG.md`) posiada zarejestrowane zmiany.
+2. Zweryfikuj zgodność drzew plików i algorytmów w `src/modules/{modul}/AGENTS.md` ze stanem faktycznym.
+3. Bezwzględny nakaz natychmiastowego uzupełniania dokumentacji po jakichkolwiek modyfikacjach kodu w repozytorium.

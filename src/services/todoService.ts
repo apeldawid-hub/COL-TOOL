@@ -20,7 +20,7 @@ class TodoService {
   private currentStoreId: string = '';
 
   constructor() {
-    this.currentStoreId = (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || '108120';
+    this.currentStoreId = (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || 'default';
     this.loadTasks();
     if (this.tasks.length === 0) {
       this.initDefaultTasks();

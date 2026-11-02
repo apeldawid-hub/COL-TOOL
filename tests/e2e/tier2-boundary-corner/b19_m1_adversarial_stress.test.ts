@@ -51,25 +51,25 @@ test('B19: Milestone 1 Adversarial Empirical Stress Testing', async (t) => {
   await t.test('test_b19_multiple_store_switches_isolation_and_no_leakage', async () => {
     const storage = setupVirtualLocalStorage();
 
-    // Store 1: Nowy Świat (Unit 323, MPK 108004)
-    const storeNowySwiat = STARBUCKS_STORES_CATALOG.find(s => s.unitCode === '323');
-    assert.ok(storeNowySwiat, 'Store 323 Nowy Świat must exist in catalog');
-    await StoreService.setCurrentStore(storeNowySwiat!);
+    // Store 1: Janki (Unit 18120, MPK 108120)
+    const storeJanki = STARBUCKS_STORES_CATALOG.find(s => s.unitCode === '18120');
+    assert.ok(storeJanki, 'Store 18120 Janki must exist in catalog');
+    await StoreService.setCurrentStore(storeJanki!, { appMode: 'FLEET_MASTER' });
 
     let current = StoreService.getCurrentStore();
-    assert.equal(current.unitCode, '323');
-    assert.equal(current.id, '108004');
-    assert.equal(storage.get('sbx_unit_code'), '323');
+    assert.equal(current.unitCode, '18120');
+    assert.equal(current.id, '108120');
+    assert.equal(storage.get('sbx_unit_code'), '18120');
 
-    // Store 2: Galeria Bałtycka (Unit 18035, MPK 108035)
-    const storeBaltycka = STARBUCKS_STORES_CATALOG.find(s => s.id === '108035');
-    assert.ok(storeBaltycka, 'Store 108035 Galeria Bałtycka must exist in catalog');
-    await StoreService.setCurrentStore(storeBaltycka!);
+    // Store 2: Kalisz Galeria Amber (Unit 18170, MPK 108170)
+    const storeKalisz = STARBUCKS_STORES_CATALOG.find(s => s.id === '108170');
+    assert.ok(storeKalisz, 'Store 108170 Kalisz must exist in catalog');
+    await StoreService.setCurrentStore(storeKalisz!, { appMode: 'FLEET_MASTER' });
 
     current = StoreService.getCurrentStore();
-    assert.equal(current.unitCode, '18035');
-    assert.equal(current.id, '108035');
-    assert.equal(storage.get('sbx_unit_code'), '18035');
+    assert.equal(current.unitCode, '18170');
+    assert.equal(current.id, '108170');
+    assert.equal(storage.get('sbx_unit_code'), '18170');
 
     // Verify no hardcoded Janki (18120 / 108120) values leaked into storage
     for (const [k, v] of storage.entries()) {

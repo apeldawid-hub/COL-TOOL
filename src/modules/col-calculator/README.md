@@ -1,6 +1,6 @@
 # Moduł 4: COL Calculator (Kalkulator Kosztów Pracy)
 
-Oficjalny moduł planowania i controllingu kosztów robocizny (**Cost of Labor - COL**) w kawiarni **108120 SBX Warszawa Janki**.
+Oficjalny moduł planowania i controllingu kosztów robocizny (**Cost of Labor - COL**) w kawiarniach sieci **Starbucks Coffee Company**.
 
 ---
 
@@ -19,3 +19,7 @@ Oficjalny moduł planowania i controllingu kosztów robocizny (**Cost of Labor -
 4. **Zarządzanie Rezerwą Urlopową i Premiami**:
    - Dedykowany kalkulator premii z weryfikacją Cap i progów realizacji celów sprzedaży i rentowności.
    - Narzędzie kalkulacji comiesięcznej zmiany rezerwy urlopowej menedżerów.
+
+---
+
+👉 Pełna historia wydań modułu: **[CHANGELOG.md](./CHANGELOG.md)** | Specyfikacja techniczna: **[AGENTS.md](./AGENTS.md)**

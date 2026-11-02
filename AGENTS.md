@@ -1,6 +1,6 @@
 # AGENTS.md — Główny Rejestr Architektoniczny (Root Orchestrator)
 
-Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platformy **Starbucks Operations Suite** (`108120 SBX Warszawa Janki`, Kod jednostki: `18120`, kod operacyjny: `384`).
+Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platformy **Starbucks Operations Suite** (architektura uniwersalna Multi-Store Fleet dla wszystkich kawiarni sieci Starbucks).
 
 ---
 
@@ -19,6 +19,11 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platf
 >    - Baza danych użytkownika na docelowym komputerze jest trwale odseparowana w systemowym folderze:
 >      `~/Library/Application Support/Starbucks Operations Suite/`
 >    - Aktualizacja programu (zarówno pełna wersja DMG, jak i mikropatch OTA) podmienia **wyłącznie pliki wykonywalne kodu aplikacji**, bez dotykania bazy danych SQLite użytkownika.
+> 3. **Architektura Chmurowa Multi-Tenant Silo i Profile Użytkowników:**
+>    - Przed wszelkimi pracami nad chmurą, synchronizacją lub wielodostępnością agent **ma bezwzględny obowiązek** zapoznać się z dokumentem:
+>      [docs/CLOUD_AND_FLEET_ARCHITECTURE.md](./docs/CLOUD_AND_FLEET_ARCHITECTURE.md)
+>    - Każda kawiarnia to odseparowany obszar `stores/{storeId}/...`. Obowiązuje zakaz stosowania płaskich kolekcji.
+>    - Po modyfikacji logiki chmurowej agent **musi zaktualizować historię zmian** w tym dokumencie.
 
 ---
 
@@ -36,15 +41,28 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platf
 
 ---
 
+## 📝 0.2. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync Rule)
+
+> [!CRITICAL]
+> **OBOWIĄZKOWA REGUŁA DLA KAŻDEGO AGENTA I AUTOMATYZACJI:**
+> Każdy agent modyfikujący lub dodający kod źródłowy, logikę biznesową, algorytmy, strukturę plików, bazę danych SQLite, integrację chmurową czy interfejs UI w dowolnym module/komponencie platformy **ma bezwzględny obowiązek natychmiastowej aktualizacji dokumentacji technicznej**:
+> 1. **Plik `AGENTS.md` modyfikowanego modułu:** Natychmiastowe zaktualizowanie drzewa plików, opisów serwisów, parametrów algorytmów i reguł biznesowych, aby odzwierciedlały stan faktyczny w kodzie (zero rozbieżności).
+> 2. **Historia zmian modułu (`src/modules/{modul}/CHANGELOG.md`):** Zarejestrowanie nowej wersji, daty i zwięzłego wykazu wprowadzonych zmian w dedykowanym rejestrze modułu.
+> 3. **Plik umiejętności agenta (`.agents/skills/{skill}/SKILL.md`):** Uaktualnienie parametrów domenowych i wytycznych agenta, jeśli zmiana wpływa na jego kompetencje.
+> 4. **Główny rejestr wydań (`VERSION_HISTORY.md`):** Przy wydaniach i mikropatchach OTA zarejestrowanie pełnego zakresu zmian.
+> Zakaz kończenia zadania z pozostawieniem nieaktualnej dokumentacji lub rozbieżności między kodem a rejestrem agentów.
+
+---
+
 ## ☕ 1. Nienaruszalne Standardy Operacyjne Starbucks
 
 1. **Złota reguła Floor Hours**:
    - **Minimum nienaruszalne: 32.0 h/dzień** (1 MGR + 1 Barista AM rano + 1 MGR + 1 Barista PM wieczorem = 4 osoby $\times$ 8h = 32h/dzień).
    - Dla pełnego 7-dniowego tygodnia daje to **224.0 h bazy Floor**. Grafik kawiarni nie może spaść poniżej tej bariery dobowej.
    - Wszystkie godziny ponad bazę Floor tworzą **Pulę Flex**, alokowaną na szczyty popołudniowe (piątek, sobota, niedziele handlowe).
-2. **Niedziele Handlowe w CH Janki**:
+2. **Niedziele Handlowe w centrach handlowych (CH)**:
    - 7 niedziel handlowych w roku (pełny ruch centrum ~250% normy) $\rightarrow$ alokacja szczytowa baristów.
-   - Niedziele wolne od handlu (zamknięte CH) $\rightarrow$ obsada ściśle na poziomie bazy Floor (32.0h: 1 AMN + 1 PMN).
+   - Niedziele wolne od handlu (zamknięte CH) $\rightarrow$ obsada ściśle na poziomie bazy Floor (32.0h: 1 AMN + 1 PMN) lub zgodnie z profilem lokalu (High Street / Travel).
 3. **Izolacja Budżetu Szkoleń (Non-Coverage)**:
    - Zmiany szkoleniowe baristów (`T1`–`T10`) są w 100% rozliczane w budżecie **Non-Coverage (NC Training)** i nie pomniejszają bazy Floor Hours (32h).
 
@@ -62,7 +80,7 @@ src/modules/
 │   └── README.md            # Przewodnik użytkownika Modułu 1
 │
 ├── managers-schedule/       # MODUŁ 2: Managers Schedule — Grafik Managerski (v1.0 Active)
-│   ├── services/            # Silnik Kodeksu Pracy, AutoScheduler AI (20k prób), TOR, RCP Fichajes
+│   ├── services/            # Silnik Kodeksu Pracy, AutoScheduler AI (2k prób), TOR, RCP Fichajes
 │   ├── AGENTS.md            # 👉 Szczegółowe reguły Modułu 2 (src/modules/managers-schedule/AGENTS.md)
 │   └── README.md            # Przewodnik użytkownika Modułu 2
 │
@@ -91,7 +109,7 @@ Wsparcie deweloperskie opiera się na wyspecjalizowanych umiejętnościach w `.a
 | 👁️ **`ux-auditor`** | [SKILL.md](file:///.agents/skills/ux-auditor/SKILL.md) | Audytor UI/UX: ergonomia pracy na laptopie, czytelność tabel, nawigacja klawiaturą, eliminacja tarcia w obsłudze. |
 | 📐 **`integrity-sentinel`** | [SKILL.md](file:///.agents/skills/integrity-sentinel/SKILL.md) | Strażnik obliczeń i komunikatów: cykliczna kontrola norm KP, bilansów TOR, formuł TPLH, zaokrągleń i języka alertów. |
 | 🧮 **`col-finance`** | [SKILL.md](file:///.agents/skills/col-finance/SKILL.md) | Finanse P&L, Total COL %, TPLH Coverage/Total, narzut ZUS 19.48%, załoga UoP/UZ, symulator What-If. |
-| 🗄️ **`sqlite-guardian`** | [SKILL.md](file:///.agents/skills/sqlite-guardian/SKILL.md) | Integralność SQLite, defragmentacja VACUUM, rotacja 15 kopii zapasowych, Multi-Store isolation (`store_${id}.db`). |
+| 🗄️ **`sqlite-guardian`** | [SKILL.md](file:///.agents/skills/sqlite-guardian/SKILL.md) | Integralność SQLite, defragmentacja VACUUM, rotacja 15 kopii zapasowych, Multi-Store isolation (`store_${id}.db`), nadzór nad architekturą chmurową ([CLOUD_AND_FLEET_ARCHITECTURE.md](./docs/CLOUD_AND_FLEET_ARCHITECTURE.md)). |
 | 🚀 **`ota-patch-publisher`** | [SKILL.md](file:///.agents/skills/ota-patch-publisher/SKILL.md) | Pre-flight QA (`npm run build`), podbicie wersji, publikacja mikropatcha OTA (`npm run patch`) w 3-5 sekund. |
 | 📜 **`version-tracker`** | [SKILL.md](file:///.agents/skills/version-tracker/SKILL.md) | Prowadzenie centralnego rejestru wydań w [VERSION_HISTORY.md](file:///VERSION_HISTORY.md) oraz `CHANGELOG.md`. |
 
@@ -103,5 +121,16 @@ Wsparcie deweloperskie opiera się na wyspecjalizowanych umiejętnościach w `.a
    - `npm run dev` z szybkim odświeżaniem Vite Hot-Reload.
 2. **Publikacja Mikropoprawki OTA (`npm run patch`) — Błyskawiczna**:
    - Agent weryfikuje kompilację (`npm run build`), podbija wersję w `package.json`, rejestruje zmiany w `VERSION_HISTORY.md` i publikuje patch `.zip` (~1.16 MB) do GitHub Releases w 3-5 sekund.
-3. **Pełne Wydania DMG (`npm run publish:mac`)**:
-   - Wykonywane **WYŁĄCZNIE na bezpośrednie polecenie Użytkownika** (np. zmiana natywnych bibliotek Electrona lub ikon).
+## 🏷️ 5. Błyskawiczne Prefiksy w Czacie (`/` oraz `?`)
+
+W promptach do agenta możesz używać krótkich prefiksów, które natychmiast zawężają obszar pracy:
+- `/m1` lub `[M1]` — TPLH Forecast & Robocizna (`src/modules/labor-forecast/`)
+- `/m2` lub `[M2]` — Grafik Managerski & TOR (`src/modules/managers-schedule/`)
+- `/m3` lub `[M3]` — Szkolenia Starbucks (`src/modules/trainings/`)
+- `/m4` lub `[M4]` — COL Calculator (`src/modules/col-calculator/`)
+- `/cloud` lub `[Cloud]` — Firestore & Outbox Queue (`src/services/sync/`)
+- `/fleet` lub `[Fleet]` — Flota & Przełącznik Kawiarni (`src/services/storeService.ts`)
+- `/auth` lub `[Auth]` — Bezpieczeństwo & Logowanie (`src/context/AuthContext.tsx`)
+- `/core` lub `[Core]` — Electron & SQLite (`electron/`)
+- `/ota` lub `[OTA]` — Mikropatche i Wydania (`scripts/publish-patch.js`)
+- `?m1`, `?m2`... — Tryb inspekcji i audytu (odpowiedź na pytanie bez modyfikacji kodu).

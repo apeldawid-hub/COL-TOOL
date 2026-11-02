@@ -2,13 +2,13 @@
 name: labor-law-sentinel
 description: >-
   Ekspert od polskiego Kodeksu Pracy (art. 130, 132, 133, 151, 154 KP), reguł grafikowych Starbucks
-  (Floor Hours 32h/dzień, kody zmian AM/PM/MIB/SUP, niedziele handlowe w CH Janki), silnika AutoSchedule AI
+  (Floor Hours 32h/dzień, kody zmian AM/PM/MIB/SUP, niedziele handlowe i wolne od handlu), silnika AutoSchedule AI
   oraz kwartalnego rozliczenia TOR (Trzymiesięczny Okres Rozliczeniowy).
 ---
 
 # Strażnik Kodeksu Pracy & Grafik Managerski (Labor Law Sentinel)
 
-Skill odpowiada za weryfikację poprawności grafiku menedżerskiego, ochronę przed karami Państwowej Inspekcji Pracy (PIP) oraz sterowanie silnikiem AutoScheduling AI w kawiarni `108120 SBX Warszawa Janki`.
+Skill odpowiada za weryfikację poprawności grafiku menedżerskiego, ochronę przed karami Państwowej Inspekcji Pracy (PIP) oraz sterowanie silnikiem AutoScheduling AI w kawiarniach Starbucks.
 
 ---
 
@@ -24,7 +24,7 @@ Skill odpowiada za weryfikację poprawności grafiku menedżerskiego, ochronę p
 
 3. **Niedziele i Święta (Zasada 4 Niedzieli)**:
    - Pracownik pracujący w niedziele ma prawo do **co najmniej jednej wolnej niedzieli na 4 tygodnie** (maksymalnie 3 pracujące niedziele z rzędu).
-   - W niedziele i święta (np. 1.11, 25.12) w kawiarni Janki obowiązuje limit **dokładnie 2 menedżerów (1x `AMN` + 1x `PMN`)** — bezwzględny zakaz dublowania otwarć/zamknięć.
+   - W niedziele i święta (np. 1.11, 25.12) w kawiarni obowiązuje limit **dokładnie 2 menedżerów (1x `AMN` + 1x `PMN`)** — bezwzględny zakaz dublowania otwarć/zamknięć.
 
 4. **Wymiar Czasu Pracy i Święta (art. 130 § 2 KP)**:
    - Każde święto przypadające w innym dniu niż niedziela obniża miesięczny wymiar czasu pracy o 8 godzin.
@@ -54,7 +54,7 @@ Skill odpowiada za weryfikację poprawności grafiku menedżerskiego, ochronę p
 | `MIB` | 11:00 – 19:30 | 8.0 h (+30 min przerwy) | Zmiana wsparcia baru w szczycie |
 | `AMN` | 08:00 – 16:30 | 8.0 h (+30 min przerwy) | Otwarcie w niedziele i wybrane święta |
 | `PMN` | 13:30 – 22:00 | 8.0 h (+30 min przerwy) | Zamknięcie w niedziele i wybrane święta |
-| `SUP` | Elastyczne | 8.0 h | Wsparcie innej kawiarni (wlicza się do etatu menedżera, ale **nie** do obsady lokalu Janki) |
+| `SUP` | Elastyczne | 8.0 h | Wsparcie innej kawiarni (wlicza się do etatu menedżera, ale **nie** do obsady kawiarni macierzystej) |
 | `SAM` / `SPM`| 06:00-14:30 / 13:30-22:00 | 8.0 h | Wsparcie zewnętrzne na otwarciu / zamknięciu |
 | `OFF` | — | 0.0 h | Dzień wolny |
 | `H` | Norma dobowa | $8\text{h} \times \text{etat}$ | Płatny urlop wypoczynkowy (tylko dni robocze) |
@@ -62,7 +62,7 @@ Skill odpowiada za weryfikację poprawności grafiku menedżerskiego, ochronę p
 
 ---
 
-## 🧠 3. Silnik AutoScheduling AI (20 000 prób) i Negocjacje
+## 🧠 3. Silnik AutoScheduling AI (2 000 prób) i Negocjacje
 
 Gdy uruchamiany jest generator automatycznego grafiku (`AutoSchedulerEngine`):
 1. **Dociążenie etatów do 100%**: Bilans $\pm 0.9\text{ h}$ na koniec miesiąca dla każdego członka zespołu.
@@ -81,3 +81,11 @@ W widoku `TorView`:
 - Agregacja kwartalna (Q1: Sty-Mar, Q2: Kwi-Cze, Q3: Lip-Wrz, Q4: Paź-Gru).
 - Podział per miesiąc: **Norma (h)**, **Godziny Przepracowane (h)**, **Urlop H (h)**, **Chorobowe L4 (h)**, **Bilans**.
 - Status kwartału: `OK`, `Nadgodziny (+)` lub `Niedogodziny (-)`.
+
+---
+
+## 📝 5. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej zmianie w Module 2 (Grafik Managerski, reguły KP, AutoScheduler, wsparcia, TOR):
+1. Natychmiast zaktualizuj niniejszy plik `SKILL.md` oraz `src/modules/managers-schedule/AGENTS.md`.
+2. Zarejestruj wpis w `src/modules/managers-schedule/CHANGELOG.md`.
+3. Zaktualizuj `VERSION_HISTORY.md` w przypadku publikacji wydania/patcha.

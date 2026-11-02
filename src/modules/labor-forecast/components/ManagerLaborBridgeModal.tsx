@@ -189,7 +189,7 @@ export const ManagerLaborBridgeModal: React.FC<ManagerLaborBridgeModalProps> = (
 
           {/* Karty podsumowania tygodnia (4 karty z Pulą H +/-) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Karta 1: Godziny MGR na Janki */}
+            {/* Karta 1: Godziny MGR w kawiarni */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#E2E8E5] shadow-xs">
               <div className="flex items-center justify-between text-stone-500 mb-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider">Godziny MGR</span>

@@ -7,9 +7,8 @@ Dokument definiuje kontekst domenowy, zasady Kodeksu Pracy, katalog kodów zmian
 ## ☕ 1. Kontekst Domenowy i Biznesowy
 
 - **Status modułu**: ✅ **v1.0 Active** (w pełni funkcjonalny, przetestowany).
-- **Cel modułu**: Autonomiczny planer grafiku dla zespołu kierowniczego kawiarni (Store Manager, Assistant Store Manager, Shift Supervisors).
-- **Plik referencyjny**: `./Grafik/Grafik wrzesień Janki 2026.xlsm`.
-- **Kawiarnia bazowa**: `108120 SBX Warszawa Janki` (Kod jednostki: `384`).
+- **Cel modułu**: Autonomiczny planer grafiku dla zespołu kierowniczego dowolnej kawiarni Starbucks (Store Manager, Assistant Store Manager, Shift Supervisors).
+- **Architektura**: Multi-Store (obsada per aktywny lokal, wsparcie międzykawiarniane w dystrykcie).
 - **Zespół bazowy (7 osób)**:
   1. `Dawid Szeluga` (SM — Customer & Sales Manager, FULL = 1.0)
   2. `Dawid Apel` (ASM — People Manager, FULL = 1.0)
@@ -25,27 +24,35 @@ Dokument definiuje kontekst domenowy, zasady Kodeksu Pracy, katalog kodów zmian
 
 ```
 src/modules/managers-schedule/
+├── types/
+│   └── index.ts                    # Dedykowane interfejsy TypeScript Modułu 2 (zmiany, KP, TOR, wsparcia)
+├── constants/
+│   ├── defaultShifts.ts            # Stałe katalogu zmian Starbucks, kolory badge'y i typy
+│   └── index.ts                    # Stałe Kodeksu Pracy (11h/35h), Floor 32h/224h, solver AI (2k prób)
 ├── components/
-│   ├── ManagerScheduleGrid.tsx     # Miesięczna matryca grafiku z przypiętymi kolumnami i wierszem wydarzeń
-│   ├── ManagerScheduleView.tsx     # Główny widok modułu (przełącznik zakładek Grafik/TOR, kafelki KPI, akcje)
-│   ├── TorView.tsx                 # [NOWY] Trzymiesięczny Okres Rozliczeniowy (TOR) z podsumowaniem kwartalnym Q1-Q4
-│   ├── ManagerTeamModal.tsx        # Modal dodawania/edycji menedżerów, stawek, ról i etatów
-│   ├── ShiftConfigModal.tsx        # Modal konfiguracji katalogu zmian Starbucks i reguł niedzielnych
-│   ├── ShiftPickerPopover.tsx      # Szybki selektor zmian z blokadą zmian niedzielnych w dni powszednie
+│   ├── AutoScheduleModal.tsx        # Modal AutoScheduling (generator grafiku AI, diff, KPI)
+│   ├── AutoScheduleWidget.tsx       # Floating Starbucks Speed-Dial Navigation Hub (radial progress, LM/NM, TOR, akcje)
+│   ├── InterStoreSupportModal.tsx   # Asystent wsparcia międzykawiarnianego (3 scenariusze, tarcza KP, SMS)
 │   ├── LaborLawComplianceModal.tsx # Tarcza Kodeksu Pracy (inspektor naruszeń)
 │   ├── LaborLawViolationDialog.tsx # Dialog ostrzegawczy pre-flight przy próbie złamania przepisów KP
-│   ├── ScheduleVersionModal.tsx    # Historia wersji grafiku i publikacja (reguła 7 dni przed startem)
-│   ├── MonthNormEditModal.tsx      # Modal edycji i podglądu normy miesięcznej KP z przywracaniem
 │   ├── ManagerDispositionsModal.tsx # Zbiorcza matryca dyspozycyjności menedżerów i import z Excela
+│   ├── ManagerScheduleGrid.tsx     # Miesięczna matryca grafiku z przypiętymi kolumnami i wierszem wydarzeń
+│   ├── ManagerScheduleView.tsx     # Główny widok modułu (przełącznik zakładek Grafik/TOR, kafelki KPI, akcje)
+│   ├── ManagerTeamModal.tsx        # Modal dodawania/edycji menedżerów, stawek, ról i etatów
+│   ├── MonthNormEditModal.tsx      # Modal edycji i podglądu normy miesięcznej KP z przywracaniem
 │   ├── RcpAbsenceConflictDialog.tsx # Modal ostrzegawczy i raport kolizji RCP z absencją L4/H
-│   ├── AutoScheduleModal.tsx        # Modal AutoScheduling (generator grafiku AI, diff, KPI)
-│   └── AutoScheduleWidget.tsx       # Floating Starbucks Speed-Dial Navigation Hub (radial progress, LM/NM, TOR, akcje)
+│   ├── ScheduleVersionModal.tsx    # Historia wersji grafiku i publikacja (reguła 7 dni przed startem)
+│   ├── ShiftConfigModal.tsx        # Modal konfiguracji katalogu zmian Starbucks i reguł niedzielnych
+│   ├── ShiftPickerPopover.tsx      # Szybki selektor zmian z blokadą zmian niedzielnych w dni powszednie
+│   └── TorView.tsx                 # Trzymiesięczny Okres Rozliczeniowy (TOR) z podsumowaniem kwartalnym Q1-Q4
 ├── services/
-│   ├── managerScheduleEngine.ts    # Silnik wyliczania norm KP, świąt, bilansu godzin, L4 do etatu i walidacji na przejściach
-│   ├── torEngine.ts                # Silnik kwartalny TOR (agregacja 3 miesięcy, bilanse, status nadgodzin/niedogodzin)
-│   ├── autoSchedulerEngine.ts      # [NOWY] Silnik optymalizacyjny AutoScheduling (solver, KP, dyspozycje, MID)
-│   └── managerExcelExport.ts       # Generator eksportu grafiku miesięcznego oraz arkusza TOR do pliku .xlsx
+│   ├── autoSchedulerEngine.ts      # Silnik optymalizacyjny AutoScheduling (solver AI, KP, dyspozycje, 2k rund)
+│   ├── interStoreSupportEngine.ts  # Silnik kalkulacji wsparć międzykawiarnianych i podmian obsadowych
+│   ├── managerExcelExport.ts       # Generator eksportu grafiku miesięcznego oraz arkusza TOR do pliku .xlsx
+│   ├── managerScheduleEngine.ts    # Silnik wyliczania norm KP, świąt, bilansu godzin, L4 do etatu i walidacji
+│   └── torEngine.ts                # Silnik kwartalny TOR (agregacja 3 miesięcy, bilanse, status nadgodzin)
 ├── index.ts                        # Barrel export modułu
+├── CHANGELOG.md                    # Dedykowana historia zmian i wydań Modułu 2
 ├── AGENTS.md                       # Niniejsze instrukcje techniczne agenta
 └── README.md                       # Dokumentacja użytkowa modułu
 ```
@@ -155,7 +162,7 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
    - W przypadku menedżerów logowania obejmują wszystkie zmiany — **również te zrealizowane w innych kawiarniach** (wsparcia SAM, SPM, SUP, Nowy Świat 323, Sadyba 341, San Park 756, Arkadia 327 itd.).
    - Parser importu MAPAL (`mapalParser.ts`) oraz handlery IPC (`main.ts`) wykorzystują kanoniczny słownik polskich zdrobnień (`NICKNAME_MAP`: `Gabi` $\leftrightarrow$ `Gabriela`, `Zuza` $\leftrightarrow$ `Zuzanna`, `Werka` $\leftrightarrow$ `Weronika`, `Hania` $\leftrightarrow$ `Hanna`, `Ola` $\leftrightarrow$ `Aleksandra`, `Kuba` $\leftrightarrow$ `Jakub`, `Maciek` $\leftrightarrow$ `Maciej` itd.).
    - Zapytania do bazy łączą tabelę główną `manager_employees` oraz składy miesięczne `manager_monthly_roster`, zapewniając prawidłowe przypisanie godzin menedżerów historycznych (np. Hanna Domachowska, Maciej Chlabicz, Weronika Stasiewicz).
-   - **Ochrona Floor Hours Modułu 1**: Zapytania Modułu 1 filtrują bazę ściśle po lokalu 384 (`unit_code = '384'`), gwarantując, że godziny wsparcia w obcych lokalach nie zniekształcają wskaźników TPLH ani zapotrzebowania Floor Hours samej kawiarni Janki.
+   - **Ochrona Floor Hours Modułu 1**: Zapytania Modułu 1 filtrują bazę ściśle po identyfikatorze aktywnego lokalu, gwarantując, że godziny wsparcia w obcych lokalach nie zniekształcają wskaźników TPLH ani zapotrzebowania Floor Hours kawiarni macierzystej.
    - Tooltip komórki grafiku informuje o lokalu wsparcia: `📍 Zalogowano wsparcie MAPAL: Xh w [Nazwa Lokalu] (kod: XXX)`.
 2. **Automatyczne zasilanie i nieedytowalność RCP**:
    - Gdy w danym miesiącu dostępne są kompletne logowania (lub miesiąc jest zamknięty), kolumna `RCP (h)` w widoku grafiku i w module TOR wypełnia się automatycznie.
@@ -245,9 +252,9 @@ Moduł automatycznie weryfikuje 4 kluczowe normy polskiego Kodeksu Pracy dla ka�
 - **Charakterystyka zmian wsparcia zewnętrznego**: Zmiany `SUP` (Support ogólny 8.0h), `SAM` (Support AM 8.0h) oraz `SPM` (Support PM 8.0h) to dyżury menedżera wykonywane w **innych jednostkach Starbucks** (np. Arkadia, Złote Tarasy, Sadyba).
 - **Zasada kalkulacji**:
   - **Czas pracy menedżera**: 8.0 h wlicza się do wypracowanych godzin (`totalWorkedHours`), bilansu etatu (+/- h) oraz rozliczenia TOR.
-  - **Obsada kawiarni macierzystej (108120 Janki)**: Zmiany `SUP`, `SAM`, `SPM` **NIE SĄ** liczone do obsady kawiarni Janki w wierszu *Obsada Menedżerska* (`totalManagersWorking`).
-  - **Otwarcia i Zamknięcia Janki**: `SAM` i `SPM` nie obsadzają fizycznych otwarć ani zamknięć w kawiarni Janki (otwarcia Janki to wyłącznie `AM`, `AMN`, `AMB`; zamknięcia to `PM`, `PMN`, `PMB`).
-  - **Podsumowanie wiersza obsady**: Jeśli w danym dniu menedżerowie pracują na wsparciu poza Janki, w wierszu obsady wyświetla się odznaka `+X SUP` z tooltipem wskazującym osoby i kawiarnie.
+  - **Obsada kawiarni macierzystej**: Zmiany `SUP`, `SAM`, `SPM` **NIE SĄ** liczone do obsady kawiarni macierzystej w wierszu *Obsada Menedżerska* (`totalManagersWorking`).
+  - **Otwarcia i Zamknięcia**: `SAM` i `SPM` nie obsadzają fizycznych otwarć ani zamknięć w kawiarni macierzystej (otwarcia to wyłącznie `AM`, `AMN`, `AMB`; zamknięcia to `PM`, `PMN`, `PMB`).
+  - **Podsumowanie wiersza obsady**: Jeśli w danym dniu menedżerowie pracują na wsparciu poza kawiarnią macierzystą, w wierszu obsady wyświetla się odznaka `+X SUP` z tooltipem wskazującym osoby i kawiarnie.
 
 ---
 
@@ -406,7 +413,7 @@ Moduł automatycznie weryfikuje 4 kluczowe normy polskiego Kodeksu Pracy dla ka�
 ## ✨ 16. AutoScheduling — Inteligentny Generator Grafiku i Solver Optymalizacyjny (`autoSchedulerEngine.ts`, `AutoScheduleModal.tsx`)
 
 ### Geneza i Architektura Silnika Solverowego:
-System automatycznie generuje w 100% poprawny, zbalansowany i zgodny z polskim Kodeksem Pracy grafik miesięczny dla zespołu menedżerów, łącząc twarde reguły prawne z heurystyczną optymalizacją dyspozycji i obsady kawiarni 108120 Starbucks Janki.
+System automatycznie generuje w 100% poprawny, zbalansowany i zgodny z polskim Kodeksem Pracy grafik miesięczny dla zespołu menedżerów, łącząc twarde reguły prawne z heurystyczną optymalizacją dyspozycji i obsady kawiarni Starbucks.
 
 ### Kluczowe Założenia i Zasady Solverowe:
 1. **Twarda Tarcza Kodeksu Pracy (Zero Naruszeń)**:
@@ -473,24 +480,32 @@ System automatycznie generuje w 100% poprawny, zbalansowany i zgodny z polskim K
 
 ## 🤝 18. Asystent Wsparcia Międzykawiarnianego (`InterStoreSupportEngine`, `InterStoreSupportModal`)
 
-Narzędzie umożliwia Store Managerowi kawiarni 108120 Janki natychmiastową, zautomatyzowaną obsługę nagłych próśb o wsparcie menedżerskie z innych kawiarni Starbucks w dystrykcie (np. `323 Nowy Świat`, `341 Sadyba`, `756 San Park`, `327 Arkadia`):
+Narzędzie umożliwia Store Managerowi natychmiastową, zautomatyzowaną obsługę nagłych próśb o wsparcie menedżerskie z innych kawiarni Starbucks w dystrykcie:
 
 ### 1. Trzy Inteligentne Scenariusze Oddawania Zmian:
 1. **Scenariusz 1 (Bezpośrednia Nadwyżka)**:
-   - Konwersja zbędnej w Janki zmiany środkowej `MIB`/`MID`/`SUP` lub zdublowanego otwarcia/zamknięcia bezpośrednio w zmianę wyjazdową `SAM` (otwarcie 07:00–15:30), `SPM` (zamknięcie 14:30–23:00) lub elastyczne `SUP` (8.0h).
-   - **Wpływ na Janki**: Zero zmian dla pozostałych pracowników, brak konieczności dobierania obsady.
+   - Konwersja zbędnej w kawiarni domowej zmiany środkowej `MIB`/`MID`/`SUP` lub zdublowanego otwarcia/zamknięcia bezpośrednio w zmianę wyjazdową `SAM` (otwarcie 07:00–15:30), `SPM` (zamknięcie 14:30–23:00) lub elastyczne `SUP` (8.0h).
+   - **Wpływ na kawiarnię macierzystą**: Zero zmian dla pozostałych pracowników, brak konieczności dobierania obsady.
 2. **Scenariusz 2 (Wewnętrzna Sztafeta / Zamiana Obsadowa)**:
-   - Pracownik A (który miał np. `AM` w Janki) jedzie na wsparcie (`SAM`/`SUP`), a jego zmianę w Janki przejmuje Pracownik B (który miał zaplanowany `OFF`).
+   - Pracownik A (który miał np. `AM` w kawiarni domowej) jedzie na wsparcie (`SAM`/`SUP`), a jego zmianę przejmuje Pracownik B (który miał zaplanowany `OFF`).
    - Obaj pracownicy mają w 100% zweryfikowaną zgodność z Kodeksem Pracy (11h odpoczynku dobowego dzień wcześniej i dzień później oraz 35h odpoczynku tygodniowego).
 3. **Scenariusz 3 (Rotacja z Dniem Rekompensaty)**:
    - Pracownik zgadza się pojechać na wsparcie w swoim dniu wolnym `OFF`, a system automatycznie wyszukuje inny dzień powszedni w miesiącu na oddanie wolnego `OFF`, zachowując idealny bilans etatu i 0 nadgodzin.
 
 ### 2. Twarde Ograniczenia i Bezpieczeństwo Operacyjne:
-- **Twarda Ochrona Floor Hours w Janki**: Narzędzie **bezwzględnie zabrania** oddania zmiany, jeśli pozostawiłoby to lokal 108120 Janki bez kluczowej obsady otwarcia (1x `AM`) lub zamknięcia (1x `PM`).
+- **Twarda Ochrona Floor Hours**: Narzędzie **bezwzględnie zabrania** oddania zmiany, jeśli pozostawiłoby to kawiarnię macierzystą bez kluczowej obsady otwarcia (1x `AM`) lub zamknięcia (1x `PM`).
 - **Pre-flight Tarcza Kodeksu Pracy**: Rygorystyczna kontrola normy 11h odpoczynku dobowego (art. 132 KP) oraz 35h odpoczynku tygodniowego (art. 133 KP) przed i po zmianie wsparcia.
-- **Wliczanie do Etatu**: Godziny wypracowane na wsparciu wliczają się w 100% do etatu menedżera oraz rozliczenia TOR, lecz nie wliczają się do obsady sali Janki.
+- **Wliczanie do Etatu**: Godziny wypracowane na wsparciu wliczają się w 100% do etatu menedżera oraz rozliczenia TOR, lecz nie wliczają się do obsady sali kawiarni macierzystej.
 
 ### 3. Komunikacja i Szybkie Zastosowanie (1-Click Hub):
 - **1-klik Kopiowanie SMS / WhatsApp**: Gotowe, profesjonalnie zredagowane wiadomości do Store Managera proszącej kawiarni oraz do pracownika delegowanego na wsparcie.
 - **1-klik Zastosowanie w Bazie SQLite**: Zmiany są transakcyjnie zapisywane w bazie danych, tworząc automatyczny punkt przywracania w historii wersji grafiku.
+
+---
+
+## 📝 19. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej modyfikacji kodu źródłowego, algorytmów Kodeksu Pracy, AutoSchedulera AI, interfejsu grafiku lub schematu SQLite w Module 2:
+1. Natychmiast zaktualizuj niniejszy plik `AGENTS.md` (struktura plików, algorytmy, parametry solvera).
+2. Zarejestruj zmiany w historii modułu: `src/modules/managers-schedule/CHANGELOG.md`.
+3. Zsynchronizuj powiązane umiejętności w `.agents/skills/` (np. `labor-law-sentinel`, `fichajes-pipeline`).
 

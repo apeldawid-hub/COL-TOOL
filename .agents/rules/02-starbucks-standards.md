@@ -1,8 +1,9 @@
 # Standardy Operacyjne Starbucks (Starbucks Operations Standards)
 
-## ☕ 1. Kawiarnia Bazowa
-- **Jednostka**: `108120 SBX Warszawa Janki` (Kod jednostki: `18120`, kod operacyjny: `384`).
-- **Lokalizacja**: Centrum Handlowe Janki (specyfika 7 niedziel handlowych w roku vs niedziele wolne od handlu).
+## ☕ 1. Uniwersalna Architektura Kawiarni (Multi-Store Fleet)
+- **Zasięg**: Wszystkie kawiarnie sieci Starbucks (lokalizacje typu Mall / CH, High Street, Drive-Thru, Travel).
+- **Identyfikacja**: Każda kawiarnia posiada unikalne ID (MPK, Unit Code, nazwę lokalu i dedykowaną bazę danych `store_${safeId}.db`).
+- **Profile Niedziel**: Obsługa specyfiki lokali w centrach handlowych (7 niedziel handlowych w roku vs niedziele wolne od handlu) oraz lokali miejskich High Street.
 
 ## 🛡️ 2. Złota Reguła Bezpieczeństwa Floor Hours
 - **Minimum Nienaruszalne**: **32.0 h/dzień**.

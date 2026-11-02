@@ -117,10 +117,10 @@ export const InteractiveModelTutorial: React.FC = () => {
     },
     {
       id: 3,
-      title: 'Wariant 3: Wsparcie SUP z innej kawiarni (San Park 756)',
-      desc: 'Pobranie menedżera ze wsparcia zewnętrznego na czwartek rano (06:30–15:00) bez obciążania zespołu Janki.',
+      title: 'Wariant 3: Wsparcie SUP z innej kawiarni w dystrykcie',
+      desc: 'Pobranie menedżera ze wsparcia zewnętrznego na czwartek rano (06:30–15:00) bez obciążania własnego zespołu.',
       gain: '✓ 100% dyspozycyjności własnego zespołu',
-      msg: `Dzień dobry! Zgłaszam zapotrzebowanie na wsparcie menedżerskie SUP do kawiarni 108120 Janki na czwartek 06:30–15:00. Czy dysponujecie wolnym menedżerem? Pozdrawiam, SM Janki.`
+      msg: `Dzień dobry! Zgłaszam zapotrzebowanie na wsparcie menedżerskie SUP na czwartek 06:30–15:00. Czy dysponujecie wolnym menedżerem? Pozdrawiam, Store Manager.`
     }
   ];
 
@@ -227,12 +227,12 @@ export const InteractiveModelTutorial: React.FC = () => {
   };
 
   // =========================================================
-  // MODUŁ 1 (TPLH FORECAST): STANY SYMULACJI (REALNE DANE 108120 JANKI)
+  // MODUŁ 1 (TPLH FORECAST): STANY SYMULACJI (DANE WZORCOWE)
   // =========================================================
   // Scena 1 TPLH: Velocity & HANW
   const [tplhVelocityOption, setTplhVelocityOption] = useState<'high' | 'plan' | 'low'>('high');
   
-  // Realny plan AOP kawiarni 108120 Janki (Wrzesień 2026: 10 830 TRX, Cel TPLH: 6.70)
+  // Przykładowy plan AOP kawiarni wzorcowej (Wrzesień: 10 830 TRX, Cel TPLH: 6.70)
   const aopBaseTrx = 10830;
   const aopTargetTplh = 6.70;
   const aopBaseLabor = Number((aopBaseTrx / aopTargetTplh).toFixed(1)); // 1616.4h
@@ -310,7 +310,7 @@ export const InteractiveModelTutorial: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-stone-500 font-medium">
-                108120 SBX Warszawa Janki • Wizualizacja 1:1 realnego interfejsu aplikacji
+                Kawiarnia Starbucks • Wizualizacja 1:1 realnego interfejsu aplikacji
               </p>
             </div>
           </div>
@@ -1646,7 +1646,7 @@ export const InteractiveModelTutorial: React.FC = () => {
                   ) : (
                     <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-[#006241] flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      <span>Obsada spełnia w 100% nienaruszalną normę Floor Hours kawiarni 108120 Janki.</span>
+                      <span>Obsada spełnia w 100% nienaruszalną normę Floor Hours kawiarni.</span>
                     </div>
                   )}
                 </div>
@@ -1910,7 +1910,7 @@ export const InteractiveModelTutorial: React.FC = () => {
                     Wybrana strategia: <strong>{flexStrategy === 'weekend_boost' ? '⚖️ Balanced (Optimum Weekend Peak)' : flexStrategy === 'cost_saving' ? '🛡️ Floor-Safe (Ochrona TPLH)' : '🚀 Growth (Wzrost Sprzedaży)'}</strong>
                   </span>
                   <span className="text-[11px] font-bold text-[#006241]">
-                    Aktywna w kawiarni 108120 Janki ✓
+                    Aktywna w wybranej kawiarni ✓
                   </span>
                 </div>
               </div>
@@ -1951,7 +1951,7 @@ export const InteractiveModelTutorial: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 rounded-xl border border-emerald-200 text-xs font-bold text-[#006241]">
                   <Store className="w-3.5 h-3.5 text-[#CBA258]" />
-                  <span>Lokal: 108120 Janki</span>
+                  <span>Lokal: Kawiarnia Wzorcowa</span>
                 </div>
               </div>
 
@@ -1968,7 +1968,7 @@ export const InteractiveModelTutorial: React.FC = () => {
                       <h3 className="text-xs font-black tracking-wide uppercase flex items-center gap-2">
                         <span>Centrum Konfiguracji & Parametrów Operacyjnych</span>
                         <span className="text-[10px] px-2 py-0.5 bg-[#CBA258] text-[#1E3932] font-black rounded-full">
-                          108120 Janki
+                          Kawiarnia Starbucks
                         </span>
                       </h3>
                       <p className="text-[10px] text-emerald-100 font-medium">
@@ -2092,7 +2092,7 @@ export const InteractiveModelTutorial: React.FC = () => {
                     <div className="p-2.5 bg-white rounded-xl border border-stone-200 text-[10px] text-stone-500 space-y-0.5">
                       <div className="font-bold text-stone-800 flex items-center gap-1">
                         <Store className="w-3 h-3 text-[#CBA258]" />
-                        108120 Warszawa Janki
+                        Kawiarnia Starbucks
                       </div>
                       <div>Baza: SQLite (WASM Local)</div>
                       <div className="text-[#006241] font-bold">Wszystkie reguły zsynchronizowane ✓</div>
@@ -2236,7 +2236,7 @@ export const InteractiveModelTutorial: React.FC = () => {
                                 { name: 'Administracja Store Managera (SM)', cat: 'Zarządzanie', h: '20.0 h', mand: true },
                                 { name: 'Szkolenia Baristyczne & Onboarding', cat: 'Rozwój Załogi', h: '12.0 h', mand: true },
                                 { name: 'Inwentaryzacja Miesięczna & Audyt', cat: 'Operacje', h: '6.0 h', mand: true },
-                                { name: 'Zebranie Załogi Kawiarni Janki', cat: 'Zespół', h: '4.0 h', mand: true },
+                                { name: 'Zebranie Załogi Kawiarni', cat: 'Zespół', h: '4.0 h', mand: true },
                                 { name: 'Głębokie Czyszczenie (Deep Clean)', cat: 'Czystość / Serwis', h: '8.0 h', mand: true },
                               ].map((nc, idx) => (
                                 <tr key={idx} className="hover:bg-stone-50">

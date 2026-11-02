@@ -22,7 +22,7 @@ export class StoreStorage {
    * Generates a fully qualified namespaced storage key for a feature
    */
   public static getKey(feature: string, customStoreId?: string): string {
-    const rawStoreId = customStoreId || (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || '108120';
+    const rawStoreId = customStoreId || (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || 'default';
     const safeStoreId = this.sanitizeStoreId(rawStoreId);
     const cleanFeature = feature.replace(/^sbx_/, '').replace(/^store_[^_]+_/, '');
     return `sbx_store_${safeStoreId}_${cleanFeature}`;

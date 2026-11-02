@@ -91,7 +91,7 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   const [rejectReasonInput, setRejectReasonInput] = useState<string>('');
 
   // Konfiguracja przydziału w modalu akceptacji
-  const [approvalStoreId, setApprovalStoreId] = useState<string>('108120');
+  const [approvalStoreId, setApprovalStoreId] = useState<string>('');
   const [approvalRole, setApprovalRole] = useState<AppUserRole>('STORE_MANAGER');
   const [approvalPermissions, setApprovalPermissions] = useState<GranularUserPermissions>({ ...ROLE_DEFAULT_PERMISSIONS.STORE_MANAGER });
   const [storeSearchInModal, setStoreSearchInModal] = useState<string>('');
@@ -130,7 +130,7 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
     setIsCloudSyncing(true);
     setCloudSyncMsg('Szyfrowanie i wysyłanie do Firestore...');
     try {
-      const res = await CloudSyncService.pushStoreToCloud(currentStore.id || '108120', 'Fleet Master');
+      const res = await CloudSyncService.pushStoreToCloud(currentStore.id || '', 'Fleet Master');
       setCloudSyncMsg(res.message);
       setTimeout(() => setCloudSyncMsg(null), 5000);
     } catch (e: any) {
@@ -172,8 +172,8 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   // Otwarcie modalu przydziału uprawnień
   const handleOpenApprovalModal = (req: PendingAccessRequest) => {
     setSelectedReqForApproval(req);
-    // Domyślnie proponuj przypisaną kawiarnię lub 108120 Janki
-    setApprovalStoreId(req.storeUnitCode || '108120');
+    // Domyślnie proponuj przypisaną kawiarnię lub pierwszą z floty
+    setApprovalStoreId(req.storeUnitCode || stores[0]?.id || '');
     setApprovalRole(req.requestedRole || 'STORE_MANAGER');
     setApprovalPermissions({ ...ROLE_DEFAULT_PERMISSIONS[req.requestedRole || 'STORE_MANAGER'] });
     setStoreSearchInModal('');
@@ -404,7 +404,7 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
                 </span>
               </div>
               <p className="text-xs text-emerald-200/80 mt-0.5">
-                Centrala Nadzorcza & Prowizjonowanie Stacji (100+ Kawiarni w Polsce)
+                Centrala Nadzorcza & Prowizjonowanie Stacji (Flota Starbucks)
               </p>
             </div>
           </div>
@@ -547,7 +547,7 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
             }`}
           >
             <Building2 className="w-4 h-4" />
-            <span>Katalog Floty (100+)</span>
+            <span>Katalog Floty</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
               {filteredStores.length}
             </span>
@@ -1001,7 +1001,7 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
                   }}
                   className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs font-bold text-stone-800"
                 >
-                  <option value="">-- Wybierz lokal z listy (100+) --</option>
+                  <option value="">-- Wybierz lokal z listy --</option>
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
                       Unit {s.unitCode} • {s.shortName || s.name} ({s.city})

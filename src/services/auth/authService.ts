@@ -1,7 +1,7 @@
 // src/services/auth/authService.ts
 /**
  * Starbucks Operations Suite — Serwis Autoryzacji, Tożsamości i 2FA (Enterprise Hardened)
- * 108120 SBX Warszawa Janki (Unit 18120)
+ * Architektura Multi-Store Fleet
  *
  * Implements Feature F8 (Milestone 3):
  * 1. Hardened corporate email domain validation (@amrest.eu, @starbucks.com)

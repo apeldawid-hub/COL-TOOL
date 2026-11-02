@@ -1,6 +1,6 @@
 # AGENTS.md — Moduł 3: Szkolenia (Starbucks Training Suite)
 
-Dokument stanowi techniczną specyfikację architektoniczną oraz rejestr algorytmów dla **Modułu 3: Szkolenia (Starbucks Training Suite)** w kawiarni `108120 SBX Warszawa Janki`.
+Dokument stanowi techniczną specyfikację architektoniczną oraz rejestr algorytmów dla **Modułu 3: Szkolenia (Starbucks Training Suite)** w platformie **Starbucks Operations Suite**.
 
 ---
 
@@ -8,7 +8,7 @@ Dokument stanowi techniczną specyfikację architektoniczną oraz rejestr algory
 
 1. **Autonomia i Brak Sprzężenia z Grafikiem Managerskim (Moduł 2)**:
    - Moduł 3 zarządza onboardingiem i rozwojem baristów oraz trenerów na dedykowanej tabeli `training_partners`.
-   - Moduł 2 pozostaje dedykowany wyłącznie 7 menedżerom lokalu 108120 Janki. Moduł 3 nie ingeruje w siatkę zmian menedżerskich ani normy Kodeksu Pracy Modułu 2.
+   - Moduł 2 pozostaje dedykowany zespołowi menedżerskiemu danej kawiarni. Moduł 3 nie ingeruje w siatkę zmian menedżerskich ani normy Kodeksu Pracy Modułu 2.
 2. **Koncepcja Zmian T (Training Shifts)**:
    - Zmiany T (`T1`–`T10`, `B90-1`, `B180-1`, `BT-1`) to dedykowane sesje szkoleniowe rozliczane w 100% w budżecie **Non-Coverage (NC Training)**.
    - Godziny Zmian T **nie wliczają się do Floor Hours** (32.0h/dzień ochrony przepustowości operacyjnej) kawiarni, dzięki czemu proces wdrożenia nowego pracownika nie obniża poziomu obsługi gości.
@@ -32,7 +32,33 @@ Dokument stanowi techniczną specyfikację architektoniczną oraz rejestr algory
 
 ---
 
-## 🗄️ 2. Schemat Bazy Danych SQLite
+## 📁 2. Struktura Plików Modułu (`src/modules/trainings/`)
+
+```
+src/modules/trainings/
+├── types/
+│   └── index.ts                     # Interfejsy TypeScript (TrainingPartner, TrainingShift, SkillCheck)
+├── constants/
+│   └── index.ts                     # Stałe domenowe: First 30 Days, kody T1-T10, moduły Skill Check
+├── components/
+│   ├── DigitalSkillCheckModal.tsx   # Cyfrowy arkusz egzaminacyjny z dynamiczną oceną punktową
+│   ├── PartnerEditModal.tsx         # Formularz profilu baristy ze statusem Sanepid i BHP
+│   ├── PartnerJourneyTracker.tsx    # Wizualna oś czasu The Barista Journey (First 30, B90, B180)
+│   ├── TrainingShiftsSchedule.tsx   # Interaktywny harmonogram sesji T z edycją godzin i dat
+│   ├── TrainingStatsCard.tsx        # Kafelki analityczne i KPI szkoleń (godziny T, postęp, certyfikaty)
+│   └── TrainingsView.tsx            # Główny widok modułu z selektorem partnerów i 4 zakładkami
+├── services/
+│   ├── trainingEngine.ts            # Silnik generatora zmian T, bilans godzin i kamienie milowe
+│   └── trainingStandardData.ts      # Standardowe szablony zmian T1–T10, B90, B180, BT i kryteria
+├── index.ts                         # Barrel export modułu
+├── CHANGELOG.md                     # Dedykowana historia zmian i wydań Modułu 3
+├── AGENTS.md                        # Niniejsze instrukcje techniczne agenta
+└── README.md                        # Dokumentacja użytkowa modułu
+```
+
+---
+
+## 🗄️ 3. Schemat Bazy Danych SQLite
 
 1. `training_partners`:
    - `id INTEGER PRIMARY KEY AUTOINCREMENT`
@@ -75,7 +101,7 @@ Dokument stanowi techniczną specyfikację architektoniczną oraz rejestr algory
 
 ---
 
-## 💻 3. Serwisy i Komponenty
+## 💻 4. Serwisy i Komponenty
 
 - `src/modules/trainings/services/trainingStandardData.ts`: Standardowe szablony zmian T1–T10, B90, B180, BT oraz baza kryteriów egzaminacyjnych.
 - `src/modules/trainings/services/trainingEngine.ts`: Silnik generatora zmian T, kalkulator bilansu godzin i dat kamieni milowych.
@@ -85,3 +111,11 @@ Dokument stanowi techniczną specyfikację architektoniczną oraz rejestr algory
 - `src/modules/trainings/components/DigitalSkillCheckModal.tsx`: Cyfrowy arkusz egzaminacyjny z dynamiczną oceną punktową.
 - `src/modules/trainings/components/PartnerEditModal.tsx`: Formularz profilu baristy ze statusem Sanepid i BHP.
 - `src/modules/trainings/components/PartnerJourneyTracker.tsx`: Wizualna oś czasu The Barista Journey.
+
+---
+
+## 📝 5. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej modyfikacji kodu źródłowego, szablonów szkoleń T, arkuszy egzaminacyjnych lub interfejsu w Module 3:
+1. Natychmiast zaktualizuj niniejszy plik `AGENTS.md` (struktura plików, schemat bazy, serwisy).
+2. Zarejestruj zmiany w historii modułu: `src/modules/trainings/CHANGELOG.md`.
+3. Zsynchronizuj powiązane umiejętności w `.agents/skills/`.

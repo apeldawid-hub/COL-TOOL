@@ -1,6 +1,6 @@
 # Moduł 1: TPLH Forecast & Labor Balancing (Starbucks)
 
-Autonomiczny moduł prognozowania robocizny, transakcji oraz bezpiecznego balansowania godzin kawiarni **108120 SBX Warszawa Janki** (Kod jednostki: 384).
+Autonomiczny moduł prognozowania robocizny, transakcji oraz bezpiecznego balansowania godzin dla kawiarni sieci **Starbucks Coffee Company**.
 
 ---
 
@@ -13,7 +13,7 @@ Autonomiczny moduł prognozowania robocizny, transakcji oraz bezpiecznego balans
    - Analiza tempa realizacji sprzedaży w zamkniętych tygodniach miesiąca.
    - Dynamiczna prognoza końcowa sprzedaży i wypracowanego budżetu robocizny (Earned Labor).
 3. **Złota Reguła Bezpieczeństwa Floor Hours**:
-   - Blokada spadku grafiku poniżej poziomu bezpieczeństwa: **32.0 h/dzień** (Pn–Sob 40h, Nd 32h -> **272.0 h/tydzień**).
+   - Blokada spadku grafiku poniżej poziomu bezpieczeństwa: **32.0 h/dzień** (1 MGR + 1 Barista rano i wieczorem -> **224.0 h/pełny tydzień 7-dniowy**).
    - Inteligentne alerty operacyjne dla Store Managera (SM) i District Managera (DM).
 4. **Ewidencja Logowań MAPAL Fichajes**:
    - Bezpośredni import plików raportów `.xls` i `.xlsx` z systemu MAPAL.
@@ -43,3 +43,4 @@ npm run build
 ```
 
 Szczegółowe wytyczne techniczne dla agentów AI znajdują się w pliku [AGENTS.md](./AGENTS.md).
+Historia zmian i aktualizacji modułu: [CHANGELOG.md](./CHANGELOG.md).

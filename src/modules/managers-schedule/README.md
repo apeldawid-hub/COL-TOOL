@@ -1,6 +1,6 @@
 # Moduł 2: Managers Schedule — Grafik Managerski (Starbucks)
 
-Autonomiczny moduł planowania i bilansowania miesięcznego grafiku pracy zespołu kierowniczego kawiarni **108120 SBX Warszawa Janki**.
+Autonomiczny moduł planowania i bilansowania miesięcznego grafiku pracy zespołu kierowniczego dla dowolnej kawiarni **Starbucks Coffee Company**.
 
 ---
 
@@ -115,3 +115,4 @@ npm run build
 ```
 
 Szczegółowe wytyczne techniczne dla agentów AI znajdują się w pliku [AGENTS.md](./AGENTS.md).
+Historia zmian i aktualizacji modułu: [CHANGELOG.md](./CHANGELOG.md).

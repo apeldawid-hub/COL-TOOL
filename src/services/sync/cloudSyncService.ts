@@ -35,6 +35,69 @@ export class CloudSyncService {
   private static isOperating = false;
 
   /**
+   * Automatycznie alokuje i rejestruje izolowany obszar kawiarni w chmurze Firestore.
+   * Tworzy strukturę `stores/{storeId}/meta/profile` z metadanymi i stanem kawiarni.
+   */
+  public static async provisionStoreCloudArea(store: {
+    id: string;
+    name: string;
+    shortName: string;
+    unitCode: string;
+    mpk: string;
+    city: string;
+    district: string;
+    address: string;
+    type: string;
+  }): Promise<SyncOperationResult> {
+    try {
+      const url = `${FIRESTORE_BASE_URL}/stores/${store.id}/meta/profile`;
+      const body = {
+        fields: {
+          storeId: { stringValue: store.id },
+          name: { stringValue: store.name },
+          shortName: { stringValue: store.shortName },
+          unitCode: { stringValue: store.unitCode },
+          mpk: { stringValue: store.mpk },
+          city: { stringValue: store.city },
+          district: { stringValue: store.district },
+          address: { stringValue: store.address },
+          type: { stringValue: store.type },
+          provisionedAt: { stringValue: new Date().toISOString() },
+          status: { stringValue: 'ACTIVE' },
+        },
+      };
+
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        return {
+          success: true,
+          message: `Pomyślnie wydzielono i zarejestrowano obszar kawiarni [${store.id} - ${store.shortName}] w chmurze Google Cloud.`,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      return {
+        success: false,
+        message: `Nie udało się zarejestrować kawiarni w chmurze (HTTP ${res.status}).`,
+        timestamp: new Date().toISOString(),
+        error: `HTTP ${res.status}: ${res.statusText}`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Błąd sieciowy podczas alokacji kawiarni w chmurze: ${err.message}`,
+        timestamp: new Date().toISOString(),
+        error: err.message,
+      };
+    }
+  }
+
+  /**
    * Sprawdza status połączenia z chmurą Google Cloud Firestore (czysty web fetch bez modułów Node)
    */
   public static async checkCloudConnection(): Promise<CloudHealthStatus> {

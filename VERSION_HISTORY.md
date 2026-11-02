@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.7](#v2.9.7--2026-11-02)** | 2026-11-02 | Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI | `patch` | 🚀 Opublikowana |
 | **[v2.9.6](#v2.9.6--2026-11-02)** | 2026-11-02 | Poprawka Krytyczna: Eliminacja Wycieku Modułów Node (node:crypto, node:fs, node:path) z Bundle Frontendu & Przywrócenie Renderowania Reacta (Biały Ekran) | `patch` | 🚀 Opublikowana |
 | **[v2.9.5](#v2.9.5--2026-11-02)** | 2026-11-02 | Prawdziwy Zero-Click OTA Auto-Updater: Ciche Pobieranie w Tle, Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit) & Toast Powiadomienia | `patch` | 🚀 Opublikowana |
 | **[v2.9.4](#v2.9.4--2026-11-02)** | 2026-11-02 | Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności | `patch` | 🚀 Opublikowana |
@@ -47,6 +48,18 @@
 
 ## Szczegółowa Historia Wydań
 
+### [v2.9.7] — 2026-11-02
+#### Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI
+- **Główne atuty**:
+  - **Redukcja Domyślnego Katalogu Floty**: Skupienie wbudowanej floty na 2 aktywnych lokalach (`108120` Janki i `108170` Kalisz Amber) z dynamiczną alokacją w Firestore Multi-Tenant Silo (`stores/{storeId}/...`).
+  - **Dynamiczne Etykiety & Liczniki Floty**: Usunięcie sztywnych etykiet `(100+)` z nagłówka (`Header`), menu bocznego (`Sidebar`) i konsoli (`FleetMasterDashboard`) — liczniki dynamicznie odzwierciedlają bieżący stan bazy.
+  - **Bezpieczeństwo Danych & Zero PII**: Pełne zachowanie nienaruszalności danych kawiarni w SQLite i brak wycieku danych operacyjnych do Git.
+- **Zmodyfikowane pliki**:
+  - `src/constants/starbucksStores.ts`
+  - `src/components/admin/FleetMasterDashboard.tsx`
+  - `src/components/Header.tsx`
+  - `src/components/Sidebar.tsx`
+
 ### [v2.9.6] — 2026-11-02
 **Tytuł:** Poprawka Krytyczna: Eliminacja Wycieku Modułów Node (node:crypto, node:fs, node:path) z Bundle Frontendu & Przywrócenie Renderowania Reacta (Biały Ekran)  
 **Autorzy:** Dawid Apel & Antigravity Agent Squad  
@@ -63,6 +76,16 @@ Po dodaniu serwisu `cloudSyncService.ts` aplikacja po uruchomieniu wyświetlała
 2. **Weryfikacja Czystości Bundla:**
    - Sprawdzono pakiet wynikowy komendą `grep`: `100% CLEAN OF NODE BUILTINS`.
    - Wszystkie 193 testy bezpieczeństwa i spójności przeszły pomyślnie.
+3. **Infrastruktura Utrzymania Dokumentacji & Etykiety Zadaniowe:**
+   - Utworzono automatyczny skrypt walidacji `scripts/verify-docs.js` (`npm run verify:docs`) chroniący przed dryfem dokumentacji.
+   - Wdrożono dedykowane pliki historii `CHANGELOG.md` w każdym z 4 modułów (`src/modules/*/CHANGELOG.md`).
+   - Opracowano mapę przepływu danych i rejestr prefiksów zadaniowych w `docs/DATA_FLOW.md`.
+   - Wydzielono modułowe typy TypeScript w `src/modules/{labor-forecast,managers-schedule}/types/`.
+4. **Systemowa Organizacja Stałych Domenowych & Kompletne Public API Modułów:**
+   - Utworzono dedykowane moduły stałych `constants/index.ts` we wszystkich 4 modułach (`labor-forecast`, `managers-schedule`, `trainings`, `col-calculator`).
+   - Wdrożono architekturę jednolitych bram Public API (`src/modules/index.ts` oraz `index.ts` w każdym module) eksportujących `types`, `constants`, `components` i `services`.
+   - Uszczelniono `.gitignore` o katalogi buforów i cache (`coverage/`, `.vite/`, `.cache/`, `.turbo/`, `*.tsbuildinfo`).
+   - Zaktualizowano generator modułów `scripts/create-module.js` oraz walidator `scripts/verify-docs.js` o automatyczną kontrolę stałych i Public API.
 
 ---
 

@@ -1,6 +1,6 @@
 # Starbucks Training Suite — Przewodnik Użytkownika (Moduł 3)
 
-Moduł **Szkolenia (Starbucks Training Suite)** w aplikacji **Starbucks Operations Suite** służy do profesjonalnego zarządzania procesem wdrażania, rozwoju i certyfikacji baristów w kawiarni `108120 SBX Warszawa Janki`.
+Moduł **Szkolenia (Starbucks Training Suite)** w aplikacji **Starbucks Operations Suite** służy do profesjonalnego zarządzania procesem wdrażania, rozwoju i certyfikacji baristów w kawiarniach sieci Starbucks.
 
 ---
 
@@ -33,3 +33,7 @@ Moduł **Szkolenia (Starbucks Training Suite)** w aplikacji **Starbucks Operatio
    - Śledzenie stażu pracownika i terminów kamieni milowych (First 30, Barista 90, Barista 180, Barista Trener, Coffee Master).
 5. **Nadzór nad Sanepidem i BHP**:
    - Wizualne alerty o zbliżającym się terminie wygaśnięcia badań lekarskich Sanepid.
+
+---
+
+👉 Pełna historia wydań modułu: **[CHANGELOG.md](./CHANGELOG.md)** | Specyfikacja techniczna: **[AGENTS.md](./AGENTS.md)**

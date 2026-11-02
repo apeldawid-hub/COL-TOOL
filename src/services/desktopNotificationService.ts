@@ -30,7 +30,7 @@ class DesktopNotificationService {
   private currentStoreId: string = '';
 
   constructor() {
-    this.currentStoreId = (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || '108120';
+    this.currentStoreId = (typeof window !== 'undefined' ? StoreService.getCurrentStore()?.id : '') || 'default';
     this.loadFromStorage();
     this.initializeDefaultNotificationsIfEmpty();
 

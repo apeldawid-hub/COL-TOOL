@@ -15,7 +15,7 @@ Skill odpowiada za analizę rentowności, kontrolę budżetu robocizny (Cost of 
 ## 🏛️ 1. Model Trzech Filarów Finansowych
 
 1. **🏛️ AOP (Roczny Plan Finansowy Centrali)**:
-   - Oficjalny budżet jednostki `18120 Janki`: `Sales AOP`, `TRX AOP`, `TPLH AOP`, `Budżet Robocizny PLN` oraz `COL % AOP`.
+   - Oficjalny budżet aktywnej kawiarni (architektura Multi-Store Fleet): `Sales AOP`, `TRX AOP`, `TPLH AOP`, `Budżet Robocizny PLN` oraz `COL % AOP`.
 2. **🎯 TARGET (Operacyjny Plan Miesiąca SM)**:
    - Cel sprzedaży i transakcji ustalony przez Store Managera.
    - Zaplanowane godziny menedżerów z grafiku (Moduł 2) oraz godziny załogi (UoP / UZ).
@@ -54,3 +54,11 @@ Przed podjęciem decyzji o dodaniu godzin lub cięciach w grafiku silnik umożli
 - O ile wzrośnie `COL %`, jeśli dodamy 20 godzin baristycznych w weekend?
 - Jaka musi być sprzedaż w piątek, aby utrzymać planowany cel `TPLH` przy pełnej obsadzie?
 - Jaki wpływ na wynik finansowy ma zastąpienie zmiany menedżerskiej zmianą baristy?
+
+---
+
+## 📝 4. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej modyfikacji formuł P&L, narzutów ZUS, stawek minimalnych lub logiki kalkulatora w Module 4:
+1. Natychmiast zaktualizuj niniejszy plik `SKILL.md` oraz `src/modules/col-calculator/AGENTS.md`.
+2. Zarejestruj wpis finansowy w `src/modules/col-calculator/CHANGELOG.md`.
+3. Zaktualizuj `VERSION_HISTORY.md` przy publikacji patcha.

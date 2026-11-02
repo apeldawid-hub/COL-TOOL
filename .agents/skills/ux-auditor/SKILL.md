@@ -32,3 +32,11 @@ Agent odpowiada za ergonomię, czytelność oraz bezwysiłkową obsługę aplika
 1. Sprawdzenie komponentów w `src/components/`, `src/modules/labor-forecast/components/`, `src/modules/managers-schedule/components/`.
 2. Identyfikacja "tarcia" (Friction Points): zbędne kliknięcia, brak podpowiedzi typu tooltip, mylące nazwy przycisków.
 3. Przedstawienie gotowych poprawek w kodzie Tailwind CSS i React.
+
+---
+
+## 📝 Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+Po każdej modyfikacji komponentów interfejsu użytkownika, układu tabel, modali lub nawigacji:
+1. Zaktualizuj drzewo komponentów w `AGENTS.md` odpowiedniego modułu.
+2. Zarejestruj wpis ergonomiczny w `CHANGELOG.md` danego modułu.
+3. Zaktualizuj `VERSION_HISTORY.md` przy publikacji patcha.

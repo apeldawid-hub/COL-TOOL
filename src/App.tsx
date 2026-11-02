@@ -264,6 +264,15 @@ export const App: React.FC = () => {
       console.warn('Firebase telemetry heartbeat silent catch:', err);
     });
 
+    // Inicjalizacja codziennego audytora hermetyczności chmury (Cloud Integrity Sentinel)
+    import('./services/sync/cloudIntegrityScheduler')
+      .then(({ CloudIntegrityScheduler }) => {
+        CloudIntegrityScheduler.initDailySchedule();
+      })
+      .catch((auditErr) => {
+        console.warn('Błąd startu CloudIntegrityScheduler:', auditErr);
+      });
+
     // Nasłuchiwanie automatycznych aktualizacji w tle (Zero-Click OTA)
     if (typeof window !== 'undefined' && (window as any).api?.onUpdaterEvent) {
       const unsubscribe = (window as any).api.onUpdaterEvent((payload: any) => {

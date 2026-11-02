@@ -14,3 +14,4 @@ Wszelkie prace programistyczne, poprawki błędów, nowe widoki, algorytmy oraz 
    - Główne atuty (🌟 Co Wprowadziliśmy)
    - Zmodyfikowane kluczowe pliki
 4. **Współpraca ze Skillem:** Agent może aktywować skill `version-tracker` (`.agents/skills/version-tracker/SKILL.md`) lub skorzystać z CLI `npm run changelog`.
+5. **Synchronizacja Historii Modułów i AGENTS.md:** Każda zmiana w Module 1, 2, 3 lub 4 wymaga jednoczesnej aktualizacji dedykowanej historii `src/modules/{modul}/CHANGELOG.md` oraz specyfikacji technicznej w `src/modules/{modul}/AGENTS.md`.

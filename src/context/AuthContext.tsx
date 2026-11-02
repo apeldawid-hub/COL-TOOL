@@ -231,6 +231,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const res = await AuthService.verify2FaOtp(email, otpCode);
     if (res.success && res.session) {
       setCurrentSession(res.session);
+
+      // Nawadnianie ustawień użytkownika z chmury po poprawnym uwierzytelnieniu
+      try {
+        const { UserSettingsService } = await import('../services/userSettingsService');
+        UserSettingsService.hydratePreferencesFromCloud(email).catch(() => {});
+      } catch {}
     }
     return res;
   }, []);

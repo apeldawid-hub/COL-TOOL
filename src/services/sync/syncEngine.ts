@@ -1,11 +1,11 @@
 // src/services/sync/syncEngine.ts
 /**
  * Starbucks Operations Suite — Local-First Hybrid Sync Engine (Zero-Leak)
- * 108120 SBX Warszawa Janki (Unit 18120)
+ * Architektura Multi-Store Fleet
  *
  * Zasady architektury:
  * 1. Local-First: Zapis do lokalnej bazy danych SQLite / pamięci podręcznej ma priorytet (0 ms latencji).
- * 2. Pełne działanie offline w kawiarni w CH Janki przy braku połączenia internetowego.
+ * 2. Pełne działanie offline w dowolnej kawiarni przy braku połączenia internetowego.
  * 3. Zero-Leak: Pracownicy z rolą inną niż Store Manager (SM) lub District Manager (DM)
  *    nigdy nie wysyłają żądań do skarbców stawek i P&L (executive_financial_vault).
  * 4. Asynchroniczna kolejka Outbox: Zmiany grafiku są buforowane i synchronizowane w tle.

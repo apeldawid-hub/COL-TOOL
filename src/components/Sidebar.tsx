@@ -58,7 +58,7 @@ interface NavItem {
 
 const FLEET_MASTER_NAV_ITEM: NavItem = {
   id: 'fleet_master',
-  label: 'Centrala Floty (100+)',
+  label: 'Centrala Floty',
   icon: ShieldCheck,
   badge: 'HQ',
   badgeType: 'active',

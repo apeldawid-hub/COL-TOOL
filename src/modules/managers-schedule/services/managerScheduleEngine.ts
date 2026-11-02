@@ -861,13 +861,13 @@ export class ManagerScheduleEngine {
       };
     });
 
-    // Wyliczanie podsumowania dziennego (pokrycie otwarć AM / zamknięć PM w kawiarni 108120 Janki)
+    // Wyliczanie podsumowania dziennego (pokrycie otwarć AM / zamknięć PM w kawiarni)
     const daySummaries: DayCoverageSummary[] = [];
 
-    // Zmiany wsparcia na INNYCH kawiarniach (SUP, SAM, SPM) — liczą się do czasu pracy menedżera, ale NIE do obsady Janki
+    // Zmiany wsparcia na INNYCH kawiarniach (SUP, SAM, SPM) — liczą się do czasu pracy menedżera, ale NIE do obsady lokalnej
     const externalSupportCodes = new Set(['SUP', 'SAM', 'SPM']);
-    const openingShiftCodes = new Set(['AM', 'AMN', 'AMB']); // otwarcia Janki (SAM to wsparcie innej kawiarni)
-    const closingShiftCodes = new Set(['PM', 'PMN', 'PMB']); // zamknięcia Janki (SPM to wsparcie innej kawiarni)
+    const openingShiftCodes = new Set(['AM', 'AMN', 'AMB']); // otwarcia kawiarni (SAM to wsparcie innej kawiarni)
+    const closingShiftCodes = new Set(['PM', 'PMN', 'PMB']); // zamknięcia kawiarni (SPM to wsparcie innej kawiarni)
     const nonWorkingCodes = new Set(['OFF', 'L4', 'M', 'Z', 'FULL']);
 
     // Inicjalizacja niedziel handlowych dla całego miesiąca (holidays zadeklarowane wyżej)
@@ -906,7 +906,7 @@ export class ManagerScheduleEngine {
         if (!shift) continue;
         const code = shift.shift_code;
 
-        // Menedżer liczy się do obsady kawiarni Janki tylko gdy pracuje na miejscu (nie jest to nieobecność H/L4 ani wsparcie na zewnątrz SUP/SAM/SPM)
+        // Menedżer liczy się do obsady kawiarni tylko gdy pracuje na miejscu (nie jest to nieobecność H/L4 ani wsparcie na zewnątrz SUP/SAM/SPM)
         if (!nonWorkingCodes.has(code) && code !== 'H' && !externalSupportCodes.has(code)) {
           totalManagersWorking++;
         }

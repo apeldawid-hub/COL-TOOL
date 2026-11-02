@@ -157,7 +157,7 @@ export class MapalParser {
         if (!row || row.length < 9) continue;
 
         // Kolumny według formatu eksportu MAPAL Fichajes:
-        // index 14: Unit ('108120 SBX Warszawa Janki')
+        // index 14: Unit (np. '108120 SBX Warszawa Janki')
         // index 13: Business Unit Code ('384')
         // index 8:  Computable Time (godziny pracy)
         // index 5:  Business Day (data)
