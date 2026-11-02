@@ -50,6 +50,7 @@ import { SystemClock } from './services/systemClock';
 import { useSystemClock } from './hooks/useSystemClock';
 import { cloudNotificationService } from './services/cloudNotificationService';
 import { firebaseTelemetryService } from './services/firebaseTelemetryService';
+import { Zap } from 'lucide-react';
 import './services/zoomService';
 
 // Domyślna lista miesięcy po polsku
@@ -193,6 +194,7 @@ export const App: React.FC = () => {
   const [isCloudDocsModalOpen, setIsCloudDocsModalOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState<boolean>(false);
+  const [downloadedUpdateInfo, setDownloadedUpdateInfo] = useState<{ version: string; isPatch?: boolean } | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTabId | undefined>(undefined);
   const [isBugReporterOpen, setIsBugReporterOpen] = useState<boolean>(false);
@@ -262,13 +264,20 @@ export const App: React.FC = () => {
       console.warn('Firebase telemetry heartbeat silent catch:', err);
     });
 
-    // Nasłuchiwanie automatycznych aktualizacji w tle
+    // Nasłuchiwanie automatycznych aktualizacji w tle (Zero-Click OTA)
     if (typeof window !== 'undefined' && (window as any).api?.onUpdaterEvent) {
       const unsubscribe = (window as any).api.onUpdaterEvent((payload: any) => {
-        if (payload.status === 'available' || payload.status === 'downloaded') {
+        if (payload.status === 'downloaded' || payload.event === 'update-downloaded-ready' || payload.event === 'update-downloaded') {
+          setHasUpdateAvailable(true);
+          setDownloadedUpdateInfo({
+            version: payload.info?.version || '2.9.4',
+            isPatch: payload.info?.isPatch ?? true,
+          });
+        } else if (payload.status === 'available') {
           setHasUpdateAvailable(true);
         } else if (payload.status === 'not-available') {
           setHasUpdateAvailable(false);
+          setDownloadedUpdateInfo(null);
         }
       });
       return () => {
@@ -900,7 +909,44 @@ export const App: React.FC = () => {
         >
           {renderMainContent()}
         </StoreClientView>
-        {renderModals()}
+        {/* Toast Cichej Aktualizacji OTA w Tle */}
+      {downloadedUpdateInfo && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-[#1E3932] text-white px-4 py-3 rounded-2xl shadow-2xl border border-emerald-400/40 animate-in slide-in-from-bottom-4 duration-300 select-none">
+          <div className="w-9 h-9 rounded-xl bg-[#006241] flex items-center justify-center text-[#CBA258] shrink-0 border border-emerald-400/30">
+            <Zap className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="text-left pr-2">
+            <div className="text-xs font-black text-white flex items-center gap-1.5">
+              <span>Aktualizacja v{downloadedUpdateInfo.version} gotowa!</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-400/20 text-emerald-300 font-bold border border-emerald-400/30">
+                Auto-OTA
+              </span>
+            </div>
+            <div className="text-[11px] text-emerald-200/80 mt-0.5">
+              Zostanie wdrożona przy zamknięciu programu lub:
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && (window as any).api?.quitAndInstallUpdate) {
+                (window as any).api.quitAndInstallUpdate();
+              }
+            }}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#006241] hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-black shadow-md border border-emerald-300/30 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+          >
+            Zrestartuj teraz (2s)
+          </button>
+          <button
+            onClick={() => setDownloadedUpdateInfo(null)}
+            className="text-stone-400 hover:text-white text-sm p-1 cursor-pointer transition-colors"
+            title="Zamknij powiadomienie (zaktualizuje się przy wyjściu)"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {renderModals()}
       </div>
     );
   }
@@ -952,6 +998,43 @@ export const App: React.FC = () => {
           {renderMainContent()}
         </main>
       </div>
+
+      {/* Toast Cichej Aktualizacji OTA w Tle */}
+      {downloadedUpdateInfo && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-[#1E3932] text-white px-4 py-3 rounded-2xl shadow-2xl border border-emerald-400/40 animate-in slide-in-from-bottom-4 duration-300 select-none">
+          <div className="w-9 h-9 rounded-xl bg-[#006241] flex items-center justify-center text-[#CBA258] shrink-0 border border-emerald-400/30">
+            <Zap className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="text-left pr-2">
+            <div className="text-xs font-black text-white flex items-center gap-1.5">
+              <span>Aktualizacja v{downloadedUpdateInfo.version} gotowa!</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-400/20 text-emerald-300 font-bold border border-emerald-400/30">
+                Auto-OTA
+              </span>
+            </div>
+            <div className="text-[11px] text-emerald-200/80 mt-0.5">
+              Zostanie wdrożona przy zamknięciu programu lub:
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && (window as any).api?.quitAndInstallUpdate) {
+                (window as any).api.quitAndInstallUpdate();
+              }
+            }}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#006241] hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-black shadow-md border border-emerald-300/30 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+          >
+            Zrestartuj teraz (2s)
+          </button>
+          <button
+            onClick={() => setDownloadedUpdateInfo(null)}
+            className="text-stone-400 hover:text-white text-sm p-1 cursor-pointer transition-colors"
+            title="Zamknij powiadomienie (zaktualizuje się przy wyjściu)"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {renderModals()}
     </div>

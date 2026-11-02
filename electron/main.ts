@@ -51,6 +51,19 @@ const __dirname = path.dirname(__filename);
 let mainWindow: BrowserWindow | null = null;
 
 async function createWindow() {
+  // Sprawdzenie czy z poprzedniej sesji czeka pobrany mikropatch OTA do natychmiastowego wdrożenia
+  if (app.isPackaged) {
+    try {
+      const patchApplied = AppUpdater.getInstance().checkAndApplyPendingPatchOnStartup();
+      if (patchApplied) {
+        console.log('⚡ [Startup] Wdrożono oczekujący mikropatch OTA, aplikacja restartuje się do nowej wersji.');
+        return;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Startup] Błąd sprawdzania patcha startowego:', err);
+    }
+  }
+
   const dbManager = DatabaseManager.getInstance();
   await dbManager.init();
 
@@ -2131,6 +2144,13 @@ app.on('will-quit', () => {
     console.log('🔒 [Shutdown] Połączenia bazy SQLite zostały bezpiecznie zamknięte (will-quit).');
   } catch (err) {
     console.error('❌ [Shutdown] Błąd zamykania połączeń (will-quit):', err);
+  }
+
+  // Automatyczne nałożenie oczekującego mikropatcha OTA w tle przy wyjściu z programu
+  try {
+    AppUpdater.getInstance().checkAndApplyPendingPatchOnQuit();
+  } catch (err) {
+    console.error('❌ [Shutdown] Błąd nakładania mikropatcha przy wyjściu:', err);
   }
 });
 

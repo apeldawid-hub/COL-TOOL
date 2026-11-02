@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.5](#v2.9.5--2026-11-02)** | 2026-11-02 | Prawdziwy Zero-Click OTA Auto-Updater: Ciche Pobieranie w Tle, Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit) & Toast Powiadomienia | `patch` | 🚀 Opublikowana |
 | **[v2.9.4](#v2.9.4--2026-11-02)** | 2026-11-02 | Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności | `patch` | 🚀 Opublikowana |
 | **[v2.9.3](#v2.9.3--2026-11-02)** | 2026-11-02 | Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina | `patch` | 🚀 Opublikowana |
 | **[v2.9.2](#v2.9.2--2026-11-02)** | 2026-11-02 | Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master | `feature` | 🚀 Opublikowana |
@@ -44,6 +45,28 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.5] — 2026-11-02
+**Tytuł:** Prawdziwy Zero-Click OTA Auto-Updater: Ciche Pobieranie w Tle, Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit) & Toast Powiadomienia  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+**Status:** 🚀 Wdrożona na GitHub Releases  
+
+#### 1. Kontekst & Problem
+W dotychczasowej architekturze mechanizm aktualizacji informował jedynie interfejs o dostępności nowego wydania (`update-available`), zmuszając użytkownika do manualnego otwierania okna modalnego, klikania „Pobierz” i „Zainstaluj”. Aplikacja nie potrafiła bezdotykowo zaktualizować się sama przy restarcie lub wyjściu ze stanowiska pracy.
+
+#### 2. Wdrożone Zmiany Techniczne
+1. **Ciche Pobieranie Patchy w Tle (Background Pre-fetch):**
+   - Po wykryciu nowszego wydania mikropatcha OTA (`sos-patch-*.zip`, ~12 MB) silnik `silentCheckForUpdates()` w `electron/updater.ts` automatycznie i cicho pobiera plik do odizolowanego folderu `userData/pending_update/`.
+   - Zapisuje manifest gotowości `pending_patch.json` z numerem wersji i sumą kontrolną.
+2. **Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit):**
+   - W hooku cyklu życia Electrona `app.on('will-quit')` w `electron/main.ts` zintegrowano metodę `checkAndApplyPendingPatchOnQuit()`.
+   - Gdy Store Manager kończy pracę i zamyka aplikację (Cmd+Q lub zamknięcie okna), odczepiony proces w tle podmienia plik `app.asar` i zdejmuje kwarantannę Gatekeepera. Przy kolejnym uruchomieniu aplikacja startuje już w najnowszej wersji bez żadnej manualnej instalacji!
+3. **Weryfikacja i Auto-Naprawa przy Starcie (Startup Fallback):**
+   - W `createWindow()` metoda `checkAndApplyPendingPatchOnStartup()` weryfikuje, czy z poprzedniej sesji nie pozostał pobrany patch. Jeśli tak, aplikacja wdraża go i restartuje się w ułamku sekundy.
+4. **Dyskretny Toast w UI:**
+   - W rogu ekranu (`src/App.tsx`) pojawia się elegancki, nienaruszający pracy wskaźnik: `Aktualizacja vX.Y.Z gotowa! Zostanie wdrożona przy zamknięciu programu lub: [Zrestartuj teraz (2s)]`.
+
+---
 
 ### [v2.9.4] — 2026-11-02
 **Tytuł:** Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności  
