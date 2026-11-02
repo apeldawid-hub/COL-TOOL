@@ -44,10 +44,14 @@ import {
   Square,
   ThumbsUp,
   ThumbsDown,
+  Cloud,
+  UploadCloud,
+  DownloadCloud,
 } from 'lucide-react';
 import { STARBUCKS_STORES_CATALOG, StarbucksStore, normalizeDiacritics } from '../../constants/starbucksStores';
 import { fleetService } from '../../services/admin/fleetService';
 import { enrollmentService } from '../../services/admin/enrollmentService';
+import { CloudSyncService } from '../../services/sync/cloudSyncService';
 import { PendingAccessRequest, AppUserRole, GranularUserPermissions } from '../../types/admin';
 import { ROLE_DEFAULT_PERMISSIONS } from '../../services/admin/adminService';
 import { useStore } from '../../context/StoreContext';
@@ -117,6 +121,25 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   const [ksCustomDetails, setKsCustomDetails] = useState<string>('');
   const [ksChallengeInput, setKsChallengeInput] = useState<string>('');
   const [ksError, setKsError] = useState<string | null>(null);
+
+  // Synchronizacja z chmurą Google Cloud Firestore
+  const [cloudSyncMsg, setCloudSyncMsg] = useState<string | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+
+  const handleCloudPush = async () => {
+    setIsCloudSyncing(true);
+    setCloudSyncMsg('Szyfrowanie i wysyłanie do Firestore...');
+    try {
+      const res = await CloudSyncService.pushStoreToCloud(currentStore.id || '108120', 'Fleet Master');
+      setCloudSyncMsg(res.message);
+      setTimeout(() => setCloudSyncMsg(null), 5000);
+    } catch (e: any) {
+      setCloudSyncMsg(`Błąd: ${e.message}`);
+      setTimeout(() => setCloudSyncMsg(null), 5000);
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
 
   // Subskrypcja na aktualizacje floty oraz wniosków urządzeń
   const loadRequests = useCallback(async () => {
@@ -388,6 +411,21 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
 
           {/* Szybkie akcje i eksport */}
           <div className="flex items-center space-x-2">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/25 text-white text-xs font-mono border border-white/10" title="Projekt Google Cloud: starbucks-ops-suite">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[11px] font-bold">Cloud: starbucks-ops-suite</span>
+            </div>
+
+            <button
+              onClick={handleCloudPush}
+              disabled={isCloudSyncing}
+              title="Wypchnij aktualną bazę kawiarni do Firestore (starbucks-ops-suite)"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-bold transition-colors cursor-pointer border border-emerald-400/30 disabled:opacity-50"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>{isCloudSyncing ? 'Wysyłanie...' : 'Sync do Chmury'}</span>
+            </button>
+
             <button
               onClick={handleDownloadCatalogCsv}
               title="Eksportuj spis inwentarza kawiarni do formatu CSV"
@@ -406,6 +444,13 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
             </button>
           </div>
         </div>
+
+        {cloudSyncMsg && (
+          <div className="mt-2 p-2 rounded-xl bg-emerald-950/80 border border-emerald-400/40 text-xs text-emerald-200 animate-in fade-in flex items-center justify-between">
+            <span>{cloudSyncMsg}</span>
+            <button onClick={() => setCloudSyncMsg(null)} className="text-emerald-400 hover:text-white ml-2 text-xs font-bold cursor-pointer">✕</button>
+          </div>
+        )}
 
         {/* BIEŻĄCA INSPEKCJA LOKALU */}
         {currentStore.id && (

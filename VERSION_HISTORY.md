@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.4](#v2.9.4--2026-11-02)** | 2026-11-02 | Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności | `patch` | 🚀 Opublikowana |
 | **[v2.9.3](#v2.9.3--2026-11-02)** | 2026-11-02 | Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina | `patch` | 🚀 Opublikowana |
 | **[v2.9.2](#v2.9.2--2026-11-02)** | 2026-11-02 | Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master | `feature` | 🚀 Opublikowana |
 | **[v2.9.1](#v2.9.1--2026-11-01)** | 2026-11-01 | Hot-Patch OTA: Eliminacja Node require('crypto') w bundle frontendu, Universal WebCrypto (@noble/hashes) & Poprawka CSP Google Fonts | `patch` | 🚀 Opublikowana |
@@ -43,6 +44,32 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.4] — 2026-11-02
+**Tytuł:** Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+**Status:** 🚀 Wdrożona na GitHub Releases  
+
+#### 1. Kontekst & Problem
+Dotychczasowy mechanizm `SyncEngine` symulował asynchroniczny zapis kolejki mutations (`outbox`), a aplikacja na świeżo zainstalowanym laptopie Store Managera nie posiadała automatycznego mechanizmu pobierania i odszyfrowywania istniejącej bazy kawiarni (grafiki, pracownicy, cele AOP, szkolenia) z centralnego projektu Google Cloud Firestore (`starbucks-ops-suite`). Ponadto użytkownik wymagał natychmiastowego wyjaśnienia obecności danych prototypowych (mock) widocznych w starszej wersji i upewnienia się, że cała aplikacja operuje na bazie chmurowej.
+
+#### 2. Wdrożone Zmiany Techniczne
+1. **Prawdziwy Silnik Real-time Outbox w `SyncEngine.ts`:**
+   - Zastąpiono symulację rzeczywistym wysyłaniem zapytań HTTP REST API (PATCH / DELETE) bezpośrednio do bazy Google Cloud Firestore:
+     `https://firestore.googleapis.com/v1/projects/starbucks-ops-suite/databases/(default)/documents/stores/${storeUnitCode}/${vaultType}/${entityId}`.
+   - Zaimplementowano funkcję formatowania obiektów JavaScript do formatu pól Protobuf wymaganego przez Firestore REST API v1 (`stringValue`, `integerValue`, `booleanValue`, `mapValue`, `arrayValue`).
+   - Wprowadzono logikę powtórzeń (do 5 prób) z oznaczaniem statusu `SYNCED` po potwierdzeniu przez Google Cloud.
+
+2. **Dedykowany Moduł Synchronizacji Chmurowej `CloudSyncService.ts`:**
+   - `checkCloudConnection()`: wykonuje ping do Firestore REST API, mierząc dokładną latencję połączenia (ms) i sprawdzając dostępność projektu `starbucks-ops-suite`.
+   - `pushStoreToCloud(storeId)`: pobiera wszystkie lokalne tabele SQLite kawiarni, pakuje je do 4 sejfów kryptograficznych (`vault_schedules`, `vault_personnel`, `vault_financials`, `vault_health_gdpr`), szyfruje algorytmem AES-256-GCM z powiązaniem kontekstu AAD i wysyła bezpośrednio do Firestore.
+   - `pullStoreFromCloud(storeId)`: pobiera najświeższe sejfy z Firestore dla danej kawiarni, odszyfrowuje dane w locie za pomocą klucza kawiarni i nawadnia lokalne bazy danych oraz pamięć operacyjną `StoreStorage`.
+
+3. **Interfejs Użytkownika i Kontrola Stanu Chmury:**
+   - Dodano interaktywną kartę chmury w zakładce **"Skarbiec & Architektura Zero-Leak"** (`AdminConsoleModal.tsx`) z pulsującym wskaźnikiem połączenia (🟢 Połączono / latencja ms) oraz przyciskami **Wypchnij bazę do chmury (Push)** i **Pobierz bazę z chmury (Pull)**.
+   - Wzbogacono nagłówek panelu **Fleet Master HQ** o stały badge `Cloud: starbucks-ops-suite` oraz szybki przycisk synchronizacji `Sync do Chmury`.
+
+---
 
 ### [v2.9.3] — 2026-11-02
 **Tytuł:** Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina  

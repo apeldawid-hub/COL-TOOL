@@ -35,6 +35,31 @@ export interface SyncStatus {
 
 import { StoreStorage } from '../storeStorage';
 
+const FIRESTORE_PROJECT_ID = 'starbucks-ops-suite';
+
+/**
+ * Konwertuje strukturę danych JS na format pól Firestore REST API (v1)
+ */
+export const formatFirestoreValue = (val: any): any => {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === 'string') return { stringValue: val };
+  if (typeof val === 'boolean') return { booleanValue: val };
+  if (typeof val === 'number') {
+    return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
+  }
+  if (Array.isArray(val)) {
+    return { arrayValue: { values: val.map(formatFirestoreValue) } };
+  }
+  if (typeof val === 'object') {
+    const fields: Record<string, any> = {};
+    for (const [k, v] of Object.entries(val)) {
+      fields[k] = formatFirestoreValue(v);
+    }
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(val) };
+};
+
 export class SyncEngine {
   private static isSyncing = false;
   private static listeners: Array<(status: SyncStatus) => void> = [];
@@ -154,7 +179,7 @@ export class SyncEngine {
   }
 
   /**
-   * Opróżnia kolejkę outbox wysyłając dane do chmury
+   * Opróżnia kolejkę outbox wysyłając dane do chmury Google Cloud Firestore (starbucks-ops-suite)
    */
   public static async flushOutbox(): Promise<void> {
     if (this.isSyncing || !this.isOnline()) return;
@@ -167,9 +192,37 @@ export class SyncEngine {
       const pendingItems = outbox.filter(item => item.status === 'PENDING');
 
       for (const item of pendingItems) {
-        // Symulacja asynchronicznego zapisu w chmurze Firestore
-        await new Promise(resolve => setTimeout(resolve, 80));
-        item.status = 'SYNCED';
+        try {
+          const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/stores/${item.storeUnitCode}/${item.vaultType}/${item.entityId}`;
+          if (item.action === 'DELETE') {
+            await fetch(url, { method: 'DELETE' });
+            item.status = 'SYNCED';
+          } else {
+            const fieldsPayload: Record<string, any> = {};
+            const payload = item.payload || {};
+            for (const [k, v] of Object.entries(payload)) {
+              fieldsPayload[k] = formatFirestoreValue(v);
+            }
+            const res = await fetch(url, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fields: fieldsPayload }),
+            });
+            if (res.ok) {
+              item.status = 'SYNCED';
+            } else {
+              item.retryCount = (item.retryCount || 0) + 1;
+              if (item.retryCount >= 5) {
+                item.status = 'FAILED';
+              }
+            }
+          }
+        } catch {
+          item.retryCount = (item.retryCount || 0) + 1;
+          if (item.retryCount >= 5) {
+            item.status = 'FAILED';
+          }
+        }
       }
 
       // Usuń pomyślnie zsynchronizowane wpisy, zachowując czystą bazę

@@ -25,9 +25,13 @@ import {
   X,
   Info,
   Trash2,
+  Cloud,
+  UploadCloud,
+  DownloadCloud,
 } from 'lucide-react';
 import { AppUserRole, GranularUserPermissions, ManagedAppUser, PendingAccessRequest, SecurityAuditLog } from '../../types/admin';
 import { AdminService } from '../../services/admin/adminService';
+import { CloudSyncService, CloudHealthStatus } from '../../services/sync/cloudSyncService';
 
 interface AdminConsoleModalProps {
   isOpen: boolean;
@@ -52,6 +56,8 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<ManagedAppUser | null>(null);
   const [killSwitchConfirmId, setKillSwitchConfirmId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<CloudHealthStatus | null>(null);
+  const [isCloudBusy, setIsCloudBusy] = useState(false);
 
   const loadData = () => {
     setUsers(AdminService.getUsers());
@@ -62,8 +68,38 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       loadData();
+      CloudSyncService.checkCloudConnection().then(setCloudStatus).catch(() => {});
     }
   }, [isOpen]);
+
+  const handlePushToCloud = async () => {
+    setIsCloudBusy(true);
+    showToast('Szyfrowanie sejfów i wysyłanie do Google Cloud Firestore...');
+    try {
+      const res = await CloudSyncService.pushStoreToCloud(storeUnitCode || '108120', adminName);
+      showToast(res.message);
+      CloudSyncService.checkCloudConnection().then(setCloudStatus).catch(() => {});
+    } catch (e: any) {
+      showToast(`Błąd: ${e.message}`);
+    } finally {
+      setIsCloudBusy(false);
+    }
+  };
+
+  const handlePullFromCloud = async () => {
+    setIsCloudBusy(true);
+    showToast('Pobieranie i odszyfrowywanie bazy z Google Cloud...');
+    try {
+      const res = await CloudSyncService.pullStoreFromCloud(storeUnitCode || '108120');
+      showToast(res.message);
+      loadData();
+      CloudSyncService.checkCloudConnection().then(setCloudStatus).catch(() => {});
+    } catch (e: any) {
+      showToast(`Błąd: ${e.message}`);
+    } finally {
+      setIsCloudBusy(false);
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -535,6 +571,80 @@ export const AdminConsoleModal: React.FC<AdminConsoleModalProps> = ({
                   <span className="inline-block mt-3 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
                     Zero-Payload Leak
                   </span>
+                </div>
+              </div>
+
+              {/* Centralne Połączenie Google Cloud Firestore */}
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+                      <Cloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-stone-900 tracking-tight flex items-center gap-2">
+                        <span>Chmura Bazy Danych: Google Cloud Firestore</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-900 border border-sky-200">
+                          starbucks-ops-suite
+                        </span>
+                      </h4>
+                      <p className="text-xs text-stone-500">
+                        Centralne repozytorium szyfrowanych danych operacyjnych kawiarni ({storeUnitCode || '108120'}).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    {cloudStatus?.isConnected ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Połączono ({cloudStatus.latencyMs} ms)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        {cloudStatus?.error ? 'Brak połączenia' : 'Weryfikacja łączności...'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <button
+                    onClick={handlePushToCloud}
+                    disabled={isCloudBusy}
+                    className="p-4 rounded-2xl bg-stone-50 hover:bg-emerald-50 border border-stone-200 hover:border-emerald-300 transition-all text-left flex items-start gap-3 cursor-pointer group disabled:opacity-50"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <UploadCloud className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-stone-900 group-hover:text-emerald-950">
+                        Wypchnij bazę do chmury (Push)
+                      </div>
+                      <div className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                        Szyfruje lokalne grafiki, pracowników i budżet kawiarni i zapisuje w Firestore.
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handlePullFromCloud}
+                    disabled={isCloudBusy}
+                    className="p-4 rounded-2xl bg-stone-50 hover:bg-blue-50 border border-stone-200 hover:border-blue-300 transition-all text-left flex items-start gap-3 cursor-pointer group disabled:opacity-50"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <DownloadCloud className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-stone-900 group-hover:text-blue-950">
+                        Pobierz bazę z chmury (Pull)
+                      </div>
+                      <div className="text-[11px] text-stone-500 mt-0.5 leading-snug">
+                        Pobiera najświeższe dane z Google Cloud i aktualizuje lokalną bazę laptopa.
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
