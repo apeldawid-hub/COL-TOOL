@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.6](#v2.9.6--2026-11-02)** | 2026-11-02 | Poprawka Krytyczna: Eliminacja Wycieku Modułów Node (node:crypto, node:fs, node:path) z Bundle Frontendu & Przywrócenie Renderowania Reacta (Biały Ekran) | `patch` | 🚀 Opublikowana |
 | **[v2.9.5](#v2.9.5--2026-11-02)** | 2026-11-02 | Prawdziwy Zero-Click OTA Auto-Updater: Ciche Pobieranie w Tle, Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit) & Toast Powiadomienia | `patch` | 🚀 Opublikowana |
 | **[v2.9.4](#v2.9.4--2026-11-02)** | 2026-11-02 | Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności | `patch` | 🚀 Opublikowana |
 | **[v2.9.3](#v2.9.3--2026-11-02)** | 2026-11-02 | Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina | `patch` | 🚀 Opublikowana |
@@ -45,6 +46,25 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.6] — 2026-11-02
+**Tytuł:** Poprawka Krytyczna: Eliminacja Wycieku Modułów Node (node:crypto, node:fs, node:path) z Bundle Frontendu & Przywrócenie Renderowania Reacta (Biały Ekran)  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+**Status:** 🚀 Wdrożona na GitHub Releases  
+
+#### 1. Kontekst & Problem
+Po dodaniu serwisu `cloudSyncService.ts` aplikacja po uruchomieniu wyświetlała biały ekran (White Screen of Death). Przyczyną był statyczny import `CloudMigrationService` i `VaultService` po stronie klienta, co spowodowało wciągnięcie do kodu wynikowego Vite (`dist/assets/index.js`) wbudowanych bibliotek środowiska Node.js (`node:crypto`, `node:fs`, `node:path`). W piaskownicy renderera Chromium spowodowało to natychmiastowy błąd parsowania modułu przed zamontowaniem drzewa Reacta.
+
+#### 2. Wdrożone Rozwiązanie
+1. **Całkowita Izolacja Modułów Node.js w Procesie Głównym:**
+   - Wyczyszczono `cloudSyncService.ts` z wszelkich bezpośrednich importów klas kryptograficznych i operacji plikowych Node.
+   - Wszystkie operacje pakowania bazy (`executeStoreMigration`) oraz deszyfrowania sejfów (`pullStoreData`) zostały skierowane przez bezpieczny mostek IPC (`window.api`).
+   - Usunięto awaryjny import dynamiczny `CloudMigrationService` z `DatabaseBackupModal.tsx`.
+2. **Weryfikacja Czystości Bundla:**
+   - Sprawdzono pakiet wynikowy komendą `grep`: `100% CLEAN OF NODE BUILTINS`.
+   - Wszystkie 193 testy bezpieczeństwa i spójności przeszły pomyślnie.
+
+---
 
 ### [v2.9.5] — 2026-11-02
 **Tytuł:** Prawdziwy Zero-Click OTA Auto-Updater: Ciche Pobieranie w Tle, Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit) & Toast Powiadomienia  

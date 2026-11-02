@@ -234,18 +234,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
           setMigrationStatus(null);
         }
       } else {
-        // Fallback w środowisku webowym
-        const { CloudMigrationService } = await import('../services/security/cloudMigrationService');
-        const res = await CloudMigrationService.executeMigration({
-          storeId,
-          unitCode: currentStore?.unitCode || '',
-          dryRun: false,
-        });
-        if (res.success) {
-          setSuccessMessage(`Pomyślnie zaszyfrowano i wyemigrowano dane lokalu ${storeId} do chmury Firebase.`);
-        } else {
-          setErrorMessage(res.error?.message || 'Błąd migracji do chmury.');
-        }
+        setErrorMessage('Synchronizacja skarbców wymaga uruchomienia w aplikacji desktopowej.');
         setMigrationStatus(null);
       }
     } catch (err: any) {

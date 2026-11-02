@@ -2060,6 +2060,122 @@ function setupIpcHandlers() {
     }
   });
 
+  ipcMain.handle('migration:pull-store-data', async (_event, storeId: string) => {
+    try {
+      const { VaultService } = await import('../src/services/security/vaultService');
+      const FIRESTORE_PROJECT_ID = 'starbucks-ops-suite';
+      const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
+
+      const collections = [
+        'vault_schedules',
+        'vault_personnel',
+        'vault_financials',
+        'vault_health_gdpr',
+      ];
+
+      const parseFirestoreValue = (field: any): any => {
+        if (field === null || field === undefined || typeof field !== 'object') return field;
+        if ('stringValue' in field) return field.stringValue;
+        if ('booleanValue' in field) return field.booleanValue;
+        if ('integerValue' in field) return parseInt(field.integerValue, 10);
+        if ('doubleValue' in field) return parseFloat(field.doubleValue);
+        if ('nullValue' in field) return null;
+        if ('arrayValue' in field) {
+          const list = field.arrayValue?.values || [];
+          return list.map(parseFirestoreValue);
+        }
+        if ('mapValue' in field) {
+          const fields = field.mapValue?.fields || {};
+          const obj: Record<string, any> = {};
+          for (const [k, v] of Object.entries(fields)) {
+            obj[k] = parseFirestoreValue(v);
+          }
+          return obj;
+        }
+        return field;
+      };
+
+      const parseFirestoreDocument = (doc: any): Record<string, any> => {
+        if (!doc || !doc.fields) return {};
+        const result: Record<string, any> = {};
+        for (const [key, field] of Object.entries(doc.fields)) {
+          result[key] = parseFirestoreValue(field);
+        }
+        return result;
+      };
+
+      let totalImported = 0;
+      const vaultDocuments: Record<string, any[]> = {};
+
+      for (const col of collections) {
+        const url = `${FIRESTORE_BASE_URL}/stores/${storeId}/${col}`;
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.documents && Array.isArray(data.documents)) {
+              vaultDocuments[col] = data.documents.map((d: any) => parseFirestoreDocument(d));
+            }
+          }
+        } catch (fetchErr) {
+          console.warn(`[PullStoreData] Błąd pobierania kolekcji ${col}:`, fetchErr);
+        }
+      }
+
+      const unpackedData: Record<string, any> = {};
+
+      // 1. Odszyfrowanie personelu
+      if (vaultDocuments['vault_personnel']?.length) {
+        for (const doc of vaultDocuments['vault_personnel']) {
+          try {
+            const unpacked = await VaultService.unpackagePersonnelVault(doc as any, storeId, storeId);
+            if (unpacked?.payload) {
+              unpackedData.personnel = unpacked.payload;
+              totalImported += (unpacked.payload.managers?.length || 0) + (unpacked.payload.trainingPartners?.length || 0);
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 2. Odszyfrowanie grafików
+      if (vaultDocuments['vault_schedules']?.length) {
+        for (const doc of vaultDocuments['vault_schedules']) {
+          try {
+            const unpacked = await VaultService.unpackageScheduleVault(doc as any, storeId, storeId);
+            if (unpacked?.payload) {
+              unpackedData.schedules = unpacked.payload;
+              totalImported += (unpacked.payload.shifts?.length || 0);
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 3. Odszyfrowanie finansów
+      if (vaultDocuments['vault_financials']?.length) {
+        for (const doc of vaultDocuments['vault_financials']) {
+          try {
+            const unpacked = await VaultService.unpackageFinancialVault(doc as any, storeId, storeId);
+            if (unpacked?.payload) {
+              unpackedData.financials = unpacked.payload;
+              totalImported += (unpacked.payload.aopPlans?.length || 0);
+            }
+          } catch (_) {}
+        }
+      }
+
+      return {
+        success: true,
+        recordsCount: totalImported,
+        unpackedData,
+        message: totalImported > 0
+          ? `Pomyślnie pobrano i odszyfrowano ${totalImported} rekordów z Google Cloud dla kawiarni [${storeId}].`
+          : `Połączono z Google Cloud Firestore. Brak nowych danych w chmurze dla kawiarni [${storeId}].`
+      };
+    } catch (err: any) {
+      return { success: false, recordsCount: 0, message: err.message || 'Błąd pobierania danych.' };
+    }
+  });
+
   ipcMain.handle('migration:verify-store-parity', async (_event, storeId: string, options?: any) => {
     try {
       const { ParityVerificationService } = await import('../src/services/security/parityVerificationService');

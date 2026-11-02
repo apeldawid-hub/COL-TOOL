@@ -22,6 +22,20 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platf
 
 ---
 
+## ⚡ 0.1. Zasady Green AI i Oszczędzania Tokenów (Token Optimization)
+
+> [!IMPORTANT]
+> Obowiązuje każdego agenta AI i subagenta we wszystkich sesjach w repozytorium:
+> 1. **Zero lania wody:** Brak powitań, wstępów ("Chętnie pomogę"), podsumowań i parafrazowania pytań użytkownika.
+> 2. **Maksymalna zwięzłość:** Odpowiedzi w punktach, wysoka gęstość informacji, brak zbędnych wyjaśnień teorii przy pytaniach o kod.
+> 3. **Higiena narzędzi (Tool Hygiene):** Zakaz zrzucania całych dużych plików i długich logów do kontekstu (nakaz używania `grep`, `head`/`tail`, zakresów linii).
+> 4. **Precyzyjne edycje:** Stosowanie edycji punktowych (`edit_file`) zamiast przepisywania całych plików.
+> 5. **Fail Fast:** Po 1 błędzie narzędzia natychmiastowa zmiana podejścia; przy braku kluczowych danych 1 krótkie pytanie zamiast zgadywania "na zapas".
+> 
+> Szczegółowe wytyczne znajdują się w pliku: [GEMINI.md](./GEMINI.md).
+
+---
+
 ## ☕ 1. Nienaruszalne Standardy Operacyjne Starbucks
 
 1. **Złota reguła Floor Hours**:

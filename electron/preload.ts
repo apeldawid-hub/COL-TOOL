@@ -139,6 +139,7 @@ export interface IElectronAPI {
   verifyStoreParity?: (storeId: string, options?: any) => Promise<any>;
   extractStoreTables?: (storeId: string) => Promise<any>;
   getMigrationReceipt?: (storeId: string) => Promise<any>;
+  pullStoreData?: (storeId: string, options?: any) => Promise<any>;
   // Milestone 1: Licensing & Hardware-Bound Activation Engine
   getHardwareFingerprint?: () => Promise<string>;
   saveLicense?: (payload: string) => Promise<boolean>;
@@ -293,6 +294,7 @@ const api: IElectronAPI = {
   verifyStoreParity: (storeId, options) => ipcRenderer.invoke('migration:verify-store-parity', storeId, options),
   extractStoreTables: (storeId) => ipcRenderer.invoke('migration:extract-store-tables', storeId),
   getMigrationReceipt: (storeId) => ipcRenderer.invoke('migration:get-receipt', storeId),
+  pullStoreData: (storeId: string, options?: any) => ipcRenderer.invoke('migration:pull-store-data', storeId, options),
   // Milestone 1: Licensing & Hardware-Bound Activation Engine
   getHardwareFingerprint: () => ipcRenderer.invoke('system:get-hardware-fingerprint'),
   saveLicense: (payload: string) => ipcRenderer.invoke('licensing:save-license', payload),
