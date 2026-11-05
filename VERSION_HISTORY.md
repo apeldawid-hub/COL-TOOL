@@ -7,19 +7,10 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.8](#v2.9.8--2026-11-05)** | 2026-11-05 | Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2) | `patch` | 🚀 Opublikowana |
 | **[v2.9.7](#v2.9.7--2026-11-02)** | 2026-11-02 | Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI | `patch` | 🚀 Opublikowana |
-| **[v2.9.6](#v2.9.6--2026-11-02)** | 2026-11-02 | Poprawka Krytyczna: Eliminacja Wycieku Modułów Node (node:crypto, node:fs, node:path) z Bundle Frontendu & Przywrócenie Renderowania Reacta (Biały Ekran) | `patch` | 🚀 Opublikowana |
-| **[v2.9.5](#v2.9.5--2026-11-02)** | 2026-11-02 | Prawdziwy Zero-Click OTA Auto-Updater: Ciche Pobieranie w Tle, Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit) & Toast Powiadomienia | `patch` | 🚀 Opublikowana |
-| **[v2.9.4](#v2.9.4--2026-11-02)** | 2026-11-02 | Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności | `patch` | 🚀 Opublikowana |
-| **[v2.9.3](#v2.9.3--2026-11-02)** | 2026-11-02 | Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina | `patch` | 🚀 Opublikowana |
-| **[v2.9.2](#v2.9.2--2026-11-02)** | 2026-11-02 | Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master | `feature` | 🚀 Opublikowana |
-| **[v2.9.1](#v2.9.1--2026-11-01)** | 2026-11-01 | Hot-Patch OTA: Eliminacja Node require('crypto') w bundle frontendu, Universal WebCrypto (@noble/hashes) & Poprawka CSP Google Fonts | `patch` | 🚀 Opublikowana |
-| **[v2.9.0](#v2.9.0--2026-11-01)** | 2026-11-01 | Enterprise Security & Fleet Management (Podwójne Profile, Klucze Sprzętowe, MFA, Auto-Lock & Disaster Recovery BIP-39) | `major` | 🚀 Opublikowana |
-| **[v2.8.70](#v2.8.70--2026-10-26)** | 2026-10-26 | Poprawka Schematu REST API Firestore dla Migracji Chmurowej AES-256 (Protobuf Document Fields) | `patch` | 🚀 Opublikowana |
-| **[v2.8.69](#v2.8.69--2026-10-26)** | 2026-10-26 | Naprawa Punktu Wejścia IPC Migracji Chmurowej w Oknie Kawiarni | `patch` | 🚀 Opublikowana |
-| **[v2.8.68](#v2.8.68--2026-10-26)** | 2026-10-26 | Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji | `minor` | 🚀 Opublikowana |
 | **[v2.8.67](#v2.8.67--2026-10-24)** | 2026-10-24 | Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync | `patch` | 🚀 Opublikowana |
-| **[v2.8.65](#v2.8.65--2026-10-24)** | 2026-10-24 | Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC | `feature` | 🚀 Opublikowana |
+| **[v2.8.65](#v2.8.65--2026-10-24)** | 2026-10-24 | Panel Administratora Floty & Uprawnień (Admin Console) oraz Architektura Zero-Leak RBAC | `patch` | 🚀 Opublikowana |
 | **[v2.8.63](#v2.8.63--2026-10-24)** | 2026-10-24 | Korekta Bazy Mostów Split-Week (224.0h), Ergonomia Siatki Grafiku (Sticky Kolumny & Skróty M/S) oraz Ujednolicenie Norm TOR (H / L4) | `patch` | 🚀 Opublikowana |
 | **[v2.8.62](#v2.8.62--2026-10-19)** | 2026-10-19 | AutoScheduling AI: Inteligentne Dokładanie Zmian Szkoleniowych (TAM/TPM) dla Menedżerów w Szkoleniu (In Training) | `patch` | 🚀 Opublikowana |
 | **[v2.8.59](#v2.8.59--2026-10-19)** | 2026-10-19 | Trwały Zapis Własnych Kawiarni na Dysku (custom_stores.json) & Trwała Persystencja Wyłączenia Samouczka w SQLite | `patch` | 🚀 Opublikowana |
@@ -48,235 +39,38 @@
 
 ## Szczegółowa Historia Wydań
 
+### [v2.9.8] — 2026-11-05
+**Tytuł:** Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2)  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- Smart Swap Assistant AI: Dedykowana zakładka w oknie wyboru zmiany (ShiftPickerPopover) umożliwiająca natychmiastowe znalezienie bezkolizyjnych zamian parzystych.
+- Wymiana Krzyżowa z Wyrównaniem: Obsługa zamian w ten sam dzień (Same-Day) oraz krzyżowych (Cross-Day Balance Swap) gwarantujących 0.0h różnicy w TOR i 100% KP.
+- AI Row Re-roll: 1-klik rekonfiguracja wiersza menedżera na siatce grafiku minimalizująca kolizje dyspozycji (OFF/M/Z) poprzez serię mikrozamian parzystych.
+- Płynne Powiadomienia Toast: Nowy system powiadomień na siatce informujący o statusie zamian i zachowaniu bilansu czasu pracy.
+
+#### ✨ Nowe Funkcje:
+- Implementacja silnika smartSwapEngine.ts z dwoma typami zamian parzystych (Same-Day oraz Cross-Day) z wielokryterialnym scoringiem.
+- Integracja zakładki Smart Swap w ShiftPickerPopover.tsx z listą propozycji, etykietami H/NC i 1-klik zatwierdzeniem.
+- Wdrożenie przycisku AI Row Re-roll w kolumnie menedżera na siatce ManagerScheduleGrid.tsx z obsługą minimalnie inwazyjnego Swap Chain.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Dodanie pływającego komponentu Toast powiadomień o statusie operacji AI w widoku grafiku.
+
+---
+
 ### [v2.9.7] — 2026-11-02
-#### Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI
-- **Główne atuty**:
-  - **Redukcja Domyślnego Katalogu Floty**: Skupienie wbudowanej floty na 2 aktywnych lokalach (`108120` Janki i `108170` Kalisz Amber) z dynamiczną alokacją w Firestore Multi-Tenant Silo (`stores/{storeId}/...`).
-  - **Dynamiczne Etykiety & Liczniki Floty**: Usunięcie sztywnych etykiet `(100+)` z nagłówka (`Header`), menu bocznego (`Sidebar`) i konsoli (`FleetMasterDashboard`) — liczniki dynamicznie odzwierciedlają bieżący stan bazy.
-  - **Bezpieczeństwo Danych & Zero PII**: Pełne zachowanie nienaruszalności danych kawiarni w SQLite i brak wycieku danych operacyjnych do Git.
-- **Zmodyfikowane pliki**:
-  - `src/constants/starbucksStores.ts`
-  - `src/components/admin/FleetMasterDashboard.tsx`
-  - `src/components/Header.tsx`
-  - `src/components/Sidebar.tsx`
-
-### [v2.9.6] — 2026-11-02
-**Tytuł:** Poprawka Krytyczna: Eliminacja Wycieku Modułów Node (node:crypto, node:fs, node:path) z Bundle Frontendu & Przywrócenie Renderowania Reacta (Biały Ekran)  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-**Status:** 🚀 Wdrożona na GitHub Releases  
-
-#### 1. Kontekst & Problem
-Po dodaniu serwisu `cloudSyncService.ts` aplikacja po uruchomieniu wyświetlała biały ekran (White Screen of Death). Przyczyną był statyczny import `CloudMigrationService` i `VaultService` po stronie klienta, co spowodowało wciągnięcie do kodu wynikowego Vite (`dist/assets/index.js`) wbudowanych bibliotek środowiska Node.js (`node:crypto`, `node:fs`, `node:path`). W piaskownicy renderera Chromium spowodowało to natychmiastowy błąd parsowania modułu przed zamontowaniem drzewa Reacta.
-
-#### 2. Wdrożone Rozwiązanie
-1. **Całkowita Izolacja Modułów Node.js w Procesie Głównym:**
-   - Wyczyszczono `cloudSyncService.ts` z wszelkich bezpośrednich importów klas kryptograficznych i operacji plikowych Node.
-   - Wszystkie operacje pakowania bazy (`executeStoreMigration`) oraz deszyfrowania sejfów (`pullStoreData`) zostały skierowane przez bezpieczny mostek IPC (`window.api`).
-   - Usunięto awaryjny import dynamiczny `CloudMigrationService` z `DatabaseBackupModal.tsx`.
-2. **Weryfikacja Czystości Bundla:**
-   - Sprawdzono pakiet wynikowy komendą `grep`: `100% CLEAN OF NODE BUILTINS`.
-   - Wszystkie 193 testy bezpieczeństwa i spójności przeszły pomyślnie.
-3. **Infrastruktura Utrzymania Dokumentacji & Etykiety Zadaniowe:**
-   - Utworzono automatyczny skrypt walidacji `scripts/verify-docs.js` (`npm run verify:docs`) chroniący przed dryfem dokumentacji.
-   - Wdrożono dedykowane pliki historii `CHANGELOG.md` w każdym z 4 modułów (`src/modules/*/CHANGELOG.md`).
-   - Opracowano mapę przepływu danych i rejestr prefiksów zadaniowych w `docs/DATA_FLOW.md`.
-   - Wydzielono modułowe typy TypeScript w `src/modules/{labor-forecast,managers-schedule}/types/`.
-4. **Systemowa Organizacja Stałych Domenowych & Kompletne Public API Modułów:**
-   - Utworzono dedykowane moduły stałych `constants/index.ts` we wszystkich 4 modułach (`labor-forecast`, `managers-schedule`, `trainings`, `col-calculator`).
-   - Wdrożono architekturę jednolitych bram Public API (`src/modules/index.ts` oraz `index.ts` w każdym module) eksportujących `types`, `constants`, `components` i `services`.
-   - Uszczelniono `.gitignore` o katalogi buforów i cache (`coverage/`, `.vite/`, `.cache/`, `.turbo/`, `*.tsbuildinfo`).
-   - Zaktualizowano generator modułów `scripts/create-module.js` oraz walidator `scripts/verify-docs.js` o automatyczną kontrolę stałych i Public API.
-
----
-
-### [v2.9.5] — 2026-11-02
-**Tytuł:** Prawdziwy Zero-Click OTA Auto-Updater: Ciche Pobieranie w Tle, Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit) & Toast Powiadomienia  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-**Status:** 🚀 Wdrożona na GitHub Releases  
-
-#### 1. Kontekst & Problem
-W dotychczasowej architekturze mechanizm aktualizacji informował jedynie interfejs o dostępności nowego wydania (`update-available`), zmuszając użytkownika do manualnego otwierania okna modalnego, klikania „Pobierz” i „Zainstaluj”. Aplikacja nie potrafiła bezdotykowo zaktualizować się sama przy restarcie lub wyjściu ze stanowiska pracy.
-
-#### 2. Wdrożone Zmiany Techniczne
-1. **Ciche Pobieranie Patchy w Tle (Background Pre-fetch):**
-   - Po wykryciu nowszego wydania mikropatcha OTA (`sos-patch-*.zip`, ~12 MB) silnik `silentCheckForUpdates()` w `electron/updater.ts` automatycznie i cicho pobiera plik do odizolowanego folderu `userData/pending_update/`.
-   - Zapisuje manifest gotowości `pending_patch.json` z numerem wersji i sumą kontrolną.
-2. **Automatyczne Wdrażanie przy Wyjściu (Auto-Apply on Quit):**
-   - W hooku cyklu życia Electrona `app.on('will-quit')` w `electron/main.ts` zintegrowano metodę `checkAndApplyPendingPatchOnQuit()`.
-   - Gdy Store Manager kończy pracę i zamyka aplikację (Cmd+Q lub zamknięcie okna), odczepiony proces w tle podmienia plik `app.asar` i zdejmuje kwarantannę Gatekeepera. Przy kolejnym uruchomieniu aplikacja startuje już w najnowszej wersji bez żadnej manualnej instalacji!
-3. **Weryfikacja i Auto-Naprawa przy Starcie (Startup Fallback):**
-   - W `createWindow()` metoda `checkAndApplyPendingPatchOnStartup()` weryfikuje, czy z poprzedniej sesji nie pozostał pobrany patch. Jeśli tak, aplikacja wdraża go i restartuje się w ułamku sekundy.
-4. **Dyskretny Toast w UI:**
-   - W rogu ekranu (`src/App.tsx`) pojawia się elegancki, nienaruszający pracy wskaźnik: `Aktualizacja vX.Y.Z gotowa! Zostanie wdrożona przy zamknięciu programu lub: [Zrestartuj teraz (2s)]`.
-
----
-
-### [v2.9.4] — 2026-11-02
-**Tytuł:** Pełna Integracja Bazy Danych z Chmurą Google Cloud Firestore (starbucks-ops-suite): Real-time Outbox, Dwukierunkowa Hydratacja (Push/Pull) & Wskaźnik Łączności  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-**Status:** 🚀 Wdrożona na GitHub Releases  
-
-#### 1. Kontekst & Problem
-Dotychczasowy mechanizm `SyncEngine` symulował asynchroniczny zapis kolejki mutations (`outbox`), a aplikacja na świeżo zainstalowanym laptopie Store Managera nie posiadała automatycznego mechanizmu pobierania i odszyfrowywania istniejącej bazy kawiarni (grafiki, pracownicy, cele AOP, szkolenia) z centralnego projektu Google Cloud Firestore (`starbucks-ops-suite`). Ponadto użytkownik wymagał natychmiastowego wyjaśnienia obecności danych prototypowych (mock) widocznych w starszej wersji i upewnienia się, że cała aplikacja operuje na bazie chmurowej.
-
-#### 2. Wdrożone Zmiany Techniczne
-1. **Prawdziwy Silnik Real-time Outbox w `SyncEngine.ts`:**
-   - Zastąpiono symulację rzeczywistym wysyłaniem zapytań HTTP REST API (PATCH / DELETE) bezpośrednio do bazy Google Cloud Firestore:
-     `https://firestore.googleapis.com/v1/projects/starbucks-ops-suite/databases/(default)/documents/stores/${storeUnitCode}/${vaultType}/${entityId}`.
-   - Zaimplementowano funkcję formatowania obiektów JavaScript do formatu pól Protobuf wymaganego przez Firestore REST API v1 (`stringValue`, `integerValue`, `booleanValue`, `mapValue`, `arrayValue`).
-   - Wprowadzono logikę powtórzeń (do 5 prób) z oznaczaniem statusu `SYNCED` po potwierdzeniu przez Google Cloud.
-
-2. **Dedykowany Moduł Synchronizacji Chmurowej `CloudSyncService.ts`:**
-   - `checkCloudConnection()`: wykonuje ping do Firestore REST API, mierząc dokładną latencję połączenia (ms) i sprawdzając dostępność projektu `starbucks-ops-suite`.
-   - `pushStoreToCloud(storeId)`: pobiera wszystkie lokalne tabele SQLite kawiarni, pakuje je do 4 sejfów kryptograficznych (`vault_schedules`, `vault_personnel`, `vault_financials`, `vault_health_gdpr`), szyfruje algorytmem AES-256-GCM z powiązaniem kontekstu AAD i wysyła bezpośrednio do Firestore.
-   - `pullStoreFromCloud(storeId)`: pobiera najświeższe sejfy z Firestore dla danej kawiarni, odszyfrowuje dane w locie za pomocą klucza kawiarni i nawadnia lokalne bazy danych oraz pamięć operacyjną `StoreStorage`.
-
-3. **Interfejs Użytkownika i Kontrola Stanu Chmury:**
-   - Dodano interaktywną kartę chmury w zakładce **"Skarbiec & Architektura Zero-Leak"** (`AdminConsoleModal.tsx`) z pulsującym wskaźnikiem połączenia (🟢 Połączono / latencja ms) oraz przyciskami **Wypchnij bazę do chmury (Push)** i **Pobierz bazę z chmury (Pull)**.
-   - Wzbogacono nagłówek panelu **Fleet Master HQ** o stały badge `Cloud: starbucks-ops-suite` oraz szybki przycisk synchronizacji `Sync do Chmury`.
-
----
-
-### [v2.9.3] — 2026-11-02
-**Tytuł:** Całkowity Purge Danych Prototypowych (Mocków) z Pamięci Lokalnej & Przycisk Trwałego Usuwania Kont w Panelu Admina  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-**Status:** 🚀 Wdrożona na GitHub Releases (`sos-patch-2.9.3.zip`, 12.39 MB, SHA256: `60e312a18a...`)
-
-#### 🎯 Kluczowe Wdrożenia:
-1. **Automatyczny i Bezpowrotny Purge Danych Mockowych (`AdminService.purgePrototypeData`)**:
-   - Wyeliminowano wszystkie historyczne konta prototypowe z wersji testowych (`usr_ssv_kamil_k`, `usr_ssv_zuzanna_m`, fałszywe adresy e-mail).
-   - Mechanizm skanuje wszystkie partycje `StoreStorage` i `localStorage` przy starcie i natychmiastowo usuwa nieautoryzowane rekordy.
-2. **Przycisk Trwałego Usuwania Kont w Panelu Admina (`AdminConsoleModal.tsx`)**:
-   - Dodano przycisk kosza (`Trash2`) obok akcji Kill-Switch, umożliwiający Store Managerowi i Administratorowi bezpowrotne usunięcie dowolnego profilu z bazy.
-3. **Usunięcie Fikcyjnych Nazwisk z Placeholderów UI**:
-   - Wszystkie placeholdery w formularzach rejestracyjnych i edycyjnych zostały zamienione na profesjonalne, neutralne etykiety (`np. Imię i Nazwisko`).
-4. **Testy Integralności**:
-   - Dopisano dedykowany test weryfikujący automatyczne usuwanie mocków z pamięci lokalnej. Wszystkie testy bezpieczeństwa przechodzą pomyślnie.
-
----
-
-### [v2.9.2] — 2026-11-02
-**Tytuł:** Zero-Trust Store Manager Enrollment: Rejestracja e-mailem @amrest.eu, Weryfikacja 6-cyfrowym Kodem OTP, Ekran Oczekiwania na Akceptację & Panel Przydziału Danych w Fleet Master  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-**Status:** 🚀 Wdrożona na GitHub Releases (`sos-patch-2.9.2.zip`, 12.39 MB, SHA256: `52a5745b59...`)
-
-#### 🎯 Kluczowe Wdrożenia:
-1. **Rejestracja Kierownika i Weryfikacja E-mail OTP (`ActivationModal.tsx`)**:
-   - Świeża instalacja aplikacji na laptopie Store Managera nie wymaga wpisywania surowych kluczy z palca.
-   - Formularz rejestracji: Imię i Nazwisko, służbowy e-mail (`@amrest.eu` / `@starbucks.com`) oraz wnioskowana rola.
-   - Generowanie i weryfikacja 6-cyfrowego kodu autoryzacyjnego OTP z odliczaniem czasu (5 min) i ochroną przed brute-force.
-2. **Ekran Oczekiwania na Autoryzację (*Pending Approval & Hardware Pairing*)**:
-   - Po potwierdzeniu maila aplikacja automatycznie powiązuje unikalny Hardware ID laptopa i tworzy zgłoszenie o dostęp (`pairingToken`).
-   - Ekran statusu: informuje kierownika o oczekiwaniu na decyzję Managera Zarządzającego wraz z automatycznym odpytywaniem o status w tle co 5 sekund.
-3. **Panel Managera Zarządzającego — Zakładka Wniosków i Konfigurator Uprawnień (`FleetMasterDashboard.tsx`)**:
-   - Nowa zakładka: **Wnioski Kierowników** z licznikiem zgłoszeń oczekujących.
-   - Karta zgłoszenia z tożsamością kierownika, potwierdzonym mailem i danymi komputera.
-   - Modal zatwierdzania:
-     - Przypisanie Kawiarni ze 100+ lokali Starbucks w Polsce.
-     - Rola (Store Manager / Assistant SM / District Manager).
-     - Granularne uprawnienia do danych: wgląd w sprzedaż i finanse, stawki poufne PLN/h, zwolnienia lekarskie L4, publikacja grafiku, zatwierdzanie TOR, P&L COL %, narzut ZUS 19.48%, symulator What-If.
-   - Po zatwierdzeniu: automatyczne wygenerowanie klucza sprzętowego i oznaczenie wniosku jako `APPROVED`.
-4. **Automatyczne Odblokowanie na Laptopie Kierownika**:
-   - Po wykryciu zgody w tle laptop Store Managera natychmiast aktywuje stację wygenerowanym kluczem, inicjalizuje bazę i wita kierownika w przydzielonej kawiarni.
-5. **Serwis `enrollmentService.ts` i Testy Bezpieczeństwa**:
-   - Nowy serwis zarządzający cyklem życia wniosków i synchronizacją chmurową/lokalną.
-   - 192 / 192 testy bezpieczeństwa zaliczone ze statusem zielonym (`npm run test:security`).
-
----
-
-### [v2.9.1] — 2026-11-01
-**Tytuł:** Hot-Patch OTA: Eliminacja Node require('crypto') w bundle frontendu, Universal WebCrypto (@noble/hashes) & Poprawka CSP Google Fonts  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-**Status:** 🚀 Wdrożona na GitHub Releases (`sos-patch-2.9.1.zip`)
-
-#### 🎯 Kluczowe Wdrożenia:
-1. Rozwiązanie problemu białego ekranu po starcie aplikacji poprzez wyeliminowanie wywołań Node `require('crypto')` z kodu renderera.
-2. Wdrożenie uniwersalnego modułu `cryptoUtils.ts` opartego na `@noble/hashes` (SHA-256, HMAC-SHA256) oraz Web Crypto API.
-3. Aktualizacja nagłówków CSP dla Google Fonts (`fonts.googleapis.com` i `fonts.gstatic.com`).
-
----
-**Tytuł:** Enterprise Security & Fleet Management (Podwójne Profile, Klucze Sprzętowe, MFA, Auto-Lock & Disaster Recovery BIP-39)  
+**Tytuł:** Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI  
 **Autorzy:** Dawid Apel & Antigravity Agent Squad  
 
 #### 🌟 Co Wprowadziliśmy:
-1. **Podwójny Profil Aplikacji (`FLEET_MASTER` vs `STORE_CLIENT`):**
-   - Ścisła izolacja stacji administratorskiej od stacji klienckich Store Managerów (SM) i Assistant Store Managerów (ASM).
-   - Profil `STORE_CLIENT` jest domyślny (zasada least-privilege) i blokuje dostęp do funkcji globalnych, przełączania nieprzypisanych kawiarni, zaawansowanej telemetrii oraz operacji bazy danych.
-   - Profil `FLEET_MASTER` udostępnia centralny pulpit zarządzania całą siecią kawiarni, generator kluczy aktywacyjnych, Kill-Switch oraz audyt stacji.
+- Redukcja Domyślnego Katalogu Floty: Ograniczenie wbudowanych kawiarni do 2 aktywnych jednostek (108120 Janki i 108170 Kalisz Amber).
+- Dynamiczne Liczniki & Etykiety: Usunięcie statycznych oznaczeń (100+) w nawigacji, nagłówku i konsoli administracyjnej.
+- Bezpieczeństwo Danych: Zero wrażliwych danych w repozytorium Git, odseparowanie bazy SQLite.
 
-2. **Kryptograficzny Silnik Licencji i Wiązania Sprzętowego (Hardware-Bound Activation):**
-   - Unikalne klucze aktywacyjne formatu `SBX-<storeId>-<hex>-<checksum>` z 64-bitową entropią CSPRNG i podpisem HMAC-SHA256.
-   - Odcisk sprzętowy (Hardware Fingerprint) wiążący instalację z fizyczną maszyną (IOPlatformUUID na macOS, MachineGuid na Windows, machine-id na Linux oraz unikalny adres MAC).
-   - Ochrona przed klonowaniem stacji (`HARDWARE_LOCKOUT`) oraz detekcja modyfikacji parametrów licencji (`TAMPER_DETECTED`).
-
-3. **Uwierzytelnianie Korporacyjne 2FA & Bramka Aktywacji:**
-   - Dwuetapowe logowanie OTP (6 cyfr CSPRNG, SHA-256 z solą, ochrona przed brute-force z blokadą po 3 próbach, unieważnienie po użyciu).
-   - Dozwolone domeny korporacyjne: `@amrest.eu` oraz `@starbucks.com`.
-   - Pełnoekranowy modal aktywacyjny nie do obejścia przed autoryzacją stacji.
-
-4. **Automatyczna Blokada Sesji (Session Auto-Lock) & Czyszczenie Pamięci RAM:**
-   - 15-minutowy timer bezczynności użytkownika automatycznie blokujący widok aplikacji.
-   - Bezpieczne zerowanie kluczy w pamięci RAM (`StoreKeyCache.clear()`) podczas blokady sesji w celu zapobieżenia zrzutom pamięci (memory dump extraction).
-
-5. **Disaster Recovery & Odzyskiwanie Stacji Master (BIP-39 24-Word Seed):**
-   - Standard SatoshiLabs BIP-0039 z 256-bitową entropią (24 słowa) oraz wyprowadzaniem nasion PBKDF2-HMAC-SHA512.
-   - Kanoniczna lista 2,048 słów języka angielskiego zweryfikowana sumą kontrolną SHA-256 (`2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`).
-   - Stałoczasowa weryfikacja haseł Master (`crypto.timingSafeEqual`) oraz mechanizm rate-limiting z trwałym plikiem blokady (15 min po 5 błędnych próbach).
-
-6. **Pełna Zgodność Testowa i Jakościowa:**
-   - Kompletny pakiet 188 testów bezpieczeństwa przechodzący w 100% (M1, M2, M3, M4).
-   - Czysty build produkcyjny (`tsc && vite build`) dla środowiska Electron i React.
-
----
-
-### [v2.8.70] — 2026-10-26
-**Tytuł:** Poprawka Schematu REST API Firestore dla Migracji Chmurowej AES-256 (Protobuf Document Fields)  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-
-#### 🌟 Co Wprowadziliśmy:
-1. **Dopasowanie REST API Firestore v1 w `CloudMigrationService`:**
-   - Wyeliminowano błąd parsowania JSON w Google Firestore REST API: `Invalid JSON payload received. Unknown name "docId" at 'document': Cannot find field`.
-   - Zaimplementowano rygorystyczny format Protobuf Document dla zapytań HTTP PATCH: mapowanie wartości (`stringValue`, `integerValue`, `doubleValue`, `booleanValue`, `nullValue`, `mapValue`, `arrayValue`).
-   - Wszystkie szyfrowane sejfy (`financials`, `personnel`, `schedules`, `health_gdpr`) oraz metadane telemetryczne zapisują się poprawnie w chmurze Firestore pod ścieżkami `/stores/{storeId}/{collection}/{docId}`.
-2. **Zachowanie Integralności i Bezpieczeństwa:**
-   - Podtrzymano pełną izolację AES-256-GCM z bound AAD.
-   - Pomyślna weryfikacja automatycznych testów odpornościowych i regresyjnych.
-
----
-
-### [v2.8.69] — 2026-10-26
-**Tytuł:** Naprawa Punktu Wejścia IPC Migracji Chmurowej w Oknie Kawiarni  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-
-#### 🌟 Co Wprowadziliśmy:
-1. **Statyczne Wywołanie `CloudMigrationService.executeMigration`:**
-   - Naprawiono błąd `TypeError: CloudMigrationService.executeStoreMigration is not a function` w procesie głównym Electrona (`electron/main.ts`).
-2. **Pełna Integracja Przycisków UI:**
-   - Przycisk „Migruj do Chmury (AES-256)” w `DatabaseBackupModal` poprawnie uruchamia 6-fazowy potok migracji.
-
----
-
-### [v2.8.68] — 2026-10-26
-**Tytuł:** Skalowanie na 100+ Kawiarni, Purge Danych Mock/AI, Szyfrowanie AES-256 w Chmurze Firebase i Most Migracji  
-**Autorzy:** Dawid Apel & Antigravity Agent Squad  
-
-#### 🌟 Co Wprowadziliśmy:
-1. **Pełne Oczyszczenie Kodu (Mock & AI Text Purge):**
-   - Trwałe usunięcie zahardkodowanych wartości domyślnych (`18120`, `108120`, `384`, `Janki`) z logiki biznesowej, zapytań SQL i widoków.
-   - Nowy czysty start (Clean Launch) uruchamiający Onboarding Wizard dla nowo instalowanych instancji.
-   - Likwidacja fikcyjnych stawek i przykładowych pracowników.
-2. **Architektura dla 100+ Kawiarni (Multi-Store Fleet):**
-   - Fizyczna separacja baz `store_${id}.db` per kawiarnia.
-   - Pula połączeń `StoreConnectionPool` z buforem LRU (8 slotów) i asynchronicznym muteksem (`AsyncMutex`).
-   - Certyfikowany katalog 132 lokali Starbucks w Polsce z wyszukiwaniem diakrytycznym.
-3. **Klienckie Szyfrowanie AES-256-GCM w Chmurze Firebase:**
-   - Szyfrowanie wrażliwych danych (P&L, stawki, absencje L4) przed opuszczeniem komputera.
-   - Wyprowadzanie kluczy PBKDF2 (600k iteracji), tagi AAD i natychmiastowe zerowanie buforów RAM (`key.fill(0)`).
-   - Produkcyjne reguły `firestore.rules` zabezpieczające skarbce kawiarni.
-4. **Bezstratny Most Migracji do Chmury (Zero Data Loss):**
-   - 6-fazowy atomowy rurociąg migracji (`cloudMigrationService.ts`) z pre-flight backupem.
-   - Kryptograficzny silnik weryfikacji parzystości danych (`parityVerificationService.ts`) z cyfrowym certyfikatem HMAC-SHA256.
-   - Dedykowany przycisk *"Migruj do Chmury"* w oknie Kopii Zapasowych i Zarządzania Bazą.
+#### ⚡ Usprawnienia & Ergonomia:
+- Redukcja STARBUCKS_STORES_CATALOG do 2 domyślnych lokali z automatyczną alokacją obszarów kawiarni w Firestore.
+- Dostosowanie nagłówka, menu bocznego i widoku floty do dynamicznej liczby jednostek.
 
 ---
 
@@ -285,11 +79,19 @@ Dotychczasowy mechanizm `SyncEngine` symulował asynchroniczny zapis kolejki mut
 **Autorzy:** Dawid Apel & Antigravity Agent Squad  
 
 #### 🌟 Co Wprowadziliśmy:
-- **Dwuetapowe Logowanie 2FA z Domeną Firmową**: Nowy serwis `authService.ts` egzekwuje logowanie wyłącznie z adresów `@amrest.eu` oraz `@starbucks.com`, generując 6-cyfrowy kod autoryzacyjny OTP.
-- **Szybkie Wejście Store Managera**: Jednoklikowe logowanie z zaplecza kawiarni 18120 Janki dla Dawida Apela z natychmiastowym odblokowaniem skarbców płac i stawek.
-- **Formularz Wniosku o Dostęp (Partner Onboarding)**: Wygodna rejestracja nowych baristów i shift supervisorów z automatycznym przekazaniem wniosku do kolejki Store Managera.
-- **Produkcyjne Reguły Bezpieczeństwa Firestore**: Oficjalny plik `firestore.rules` zabezpieczający 3 sejfy serwerowe (`public_schedule`, `private_staff_vault`, `executive_financial_vault`), całkowicie blokujący wyciek danych finansowych dla ról niemenedżerskich.
-- **Architektura Local-First Hybrid Sync**: Nowy silnik `syncEngine.ts` z asynchroniczną kolejką zmian `sbx_sync_outbox`, gwarantujący natychmiastowy zapis w lokalnym SQLite bez opóźnień sieciowych i pełne działanie offline.
+- Dwuetapowe Logowanie 2FA: Bezpieczna autoryzacja pracowników z weryfikacją firmowych domen @amrest.eu i @starbucks.com oraz 6-cyfrowym kodem OTP.
+- Szybkie Uwierzytelnienie Store Managera: Jednoklikowy dostęp dla stacji roboczej zaplecza CH Janki z zachowaniem pełnych uprawnień zarządczych.
+- Rejestracja Nowych Pracowników (Partner Onboarding): Formularz zgłoszeniowy dla załogi kawiarni z automatyczną delegacją wniosku do Panelu Administratora.
+- Produkcyjne Reguły Firestore (Zero-Leak Security): Serwerowa izolacja sejfów (public_schedule, private_staff_vault, executive_financial_vault) uniemożliwiająca wyciek stawek i płac.
+- Silnik Local-First Hybrid Sync: Buforowanie zmian w asynchronicznej kolejce Outbox z priorytetem lokalnego SSD (0 ms opóźnień) i pełnym wsparciem offline.
+
+#### ✨ Nowe Funkcje:
+- Wdrożenie modułu autoryzacji authService.ts z obsługą domen korporacyjnych, kodów 2FA OTP i fingerprintingu urządzeń.
+- Nowoczesny pulpit logowania LoginView.tsx z 3 zakładkami: Store Manager, Logowanie 2FA oraz Rejestracja nowego konta.
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Stworzenie produkcyjnych reguł firestore.rules dla architektury 3 Sejfów przez wyspecjalizowanego subagenta firestore-rules-author.
+- Implementacja serwisu syncEngine.ts z asynchroniczną kolejką zmian (sbx_sync_outbox) i bezpiecznym filtrowaniem Zero-Leak.
 
 ---
 

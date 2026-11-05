@@ -50,6 +50,38 @@ export class FleetService {
           const arr = JSON.parse(storedLic);
           arr.forEach((item: any) => this.licensesMap.set(item.storeId, item));
         }
+
+        // Domyślny klucz testowy floty powiązany z test@amrest.eu (108120 SBX Warszawa Janki)
+        if (!this.licensesMap.has('108120')) {
+          this.licensesMap.set('108120', {
+            storeId: '108120',
+            tier: 'STORE_CLIENT',
+            licenseKey: 'SBX-108120-011E77C6C797E064-5FC6793A15',
+            provisionedAt: '2026-01-01T08:00:00.000Z',
+            validityDays: 0,
+            authorizedManagerName: 'Tester AmRest (Fleet QA)',
+            authorizedManagerEmail: 'test@amrest.eu',
+            requireHardwareLock: true,
+            notes: 'Oficjalny klucz testowy floty dla test@amrest.eu (Kawiarnia 108120 SBX Warszawa Janki)',
+            isRevoked: false,
+          });
+        }
+
+        // Klucz nadrzędny Fleet Master HQ
+        if (!this.licensesMap.has('FLEET_MASTER')) {
+          this.licensesMap.set('FLEET_MASTER', {
+            storeId: 'FLEET_MASTER',
+            tier: 'FLEET_MASTER',
+            licenseKey: 'SBX-FLEET_MASTER-FF763C5C190691E1-F976B4D7D4',
+            provisionedAt: '2026-01-01T08:00:00.000Z',
+            validityDays: 0,
+            authorizedManagerName: 'Tester AmRest (Fleet Master HQ)',
+            authorizedManagerEmail: 'test@amrest.eu',
+            requireHardwareLock: false,
+            notes: 'Nadrzędny klucz testowy Fleet Master HQ dla test@amrest.eu',
+            isRevoked: false,
+          });
+        }
         const storedAudit = localStorage.getItem(STORAGE_KEY_FLEET_AUDIT);
         if (storedAudit) {
           this.auditLogs = JSON.parse(storedAudit);

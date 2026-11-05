@@ -5,8 +5,20 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 ---
 
 
-## [v2.9.7] — 2026-11-02
+
+## [v2.9.8] — 2026-11-05
 - Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.7] — 2026-11-05
+- **Smart Swap Assistant AI (`smartSwapEngine.ts`, `ShiftPickerPopover.tsx`)**:
+  - Dedykowana zakładka `✨ Smart Swap AI` w oknie wyboru zmiany umożliwiająca błyskawiczne znalezienie optymalnych zmienników z zespołu.
+  - Obsługa zamian w ten sam dzień (Same-Day) oraz zamian krzyżowych z wyrównaniem (Cross-Day Balance Swap) gwarantujących $\Delta = 0.0$h w TOR.
+  - Transparentne etykietowanie zamian z udziałem urlopów (`⚠️ Przesunięcie H`) i administracji (`📋 Przesunięcie NC`) przy zachowaniu twardej blokady dla zwolnień lekarskich `L4`.
+- **AI Row Re-roll (`ManagerScheduleGrid.tsx`)**:
+  - 1-klik optymalizacja całego wiersza menedżera z poziomu siatki grafiku za pomocą heurystyki minimalnej inwazji (Swap Chain).
+  - Automatyczne rozwiązywanie kolizji KP i zaspokajanie deklaracji dyspozycyjności (`OFF`, `M`, `Z`) poprzez precyzyjne mikrozamiany z resztą zespołu.
+- **Powiadomienia Toast**:
+  - Płynny, pływający komponent powiadomień informujący o przeprowadzonych roszadach i statusie bilansów TOR.
 
 ## [v2.9.7] — 2026-11-02
 - **Dostosowanie Floty**: Kompatybilność wsparcia międzykawiarnianego z nowym katalogiem floty i dynamicznym licznikiem jednostek.

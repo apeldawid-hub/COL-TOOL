@@ -24,6 +24,41 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.8',
+    date: '2026-11-05',
+    title: 'Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Smart Swap Assistant AI: Dedykowana zakładka w oknie wyboru zmiany (ShiftPickerPopover) umożliwiająca natychmiastowe znalezienie bezkolizyjnych zamian parzystych.',
+      'Wymiana Krzyżowa z Wyrównaniem: Obsługa zamian w ten sam dzień (Same-Day) oraz krzyżowych (Cross-Day Balance Swap) gwarantujących 0.0h różnicy w TOR i 100% KP.',
+      'AI Row Re-roll: 1-klik rekonfiguracja wiersza menedżera na siatce grafiku minimalizująca kolizje dyspozycji (OFF/M/Z) poprzez serię mikrozamian parzystych.',
+      'Płynne Powiadomienia Toast: Nowy system powiadomień na siatce informujący o statusie zamian i zachowaniu bilansu czasu pracy.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Implementacja silnika smartSwapEngine.ts z dwoma typami zamian parzystych (Same-Day oraz Cross-Day) z wielokryterialnym scoringiem.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Integracja zakładki Smart Swap w ShiftPickerPopover.tsx z listą propozycji, etykietami H/NC i 1-klik zatwierdzeniem.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Wdrożenie przycisku AI Row Re-roll w kolumnie menedżera na siatce ManagerScheduleGrid.tsx z obsługą minimalnie inwazyjnego Swap Chain.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Dodanie pływającego komponentu Toast powiadomień o statusie operacji AI w widoku grafiku.',
+        module: 'managers_schedule'
+      }
+    ]
+  },
+  {
     version: '2.9.7',
     date: '2026-11-02',
     title: 'Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI',

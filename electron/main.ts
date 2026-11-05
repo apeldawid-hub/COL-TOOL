@@ -2213,6 +2213,17 @@ function setupIpcHandlers() {
     const { CloudMigrationService } = await import('../src/services/security/cloudMigrationService');
     return CloudMigrationService.getSavedReceipt(storeId);
   });
+
+  // Feature F18: Real-time Cloud Transport Layer (Step 1)
+  ipcMain.handle('realtime:publish-event', async (_event, input: any) => {
+    const { CloudRealtimeTransport } = await import('../src/services/sync/cloudRealtimeTransport');
+    return await CloudRealtimeTransport.publishEvent(input);
+  });
+
+  ipcMain.handle('realtime:poll-once', async (_event, storeId: string) => {
+    const { CloudRealtimeTransport } = await import('../src/services/sync/cloudRealtimeTransport');
+    return await CloudRealtimeTransport.pollOnce(storeId);
+  });
 }
 
 app.whenReady().then(() => {

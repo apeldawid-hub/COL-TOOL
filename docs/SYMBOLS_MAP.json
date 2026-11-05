@@ -1,0 +1,1907 @@
+{
+  "ALLOWED_CORPORATE_DOMAINS": {
+    "file": "src/services/auth/authService.ts",
+    "line": 45,
+    "kind": "const"
+  },
+  "APP_CHANGELOG": {
+    "file": "src/constants/changelog.ts",
+    "line": 25,
+    "kind": "const"
+  },
+  "AUTOSCHEDULER_DEFAULT_MAX_ITERATIONS": {
+    "file": "src/modules/managers-schedule/constants/index.ts",
+    "line": 18,
+    "kind": "const"
+  },
+  "AccessRequestStatus": {
+    "file": "src/types/admin.ts",
+    "line": 9,
+    "kind": "type"
+  },
+  "ActivationKeyData": {
+    "file": "src/types/licensing.ts",
+    "line": 10,
+    "kind": "interface"
+  },
+  "ActivationResult": {
+    "file": "src/types/licensing.ts",
+    "line": 42,
+    "kind": "interface"
+  },
+  "ActiveLicenseRecord": {
+    "file": "src/types/licensing.ts",
+    "line": 18,
+    "kind": "interface"
+  },
+  "AdminService": {
+    "file": "src/services/admin/adminService.ts",
+    "line": 136,
+    "kind": "class"
+  },
+  "AopManagerModal": {
+    "file": "src/modules/labor-forecast/components/AopManagerModal.tsx",
+    "line": 15,
+    "kind": "const"
+  },
+  "AopPlanRecord": {
+    "file": "src/types/index.ts",
+    "line": 1,
+    "kind": "interface"
+  },
+  "AppInstallNotificationData": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 51,
+    "kind": "interface"
+  },
+  "AppModule": {
+    "file": "src/types/index.ts",
+    "line": 604,
+    "kind": "type"
+  },
+  "AppRuntimeMode": {
+    "file": "src/context/AuthContext.tsx",
+    "line": 16,
+    "kind": "type"
+  },
+  "AppUserRole": {
+    "file": "src/types/admin.ts",
+    "line": 7,
+    "kind": "type"
+  },
+  "ApproveEnrollmentPayload": {
+    "file": "src/services/admin/enrollmentService.ts",
+    "line": 42,
+    "kind": "interface"
+  },
+  "AsyncMutex": {
+    "file": "electron/database/db.ts",
+    "line": 29,
+    "kind": "class"
+  },
+  "AuthContextType": {
+    "file": "src/context/AuthContext.tsx",
+    "line": 18,
+    "kind": "interface"
+  },
+  "AuthProvider": {
+    "file": "src/context/AuthContext.tsx",
+    "line": 49,
+    "kind": "const"
+  },
+  "AuthService": {
+    "file": "src/services/auth/authService.ts",
+    "line": 195,
+    "kind": "class"
+  },
+  "AuthUserSession": {
+    "file": "src/services/auth/authService.ts",
+    "line": 23,
+    "kind": "interface"
+  },
+  "AutoScheduleEmployeeStat": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 85,
+    "kind": "interface"
+  },
+  "AutoScheduleModal": {
+    "file": "src/modules/managers-schedule/components/AutoScheduleModal.tsx",
+    "line": 50,
+    "kind": "const"
+  },
+  "AutoScheduleOptions": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 38,
+    "kind": "interface"
+  },
+  "AutoScheduleProgress": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 60,
+    "kind": "interface"
+  },
+  "AutoScheduleQualityMetrics": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 141,
+    "kind": "interface"
+  },
+  "AutoScheduleResult": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 151,
+    "kind": "interface"
+  },
+  "AutoScheduleWidget": {
+    "file": "src/modules/managers-schedule/components/AutoScheduleWidget.tsx",
+    "line": 55,
+    "kind": "const"
+  },
+  "AutoSchedulerEngine": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 232,
+    "kind": "class"
+  },
+  "BARISTA_180_SHIFTS": {
+    "file": "src/modules/trainings/services/trainingStandardData.ts",
+    "line": 219,
+    "kind": "const"
+  },
+  "BARISTA_90_SHIFTS": {
+    "file": "src/modules/trainings/services/trainingStandardData.ts",
+    "line": 197,
+    "kind": "const"
+  },
+  "BARISTA_TRAINER_SHIFTS": {
+    "file": "src/modules/trainings/services/trainingStandardData.ts",
+    "line": 241,
+    "kind": "const"
+  },
+  "BIP39_ENGLISH_WORDLIST": {
+    "file": "src/services/security/bip39Wordlist.ts",
+    "line": 7,
+    "kind": "const"
+  },
+  "BIP39_WORDLIST": {
+    "file": "src/services/security/bip39Wordlist.ts",
+    "line": 2058,
+    "kind": "const"
+  },
+  "BIP39_WORD_INDEX_MAP": {
+    "file": "src/services/security/bip39Wordlist.ts",
+    "line": 2060,
+    "kind": "const"
+  },
+  "BackupManager": {
+    "file": "electron/database/backupManager.ts",
+    "line": 77,
+    "kind": "class"
+  },
+  "BoundaryShiftsContext": {
+    "file": "src/types/index.ts",
+    "line": 556,
+    "kind": "interface"
+  },
+  "COL_PILLARS": {
+    "file": "src/modules/col-calculator/constants/index.ts",
+    "line": 11,
+    "kind": "const"
+  },
+  "COL_REPLICA_SHEETS": {
+    "file": "src/modules/col-calculator/constants/index.ts",
+    "line": 18,
+    "kind": "const"
+  },
+  "CalculationEngine": {
+    "file": "src/modules/labor-forecast/services/calculationEngine.ts",
+    "line": 27,
+    "kind": "class"
+  },
+  "ChangelogCategory": {
+    "file": "src/constants/changelog.ts",
+    "line": 7,
+    "kind": "type"
+  },
+  "ChangelogItem": {
+    "file": "src/constants/changelog.ts",
+    "line": 9,
+    "kind": "interface"
+  },
+  "ClientLogEntry": {
+    "file": "src/services/logger.ts",
+    "line": 5,
+    "kind": "interface"
+  },
+  "CloudAuditReport": {
+    "file": "src/services/sync/cloudIntegrityScheduler.ts",
+    "line": 18,
+    "kind": "interface"
+  },
+  "CloudBatchUploadPlan": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 150,
+    "kind": "interface"
+  },
+  "CloudDocsSyncResult": {
+    "file": "src/services/firebaseDocsService.ts",
+    "line": 18,
+    "kind": "interface"
+  },
+  "CloudHealthStatus": {
+    "file": "src/services/sync/cloudSyncService.ts",
+    "line": 18,
+    "kind": "interface"
+  },
+  "CloudIntegrityScheduler": {
+    "file": "src/services/sync/cloudIntegrityScheduler.ts",
+    "line": 32,
+    "kind": "class"
+  },
+  "CloudMigrationService": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 269,
+    "kind": "class"
+  },
+  "CloudMigrationServiceDeps": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 228,
+    "kind": "interface"
+  },
+  "CloudOperationalDoc": {
+    "file": "src/services/firebaseDocsService.ts",
+    "line": 6,
+    "kind": "interface"
+  },
+  "CloudRealtimeTransport": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 96,
+    "kind": "class"
+  },
+  "CloudSyncService": {
+    "file": "src/services/sync/cloudSyncService.ts",
+    "line": 34,
+    "kind": "class"
+  },
+  "ColBonusSheet": {
+    "file": "src/modules/col-calculator/components/ColBonusSheet.tsx",
+    "line": 4,
+    "kind": "const"
+  },
+  "ColCalculatedSummary": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 92,
+    "kind": "interface"
+  },
+  "ColCalculatorView": {
+    "file": "src/modules/col-calculator/components/ColCalculatorView.tsx",
+    "line": 40,
+    "kind": "const"
+  },
+  "ColCrewUopItem": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 57,
+    "kind": "interface"
+  },
+  "ColCrewUzItem": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 73,
+    "kind": "interface"
+  },
+  "ColDaneSheet": {
+    "file": "src/modules/col-calculator/components/ColDaneSheet.tsx",
+    "line": 5,
+    "kind": "const"
+  },
+  "ColEngine": {
+    "file": "src/modules/col-calculator/services/colEngine.ts",
+    "line": 11,
+    "kind": "class"
+  },
+  "ColFieldsDescriptionSheet": {
+    "file": "src/modules/col-calculator/components/ColFieldsDescriptionSheet.tsx",
+    "line": 4,
+    "kind": "const"
+  },
+  "ColKpiTargetEst": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 18,
+    "kind": "interface"
+  },
+  "ColManagerItem": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 38,
+    "kind": "interface"
+  },
+  "ColOtherItem": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 83,
+    "kind": "interface"
+  },
+  "ColSheetTab": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 1,
+    "kind": "type"
+  },
+  "ColSpreadsheetGrid": {
+    "file": "src/modules/col-calculator/components/ColSpreadsheetGrid.tsx",
+    "line": 32,
+    "kind": "const"
+  },
+  "ColStoreInfo": {
+    "file": "src/modules/col-calculator/types/colTypes.ts",
+    "line": 9,
+    "kind": "interface"
+  },
+  "ColUserGuideSheet": {
+    "file": "src/modules/col-calculator/components/ColUserGuideSheet.tsx",
+    "line": 4,
+    "kind": "const"
+  },
+  "ColVacationReserveSheet": {
+    "file": "src/modules/col-calculator/components/ColVacationReserveSheet.tsx",
+    "line": 16,
+    "kind": "const"
+  },
+  "ConflictInsight": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 123,
+    "kind": "interface"
+  },
+  "ConflictNegotiationOption": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 110,
+    "kind": "interface"
+  },
+  "CorporateEmailValidationResult": {
+    "file": "src/services/auth/authService.ts",
+    "line": 37,
+    "kind": "interface"
+  },
+  "CrossMonthBridge": {
+    "file": "src/types/index.ts",
+    "line": 250,
+    "kind": "interface"
+  },
+  "CrossMonthBridgeCard": {
+    "file": "src/modules/labor-forecast/components/CrossMonthBridgeCard.tsx",
+    "line": 10,
+    "kind": "const"
+  },
+  "CrossMonthBridgeEngine": {
+    "file": "src/modules/labor-forecast/services/engine/crossMonthBridgeEngine.ts",
+    "line": 12,
+    "kind": "class"
+  },
+  "CrossMonthBridgePart": {
+    "file": "src/types/index.ts",
+    "line": 230,
+    "kind": "interface"
+  },
+  "DEFAULT_COL_CREW_UOP": {
+    "file": "src/modules/col-calculator/services/colDefaultData.ts",
+    "line": 130,
+    "kind": "const"
+  },
+  "DEFAULT_COL_CREW_UZ": {
+    "file": "src/modules/col-calculator/services/colDefaultData.ts",
+    "line": 132,
+    "kind": "const"
+  },
+  "DEFAULT_COL_KPIS": {
+    "file": "src/modules/col-calculator/services/colDefaultData.ts",
+    "line": 19,
+    "kind": "const"
+  },
+  "DEFAULT_COL_MANAGERS": {
+    "file": "src/modules/col-calculator/services/colDefaultData.ts",
+    "line": 37,
+    "kind": "const"
+  },
+  "DEFAULT_COL_OTHER_COSTS": {
+    "file": "src/modules/col-calculator/services/colDefaultData.ts",
+    "line": 134,
+    "kind": "const"
+  },
+  "DEFAULT_COL_STORE_INFO": {
+    "file": "src/modules/col-calculator/services/colDefaultData.ts",
+    "line": 10,
+    "kind": "const"
+  },
+  "DEFAULT_FIREBASE_PROJECT_ID": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 260,
+    "kind": "const"
+  },
+  "DEFAULT_MIN_STAFF_AM": {
+    "file": "src/modules/labor-forecast/constants/index.ts",
+    "line": 10,
+    "kind": "const"
+  },
+  "DEFAULT_MIN_STAFF_PM": {
+    "file": "src/modules/labor-forecast/constants/index.ts",
+    "line": 11,
+    "kind": "const"
+  },
+  "DEFAULT_NOTIFICATION_PREFERENCES": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 86,
+    "kind": "const"
+  },
+  "DEFAULT_SHIFT_DEFINITIONS": {
+    "file": "src/modules/managers-schedule/constants/defaultShifts.ts",
+    "line": 4,
+    "kind": "const"
+  },
+  "DataClassificationTier": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 27,
+    "kind": "type"
+  },
+  "DatabaseBackupRecord": {
+    "file": "electron/database/backupManager.ts",
+    "line": 18,
+    "kind": "interface"
+  },
+  "DatabaseHealthStatus": {
+    "file": "src/types/index.ts",
+    "line": 624,
+    "kind": "interface"
+  },
+  "DatabaseManager": {
+    "file": "electron/database/db.ts",
+    "line": 283,
+    "kind": "class"
+  },
+  "DatabaseOptimizationResult": {
+    "file": "src/types/index.ts",
+    "line": 649,
+    "kind": "interface"
+  },
+  "DatabaseStatus": {
+    "file": "electron/database/backupManager.ts",
+    "line": 30,
+    "kind": "interface"
+  },
+  "DatabaseTableStat": {
+    "file": "src/types/index.ts",
+    "line": 618,
+    "kind": "interface"
+  },
+  "DayCoverageSummary": {
+    "file": "src/types/index.ts",
+    "line": 440,
+    "kind": "interface"
+  },
+  "DayOfWeekHoursTrend": {
+    "file": "src/types/index.ts",
+    "line": 285,
+    "kind": "interface"
+  },
+  "DayOfWeekStatRaw": {
+    "file": "src/modules/labor-forecast/services/trendLearningEngine.ts",
+    "line": 12,
+    "kind": "interface"
+  },
+  "DecryptionOptions": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 38,
+    "kind": "interface"
+  },
+  "DefaultHardwareProvider": {
+    "file": "src/services/security/licensingService.ts",
+    "line": 126,
+    "kind": "class"
+  },
+  "DesktopNotification": {
+    "file": "src/services/desktopNotificationService.ts",
+    "line": 8,
+    "kind": "interface"
+  },
+  "DigitalSkillCheckModal": {
+    "file": "src/modules/trainings/components/DigitalSkillCheckModal.tsx",
+    "line": 14,
+    "kind": "const"
+  },
+  "ElectronIpcStorageProvider": {
+    "file": "src/services/security/licensingService.ts",
+    "line": 55,
+    "kind": "class"
+  },
+  "EncryptedEnvelope": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 21,
+    "kind": "interface"
+  },
+  "EncryptedVaultDocument": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 74,
+    "kind": "type"
+  },
+  "EncryptionOptions": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 32,
+    "kind": "interface"
+  },
+  "EnrollmentService": {
+    "file": "src/services/admin/enrollmentService.ts",
+    "line": 49,
+    "kind": "class"
+  },
+  "EnsembleForecastEngine": {
+    "file": "src/modules/labor-forecast/services/engine/ensembleForecastEngine.ts",
+    "line": 7,
+    "kind": "class"
+  },
+  "EnsembleForecastResult": {
+    "file": "src/types/index.ts",
+    "line": 306,
+    "kind": "interface"
+  },
+  "ExtractedStoreTables": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 106,
+    "kind": "interface"
+  },
+  "FIRESTORE_BASE_URL": {
+    "file": "src/services/sync/cloudSyncService.ts",
+    "line": 16,
+    "kind": "const"
+  },
+  "FIRESTORE_PROJECT_ID": {
+    "file": "src/services/sync/cloudSyncService.ts",
+    "line": 15,
+    "kind": "const"
+  },
+  "FIRST_30_DAYS_DURATION": {
+    "file": "src/modules/trainings/constants/index.ts",
+    "line": 6,
+    "kind": "const"
+  },
+  "FIRST_30_SHIFTS": {
+    "file": "src/modules/trainings/services/trainingStandardData.ts",
+    "line": 3,
+    "kind": "const"
+  },
+  "FLEXIBLE_ADMIN_SHIFT_CODES": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 259,
+    "kind": "const"
+  },
+  "FOURTH_SUNDAY_RULE_WEEKS": {
+    "file": "src/modules/managers-schedule/constants/index.ts",
+    "line": 11,
+    "kind": "const"
+  },
+  "FieldClassificationRule": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 36,
+    "kind": "interface"
+  },
+  "FinancialVaultPayload": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 117,
+    "kind": "interface"
+  },
+  "FirebaseConfig": {
+    "file": "src/services/firebaseTelemetryService.ts",
+    "line": 21,
+    "kind": "interface"
+  },
+  "FirebaseDocsService": {
+    "file": "src/services/firebaseDocsService.ts",
+    "line": 29,
+    "kind": "class"
+  },
+  "FirebaseInstallationRecord": {
+    "file": "src/services/firebaseTelemetryService.ts",
+    "line": 4,
+    "kind": "interface"
+  },
+  "FleetAuditAction": {
+    "file": "src/types/fleet.ts",
+    "line": 14,
+    "kind": "type"
+  },
+  "FleetAuditRecord": {
+    "file": "src/types/fleet.ts",
+    "line": 85,
+    "kind": "interface"
+  },
+  "FleetFilterState": {
+    "file": "src/types/fleet.ts",
+    "line": 120,
+    "kind": "interface"
+  },
+  "FleetParityState": {
+    "file": "src/types/fleet.ts",
+    "line": 12,
+    "kind": "type"
+  },
+  "FleetService": {
+    "file": "src/services/admin/fleetService.ts",
+    "line": 27,
+    "kind": "class"
+  },
+  "FleetStoreHealth": {
+    "file": "src/types/fleet.ts",
+    "line": 10,
+    "kind": "type"
+  },
+  "FleetStoreRecord": {
+    "file": "src/types/fleet.ts",
+    "line": 29,
+    "kind": "interface"
+  },
+  "FleetSummaryStats": {
+    "file": "src/types/fleet.ts",
+    "line": 73,
+    "kind": "interface"
+  },
+  "FleetSyncState": {
+    "file": "src/types/fleet.ts",
+    "line": 11,
+    "kind": "type"
+  },
+  "FlexAllocationEngine": {
+    "file": "src/modules/labor-forecast/services/engine/flexAllocationEngine.ts",
+    "line": 5,
+    "kind": "class"
+  },
+  "FloorHoursModal": {
+    "file": "src/modules/labor-forecast/components/FloorHoursModal.tsx",
+    "line": 22,
+    "kind": "const"
+  },
+  "FloorRuleDay": {
+    "file": "src/types/index.ts",
+    "line": 25,
+    "kind": "interface"
+  },
+  "GranularUserPermissions": {
+    "file": "src/types/admin.ts",
+    "line": 35,
+    "kind": "interface"
+  },
+  "HealthGdprVaultPayload": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 278,
+    "kind": "interface"
+  },
+  "IBackupProvider": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 219,
+    "kind": "interface"
+  },
+  "ICloudVaultUploader": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 223,
+    "kind": "interface"
+  },
+  "IHardwareFingerprintProvider": {
+    "file": "src/types/licensing.ts",
+    "line": 70,
+    "kind": "interface"
+  },
+  "ILicensingService": {
+    "file": "src/types/licensing.ts",
+    "line": 74,
+    "kind": "interface"
+  },
+  "ILicensingStorageProvider": {
+    "file": "src/types/licensing.ts",
+    "line": 64,
+    "kind": "interface"
+  },
+  "ILocalDatabaseExtractor": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 213,
+    "kind": "interface"
+  },
+  "IMasterCredentialProvider": {
+    "file": "src/services/security/masterCredentialService.ts",
+    "line": 29,
+    "kind": "interface"
+  },
+  "INITIAL_BACKOFF_MS": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 263,
+    "kind": "const"
+  },
+  "ImportModal": {
+    "file": "src/modules/labor-forecast/components/ImportModal.tsx",
+    "line": 119,
+    "kind": "const"
+  },
+  "InterStoreSupportAnalysis": {
+    "file": "src/modules/managers-schedule/services/interStoreSupportEngine.ts",
+    "line": 56,
+    "kind": "interface"
+  },
+  "InterStoreSupportEngine": {
+    "file": "src/modules/managers-schedule/services/interStoreSupportEngine.ts",
+    "line": 64,
+    "kind": "class"
+  },
+  "InterStoreSupportModal": {
+    "file": "src/modules/managers-schedule/components/InterStoreSupportModal.tsx",
+    "line": 58,
+    "kind": "const"
+  },
+  "InterStoreSupportRequest": {
+    "file": "src/modules/managers-schedule/services/interStoreSupportEngine.ts",
+    "line": 13,
+    "kind": "interface"
+  },
+  "KNOWN_PUBLIC_DOMAINS": {
+    "file": "src/services/auth/authService.ts",
+    "line": 47,
+    "kind": "const"
+  },
+  "KNOWN_SQLITE_TABLES": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 238,
+    "kind": "const"
+  },
+  "KeyValidationResult": {
+    "file": "src/types/licensing.ts",
+    "line": 32,
+    "kind": "interface"
+  },
+  "KillSwitchPayload": {
+    "file": "src/types/fleet.ts",
+    "line": 111,
+    "kind": "interface"
+  },
+  "KpiSummaryCards": {
+    "file": "src/modules/labor-forecast/components/KpiSummaryCards.tsx",
+    "line": 10,
+    "kind": "const"
+  },
+  "LaborActualRecord": {
+    "file": "src/types/index.ts",
+    "line": 46,
+    "kind": "interface"
+  },
+  "LaborForecastView": {
+    "file": "src/modules/labor-forecast/components/LaborForecastView.tsx",
+    "line": 60,
+    "kind": "const"
+  },
+  "LaborForecastWidget": {
+    "file": "src/modules/labor-forecast/components/LaborForecastWidget.tsx",
+    "line": 27,
+    "kind": "const"
+  },
+  "LaborLawAlertData": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 25,
+    "kind": "interface"
+  },
+  "LaborLawComplianceModal": {
+    "file": "src/modules/managers-schedule/components/LaborLawComplianceModal.tsx",
+    "line": 32,
+    "kind": "const"
+  },
+  "LaborLawRuleType": {
+    "file": "src/types/index.ts",
+    "line": 409,
+    "kind": "type"
+  },
+  "LaborLawViolation": {
+    "file": "src/types/index.ts",
+    "line": 416,
+    "kind": "interface"
+  },
+  "LaborLawViolationDialog": {
+    "file": "src/modules/managers-schedule/components/LaborLawViolationDialog.tsx",
+    "line": 20,
+    "kind": "const"
+  },
+  "LaborLogViewerModal": {
+    "file": "src/modules/labor-forecast/components/LaborLogViewerModal.tsx",
+    "line": 46,
+    "kind": "const"
+  },
+  "LicenseStatusResult": {
+    "file": "src/types/licensing.ts",
+    "line": 55,
+    "kind": "interface"
+  },
+  "LicenseTier": {
+    "file": "src/types/licensing.ts",
+    "line": 6,
+    "kind": "type"
+  },
+  "LicensingService": {
+    "file": "src/services/security/licensingService.ts",
+    "line": 167,
+    "kind": "class"
+  },
+  "LogLevel": {
+    "file": "src/services/logger.ts",
+    "line": 3,
+    "kind": "type"
+  },
+  "MAX_CONSECUTIVE_WORK_DAYS": {
+    "file": "src/modules/managers-schedule/constants/index.ts",
+    "line": 10,
+    "kind": "const"
+  },
+  "MAX_DOCS_PER_BATCH": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 261,
+    "kind": "const"
+  },
+  "MAX_UPLOAD_RETRIES": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 262,
+    "kind": "const"
+  },
+  "MIN_DAILY_FLOOR_HOURS": {
+    "file": "src/modules/managers-schedule/constants/index.ts",
+    "line": 14,
+    "kind": "const"
+  },
+  "MIN_DAILY_REST_HOURS": {
+    "file": "src/modules/managers-schedule/constants/index.ts",
+    "line": 8,
+    "kind": "const"
+  },
+  "MIN_WEEKLY_FLOOR_HOURS": {
+    "file": "src/modules/managers-schedule/constants/index.ts",
+    "line": 15,
+    "kind": "const"
+  },
+  "MIN_WEEKLY_REST_HOURS": {
+    "file": "src/modules/managers-schedule/constants/index.ts",
+    "line": 9,
+    "kind": "const"
+  },
+  "ManagedAppUser": {
+    "file": "src/types/admin.ts",
+    "line": 54,
+    "kind": "interface"
+  },
+  "ManagerCalculatedRow": {
+    "file": "src/types/index.ts",
+    "line": 428,
+    "kind": "interface"
+  },
+  "ManagerCoverageEngine": {
+    "file": "src/modules/labor-forecast/services/engine/managerCoverageEngine.ts",
+    "line": 10,
+    "kind": "class"
+  },
+  "ManagerDailyCoverageItem": {
+    "file": "src/types/index.ts",
+    "line": 127,
+    "kind": "interface"
+  },
+  "ManagerDispositionsModal": {
+    "file": "src/modules/managers-schedule/components/ManagerDispositionsModal.tsx",
+    "line": 29,
+    "kind": "const"
+  },
+  "ManagerEmployee": {
+    "file": "src/types/index.ts",
+    "line": 356,
+    "kind": "interface"
+  },
+  "ManagerExcelExport": {
+    "file": "src/modules/managers-schedule/services/managerExcelExport.ts",
+    "line": 6,
+    "kind": "class"
+  },
+  "ManagerLaborBridgeModal": {
+    "file": "src/modules/labor-forecast/components/ManagerLaborBridgeModal.tsx",
+    "line": 35,
+    "kind": "const"
+  },
+  "ManagerScheduleEngine": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 330,
+    "kind": "class"
+  },
+  "ManagerScheduleEvent": {
+    "file": "src/types/index.ts",
+    "line": 400,
+    "kind": "interface"
+  },
+  "ManagerScheduleGrid": {
+    "file": "src/modules/managers-schedule/components/ManagerScheduleGrid.tsx",
+    "line": 39,
+    "kind": "const"
+  },
+  "ManagerScheduleMonthData": {
+    "file": "src/types/index.ts",
+    "line": 472,
+    "kind": "interface"
+  },
+  "ManagerScheduleShift": {
+    "file": "src/types/index.ts",
+    "line": 385,
+    "kind": "interface"
+  },
+  "ManagerScheduleView": {
+    "file": "src/modules/managers-schedule/components/ManagerScheduleView.tsx",
+    "line": 58,
+    "kind": "const"
+  },
+  "ManagerTeamModal": {
+    "file": "src/modules/managers-schedule/components/ManagerTeamModal.tsx",
+    "line": 16,
+    "kind": "const"
+  },
+  "MasterCredentialService": {
+    "file": "src/services/security/masterCredentialService.ts",
+    "line": 134,
+    "kind": "class"
+  },
+  "MasterCredentialStatusResult": {
+    "file": "src/services/security/masterCredentialService.ts",
+    "line": 22,
+    "kind": "interface"
+  },
+  "MasterCredentialVerificationResult": {
+    "file": "src/services/security/masterCredentialService.ts",
+    "line": 14,
+    "kind": "interface"
+  },
+  "MasterRecoveryService": {
+    "file": "src/services/security/masterRecoveryService.ts",
+    "line": 35,
+    "kind": "class"
+  },
+  "MigrationOptions": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 89,
+    "kind": "interface"
+  },
+  "MigrationPhase": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 44,
+    "kind": "type"
+  },
+  "MigrationProgress": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 87,
+    "kind": "type"
+  },
+  "MigrationProgressEvent": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 73,
+    "kind": "interface"
+  },
+  "MigrationReceipt": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 165,
+    "kind": "interface"
+  },
+  "MigrationResult": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 197,
+    "kind": "interface"
+  },
+  "MnemonicValidationResult": {
+    "file": "src/services/security/masterRecoveryService.ts",
+    "line": 17,
+    "kind": "interface"
+  },
+  "MondayProjectionDetails": {
+    "file": "src/types/index.ts",
+    "line": 111,
+    "kind": "interface"
+  },
+  "MondayProjectionModal": {
+    "file": "src/modules/labor-forecast/components/MondayProjectionModal.tsx",
+    "line": 13,
+    "kind": "const"
+  },
+  "MonthNormEditModal": {
+    "file": "src/modules/managers-schedule/components/MonthNormEditModal.tsx",
+    "line": 35,
+    "kind": "const"
+  },
+  "MonthlyCalculationSummary": {
+    "file": "src/types/index.ts",
+    "line": 174,
+    "kind": "interface"
+  },
+  "MonthlyNormRecord": {
+    "file": "src/types/index.ts",
+    "line": 461,
+    "kind": "interface"
+  },
+  "NcRuleRecord": {
+    "file": "src/types/index.ts",
+    "line": 277,
+    "kind": "interface"
+  },
+  "NotificationCategory": {
+    "file": "src/services/desktopNotificationService.ts",
+    "line": 6,
+    "kind": "type"
+  },
+  "NotificationLogItem": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 63,
+    "kind": "interface"
+  },
+  "NotificationPreferences": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 75,
+    "kind": "interface"
+  },
+  "NotificationSeverity": {
+    "file": "src/services/desktopNotificationService.ts",
+    "line": 4,
+    "kind": "type"
+  },
+  "OfflineStoreCertificate": {
+    "file": "src/services/security/masterRecoveryService.ts",
+    "line": 27,
+    "kind": "interface"
+  },
+  "OperationalAlert": {
+    "file": "src/modules/labor-forecast/components/OperationalAlert.tsx",
+    "line": 9,
+    "kind": "const"
+  },
+  "OtpChallengeRecord": {
+    "file": "src/services/auth/authService.ts",
+    "line": 53,
+    "kind": "interface"
+  },
+  "OtpChallengeState": {
+    "file": "src/services/admin/enrollmentService.ts",
+    "line": 26,
+    "kind": "interface"
+  },
+  "POLISH_DAY_ABBR": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 328,
+    "kind": "const"
+  },
+  "POLISH_MONTH_NAMES": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 323,
+    "kind": "const"
+  },
+  "PPK_EMPLOYER_DEFAULT_RATE": {
+    "file": "src/modules/col-calculator/constants/index.ts",
+    "line": 7,
+    "kind": "const"
+  },
+  "PackagedVaultManifest": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 132,
+    "kind": "interface"
+  },
+  "ParityCertificate": {
+    "file": "src/services/security/parityVerificationService.ts",
+    "line": 42,
+    "kind": "interface"
+  },
+  "ParityMismatch": {
+    "file": "src/services/security/parityVerificationService.ts",
+    "line": 33,
+    "kind": "interface"
+  },
+  "ParityVerificationOptions": {
+    "file": "src/services/security/parityVerificationService.ts",
+    "line": 69,
+    "kind": "interface"
+  },
+  "ParityVerificationReport": {
+    "file": "src/services/security/parityVerificationService.ts",
+    "line": 53,
+    "kind": "interface"
+  },
+  "ParityVerificationService": {
+    "file": "src/services/security/parityVerificationService.ts",
+    "line": 120,
+    "kind": "class"
+  },
+  "PartialWeekEngine": {
+    "file": "src/modules/labor-forecast/services/engine/partialWeekEngine.ts",
+    "line": 4,
+    "kind": "class"
+  },
+  "PartnerEditModal": {
+    "file": "src/modules/trainings/components/PartnerEditModal.tsx",
+    "line": 13,
+    "kind": "const"
+  },
+  "PartnerJourneyTracker": {
+    "file": "src/modules/trainings/components/PartnerJourneyTracker.tsx",
+    "line": 20,
+    "kind": "const"
+  },
+  "PartnerTrainingStatus": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 8,
+    "kind": "type"
+  },
+  "PendingAccessRequest": {
+    "file": "src/types/admin.ts",
+    "line": 11,
+    "kind": "interface"
+  },
+  "PersonnelVaultPayload": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 161,
+    "kind": "interface"
+  },
+  "PlaintextTelemetryDocument": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 79,
+    "kind": "interface"
+  },
+  "PlanningCadenceInfo": {
+    "file": "src/types/index.ts",
+    "line": 157,
+    "kind": "interface"
+  },
+  "PooledConnection": {
+    "file": "electron/database/db.ts",
+    "line": 17,
+    "kind": "interface"
+  },
+  "PreflightBackupReceipt": {
+    "file": "src/services/security/cloudMigrationService.ts",
+    "line": 64,
+    "kind": "interface"
+  },
+  "ProfilePolicyService": {
+    "file": "src/services/security/profilePolicyService.ts",
+    "line": 31,
+    "kind": "class"
+  },
+  "ProfileSecurityPolicy": {
+    "file": "src/services/security/profilePolicyService.ts",
+    "line": 10,
+    "kind": "interface"
+  },
+  "ProvisionLicensePayload": {
+    "file": "src/types/fleet.ts",
+    "line": 101,
+    "kind": "interface"
+  },
+  "PublicationStatusInfo": {
+    "file": "src/types/index.ts",
+    "line": 534,
+    "kind": "interface"
+  },
+  "PublishEventInput": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 37,
+    "kind": "interface"
+  },
+  "ROLE_DEFAULT_PERMISSIONS": {
+    "file": "src/services/admin/adminService.ts",
+    "line": 4,
+    "kind": "const"
+  },
+  "RcpAbsenceConflict": {
+    "file": "src/types/index.ts",
+    "line": 501,
+    "kind": "interface"
+  },
+  "RcpAbsenceConflictDialog": {
+    "file": "src/modules/managers-schedule/components/RcpAbsenceConflictDialog.tsx",
+    "line": 22,
+    "kind": "const"
+  },
+  "RealtimeAction": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 21,
+    "kind": "type"
+  },
+  "RealtimeConnectionState": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 22,
+    "kind": "type"
+  },
+  "RealtimeDomain": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 20,
+    "kind": "type"
+  },
+  "RealtimeTransportConfig": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 47,
+    "kind": "interface"
+  },
+  "ReleaseEntry": {
+    "file": "src/constants/changelog.ts",
+    "line": 15,
+    "kind": "interface"
+  },
+  "RestoreInspectionResult": {
+    "file": "electron/database/backupManager.ts",
+    "line": 39,
+    "kind": "interface"
+  },
+  "RowReRollResult": {
+    "file": "src/modules/managers-schedule/services/smartSwapEngine.ts",
+    "line": 46,
+    "kind": "interface"
+  },
+  "SKILL_CHECK_MODULES": {
+    "file": "src/modules/trainings/constants/index.ts",
+    "line": 15,
+    "kind": "const"
+  },
+  "STANDARD_SKILL_CHECKS": {
+    "file": "src/modules/trainings/services/trainingStandardData.ts",
+    "line": 263,
+    "kind": "const"
+  },
+  "STARBUCKS_STORES_CATALOG": {
+    "file": "src/constants/starbucksStores.ts",
+    "line": 34,
+    "kind": "const"
+  },
+  "SUNDAY_COMMERCIAL_TRAFFIC_MULTIPLIER": {
+    "file": "src/modules/labor-forecast/constants/index.ts",
+    "line": 14,
+    "kind": "const"
+  },
+  "SchedulePublishedData": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 14,
+    "kind": "interface"
+  },
+  "ScheduleVaultPayload": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 228,
+    "kind": "interface"
+  },
+  "ScheduleVersionModal": {
+    "file": "src/modules/managers-schedule/components/ScheduleVersionModal.tsx",
+    "line": 31,
+    "kind": "const"
+  },
+  "ScheduleVersionRecord": {
+    "file": "src/types/index.ts",
+    "line": 519,
+    "kind": "interface"
+  },
+  "ScheduleVersionType": {
+    "file": "src/types/index.ts",
+    "line": 517,
+    "kind": "type"
+  },
+  "SecurityAuditLog": {
+    "file": "src/types/admin.ts",
+    "line": 69,
+    "kind": "interface"
+  },
+  "SettingsModal": {
+    "file": "src/modules/labor-forecast/components/SettingsModal.tsx",
+    "line": 38,
+    "kind": "const"
+  },
+  "ShiftComplianceTestResult": {
+    "file": "src/types/index.ts",
+    "line": 546,
+    "kind": "interface"
+  },
+  "ShiftConfigModal": {
+    "file": "src/modules/managers-schedule/components/ShiftConfigModal.tsx",
+    "line": 24,
+    "kind": "const"
+  },
+  "ShiftDefinition": {
+    "file": "src/types/index.ts",
+    "line": 371,
+    "kind": "interface"
+  },
+  "ShiftDiffItem": {
+    "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
+    "line": 71,
+    "kind": "interface"
+  },
+  "ShiftPickerPopover": {
+    "file": "src/modules/managers-schedule/components/ShiftPickerPopover.tsx",
+    "line": 76,
+    "kind": "const"
+  },
+  "ShiftTrainingStatus": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 14,
+    "kind": "type"
+  },
+  "SkillCheckCriterion": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 61,
+    "kind": "interface"
+  },
+  "SkillCheckType": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 54,
+    "kind": "type"
+  },
+  "SmartSwapCandidate": {
+    "file": "src/modules/managers-schedule/services/smartSwapEngine.ts",
+    "line": 25,
+    "kind": "interface"
+  },
+  "SmartSwapChange": {
+    "file": "src/modules/managers-schedule/services/smartSwapEngine.ts",
+    "line": 13,
+    "kind": "interface"
+  },
+  "SmartSwapEngine": {
+    "file": "src/modules/managers-schedule/services/smartSwapEngine.ts",
+    "line": 72,
+    "kind": "class"
+  },
+  "StandardShiftTemplate": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 84,
+    "kind": "interface"
+  },
+  "StarbucksStore": {
+    "file": "src/constants/starbucksStores.ts",
+    "line": 3,
+    "kind": "interface"
+  },
+  "StationLicenseStatus": {
+    "file": "src/types/licensing.ts",
+    "line": 8,
+    "kind": "type"
+  },
+  "StoreConnectionPool": {
+    "file": "electron/database/db.ts",
+    "line": 53,
+    "kind": "class"
+  },
+  "StoreContextType": {
+    "file": "src/context/StoreContext.tsx",
+    "line": 13,
+    "kind": "interface"
+  },
+  "StoreKeyCache": {
+    "file": "src/services/security/storeKeyCache.ts",
+    "line": 6,
+    "kind": "class"
+  },
+  "StoreProvider": {
+    "file": "src/context/StoreContext.tsx",
+    "line": 30,
+    "kind": "const"
+  },
+  "StoreRealtimeEvent": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 24,
+    "kind": "interface"
+  },
+  "StoreService": {
+    "file": "src/services/storeService.ts",
+    "line": 28,
+    "kind": "class"
+  },
+  "StoreStorage": {
+    "file": "src/services/storeStorage.ts",
+    "line": 10,
+    "kind": "class"
+  },
+  "StoreSwitchedDetail": {
+    "file": "src/services/storeService.ts",
+    "line": 14,
+    "kind": "interface"
+  },
+  "StoreSwitchingDetail": {
+    "file": "src/services/storeService.ts",
+    "line": 6,
+    "kind": "interface"
+  },
+  "StoreTask": {
+    "file": "src/services/todoService.ts",
+    "line": 4,
+    "kind": "interface"
+  },
+  "StrategyOption": {
+    "file": "src/types/index.ts",
+    "line": 297,
+    "kind": "interface"
+  },
+  "SubmitEnrollmentPayload": {
+    "file": "src/services/admin/enrollmentService.ts",
+    "line": 35,
+    "kind": "interface"
+  },
+  "SupportCandidateOption": {
+    "file": "src/modules/managers-schedule/services/interStoreSupportEngine.ts",
+    "line": 38,
+    "kind": "interface"
+  },
+  "SupportScenarioType": {
+    "file": "src/modules/managers-schedule/services/interStoreSupportEngine.ts",
+    "line": 23,
+    "kind": "type"
+  },
+  "SupportShiftDiff": {
+    "file": "src/modules/managers-schedule/services/interStoreSupportEngine.ts",
+    "line": 28,
+    "kind": "interface"
+  },
+  "SyncEngine": {
+    "file": "src/services/sync/syncEngine.ts",
+    "line": 63,
+    "kind": "class"
+  },
+  "SyncOperationResult": {
+    "file": "src/services/sync/cloudSyncService.ts",
+    "line": 26,
+    "kind": "interface"
+  },
+  "SyncOutboxEntry": {
+    "file": "src/services/sync/syncEngine.ts",
+    "line": 16,
+    "kind": "interface"
+  },
+  "SyncStatus": {
+    "file": "src/services/sync/syncEngine.ts",
+    "line": 28,
+    "kind": "interface"
+  },
+  "SystemClock": {
+    "file": "src/services/systemClock.ts",
+    "line": 35,
+    "kind": "class"
+  },
+  "SystemTimeState": {
+    "file": "src/services/systemClock.ts",
+    "line": 10,
+    "kind": "interface"
+  },
+  "TEST_AMREST_REQUEST": {
+    "file": "src/services/admin/adminService.ts",
+    "line": 120,
+    "kind": "const"
+  },
+  "TEST_AMREST_USER": {
+    "file": "src/services/admin/adminService.ts",
+    "line": 93,
+    "kind": "const"
+  },
+  "TPLH_TOLERANCE_CRITICAL": {
+    "file": "src/modules/labor-forecast/constants/index.ts",
+    "line": 18,
+    "kind": "const"
+  },
+  "TPLH_TOLERANCE_WARNING": {
+    "file": "src/modules/labor-forecast/constants/index.ts",
+    "line": 17,
+    "kind": "const"
+  },
+  "TRAINING_BUDGET_CATEGORY": {
+    "file": "src/modules/trainings/constants/index.ts",
+    "line": 22,
+    "kind": "const"
+  },
+  "TRAINING_SHIFT_CODES": {
+    "file": "src/modules/trainings/constants/index.ts",
+    "line": 9,
+    "kind": "const"
+  },
+  "TorEmployeeRow": {
+    "file": "src/types/index.ts",
+    "line": 583,
+    "kind": "interface"
+  },
+  "TorEngine": {
+    "file": "src/modules/managers-schedule/services/torEngine.ts",
+    "line": 12,
+    "kind": "class"
+  },
+  "TorMonthSummary": {
+    "file": "src/types/index.ts",
+    "line": 565,
+    "kind": "interface"
+  },
+  "TorQuarterData": {
+    "file": "src/types/index.ts",
+    "line": 590,
+    "kind": "interface"
+  },
+  "TorView": {
+    "file": "src/modules/managers-schedule/components/TorView.tsx",
+    "line": 26,
+    "kind": "const"
+  },
+  "TplhWeeklyReportData": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 35,
+    "kind": "interface"
+  },
+  "TrainingEngine": {
+    "file": "src/modules/trainings/services/trainingEngine.ts",
+    "line": 4,
+    "kind": "class"
+  },
+  "TrainingPartner": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 19,
+    "kind": "interface"
+  },
+  "TrainingProgram": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 1,
+    "kind": "type"
+  },
+  "TrainingShift": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 35,
+    "kind": "interface"
+  },
+  "TrainingShiftsSchedule": {
+    "file": "src/modules/trainings/components/TrainingShiftsSchedule.tsx",
+    "line": 26,
+    "kind": "const"
+  },
+  "TrainingSkillCheck": {
+    "file": "src/modules/trainings/types/index.ts",
+    "line": 70,
+    "kind": "interface"
+  },
+  "TrainingStatsCard": {
+    "file": "src/modules/trainings/components/TrainingStatsCard.tsx",
+    "line": 14,
+    "kind": "const"
+  },
+  "TrainingsView": {
+    "file": "src/modules/trainings/components/TrainingsView.tsx",
+    "line": 39,
+    "kind": "const"
+  },
+  "TrendCharts": {
+    "file": "src/modules/labor-forecast/components/TrendCharts.tsx",
+    "line": 38,
+    "kind": "const"
+  },
+  "TrendIntelligencePanel": {
+    "file": "src/modules/labor-forecast/components/TrendIntelligencePanel.tsx",
+    "line": 26,
+    "kind": "const"
+  },
+  "TrendLearningEngine": {
+    "file": "src/modules/labor-forecast/services/trendLearningEngine.ts",
+    "line": 18,
+    "kind": "class"
+  },
+  "TrendLearningInsight": {
+    "file": "src/types/index.ts",
+    "line": 267,
+    "kind": "interface"
+  },
+  "TrendLearningSummary": {
+    "file": "src/types/index.ts",
+    "line": 332,
+    "kind": "interface"
+  },
+  "TutorialProvider": {
+    "file": "src/context/TutorialContext.tsx",
+    "line": 23,
+    "kind": "const"
+  },
+  "UserRegistrationData": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 4,
+    "kind": "interface"
+  },
+  "UserSettingsService": {
+    "file": "src/services/userSettingsService.ts",
+    "line": 39,
+    "kind": "class"
+  },
+  "UserSystemPreferences": {
+    "file": "src/services/userSettingsService.ts",
+    "line": 17,
+    "kind": "interface"
+  },
+  "VACATION_RESERVE_FACTOR": {
+    "file": "src/modules/col-calculator/constants/index.ts",
+    "line": 8,
+    "kind": "const"
+  },
+  "VaultDocumentHeader": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 52,
+    "kind": "interface"
+  },
+  "VaultPackagingResult": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 322,
+    "kind": "interface"
+  },
+  "VaultService": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 348,
+    "kind": "class"
+  },
+  "VaultType": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 29,
+    "kind": "type"
+  },
+  "VaultUnpackagingResult": {
+    "file": "src/services/security/vaultService.ts",
+    "line": 334,
+    "kind": "interface"
+  },
+  "WeekRecord": {
+    "file": "src/types/index.ts",
+    "line": 33,
+    "kind": "interface"
+  },
+  "WeeklyActualTrx": {
+    "file": "src/types/index.ts",
+    "line": 62,
+    "kind": "interface"
+  },
+  "WeeklyCalculatedRow": {
+    "file": "src/types/index.ts",
+    "line": 69,
+    "kind": "interface"
+  },
+  "WeeklyScheduleTable": {
+    "file": "src/modules/labor-forecast/components/WeeklyScheduleTable.tsx",
+    "line": 37,
+    "kind": "const"
+  },
+  "ZOOM_PRESETS": {
+    "file": "src/services/zoomService.ts",
+    "line": 13,
+    "kind": "const"
+  },
+  "ZUS_EMPLOYER_CONTRIBUTION_RATE": {
+    "file": "src/modules/col-calculator/constants/index.ts",
+    "line": 6,
+    "kind": "const"
+  },
+  "ZoomPreset": {
+    "file": "src/services/zoomService.ts",
+    "line": 8,
+    "kind": "interface"
+  },
+  "canonicalJson": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 47,
+    "kind": "function"
+  },
+  "canonicalSha256": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 88,
+    "kind": "function"
+  },
+  "cloudNotificationService": {
+    "file": "src/services/cloudNotificationService.ts",
+    "line": 744,
+    "kind": "const"
+  },
+  "computeSha256": {
+    "file": "src/services/auth/authService.ts",
+    "line": 191,
+    "kind": "function"
+  },
+  "cryptoConstantTimeEqual": {
+    "file": "src/services/security/cryptoUtils.ts",
+    "line": 38,
+    "kind": "function"
+  },
+  "cryptoHmacSha256Hex": {
+    "file": "src/services/security/cryptoUtils.ts",
+    "line": 17,
+    "kind": "function"
+  },
+  "cryptoRandomHex": {
+    "file": "src/services/security/cryptoUtils.ts",
+    "line": 21,
+    "kind": "function"
+  },
+  "cryptoRandomInt": {
+    "file": "src/services/security/cryptoUtils.ts",
+    "line": 25,
+    "kind": "function"
+  },
+  "cryptoSha256Hex": {
+    "file": "src/services/security/cryptoUtils.ts",
+    "line": 13,
+    "kind": "function"
+  },
+  "databaseHealthService": {
+    "file": "src/services/databaseHealthService.ts",
+    "line": 154,
+    "kind": "const"
+  },
+  "decryptPayloadSync": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 385,
+    "kind": "function"
+  },
+  "deriveStoreKeySync": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 143,
+    "kind": "function"
+  },
+  "desktopNotificationService": {
+    "file": "src/services/desktopNotificationService.ts",
+    "line": 282,
+    "kind": "const"
+  },
+  "encryptPayloadSync": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 313,
+    "kind": "function"
+  },
+  "enrollmentService": {
+    "file": "src/services/admin/enrollmentService.ts",
+    "line": 557,
+    "kind": "const"
+  },
+  "firebaseTelemetryService": {
+    "file": "src/services/firebaseTelemetryService.ts",
+    "line": 296,
+    "kind": "const"
+  },
+  "fleetService": {
+    "file": "src/services/admin/fleetService.ts",
+    "line": 623,
+    "kind": "const"
+  },
+  "formatFirestoreValue": {
+    "file": "src/services/sync/syncEngine.ts",
+    "line": 43,
+    "kind": "const"
+  },
+  "formatHoursToTimeString": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 149,
+    "kind": "function"
+  },
+  "formatManagerRole": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 185,
+    "kind": "function"
+  },
+  "formatManagerRoleFull": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 239,
+    "kind": "function"
+  },
+  "formatReleaseMarkdown": {
+    "file": "src/constants/changelog.ts",
+    "line": 909,
+    "kind": "function"
+  },
+  "generateCsprngOtp": {
+    "file": "src/services/auth/authService.ts",
+    "line": 177,
+    "kind": "function"
+  },
+  "generateSalt": {
+    "file": "src/services/auth/authService.ts",
+    "line": 184,
+    "kind": "function"
+  },
+  "getLatestRelease": {
+    "file": "src/constants/changelog.ts",
+    "line": 894,
+    "kind": "function"
+  },
+  "getPolishHolidays": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 39,
+    "kind": "function"
+  },
+  "getPolishTradingSundays": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 86,
+    "kind": "function"
+  },
+  "getReleaseByVersion": {
+    "file": "src/constants/changelog.ts",
+    "line": 901,
+    "kind": "function"
+  },
+  "isManagerInTraining": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 163,
+    "kind": "function"
+  },
+  "licensingService": {
+    "file": "src/services/security/licensingService.ts",
+    "line": 639,
+    "kind": "const"
+  },
+  "logger": {
+    "file": "src/services/logger.ts",
+    "line": 203,
+    "kind": "const"
+  },
+  "masterCredentialService": {
+    "file": "src/services/security/masterCredentialService.ts",
+    "line": 213,
+    "kind": "const"
+  },
+  "masterRecoveryService": {
+    "file": "src/services/security/masterRecoveryService.ts",
+    "line": 439,
+    "kind": "const"
+  },
+  "normalizeDiacritics": {
+    "file": "src/constants/starbucksStores.ts",
+    "line": 21,
+    "kind": "function"
+  },
+  "parseEnvelope": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 205,
+    "kind": "function"
+  },
+  "parseFirestoreValue": {
+    "file": "src/services/sync/cloudRealtimeTransport.ts",
+    "line": 54,
+    "kind": "const"
+  },
+  "parseTimeToHours": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 139,
+    "kind": "function"
+  },
+  "resolveEffectiveShiftTimes": {
+    "file": "src/modules/managers-schedule/services/managerScheduleEngine.ts",
+    "line": 269,
+    "kind": "function"
+  },
+  "resolveUnitCode": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 111,
+    "kind": "function"
+  },
+  "serializeEnvelope": {
+    "file": "src/services/security/encryptionService.ts",
+    "line": 197,
+    "kind": "function"
+  },
+  "timingSafeStringEqual": {
+    "file": "src/services/security/licensingService.ts",
+    "line": 48,
+    "kind": "function"
+  },
+  "todoService": {
+    "file": "src/services/todoService.ts",
+    "line": 219,
+    "kind": "const"
+  },
+  "useAuth": {
+    "file": "src/context/AuthContext.tsx",
+    "line": 350,
+    "kind": "const"
+  },
+  "useStore": {
+    "file": "src/context/StoreContext.tsx",
+    "line": 167,
+    "kind": "const"
+  },
+  "useTutorial": {
+    "file": "src/context/TutorialContext.tsx",
+    "line": 120,
+    "kind": "const"
+  },
+  "validateCorporateEmail": {
+    "file": "src/services/auth/authService.ts",
+    "line": 78,
+    "kind": "function"
+  },
+  "validateRestoreTarget": {
+    "file": "electron/database/backupManager.ts",
+    "line": 58,
+    "kind": "function"
+  },
+  "zoomService": {
+    "file": "src/services/zoomService.ts",
+    "line": 153,
+    "kind": "const"
+  }
+}

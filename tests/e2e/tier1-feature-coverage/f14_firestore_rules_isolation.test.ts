@@ -26,4 +26,13 @@ test('F14: Hardened Firestore Security Rules', async (t) => {
   await t.test('test_f14_no_collection_group_wildcard_leak', () => {
     assert.equal(analysis.noWildcardCollectionGroupLeak, true, 'No wildcard collectionGroup match on sensitive vaults');
   });
+
+  await t.test('test_f18_realtime_events_security_rules', () => {
+    assert.ok(analysis.rawRules.includes('match /realtime_events/{eventId}'));
+    assert.ok(analysis.rawRules.includes('isValidRealtimeEvent(request.resource.data)'));
+    assert.ok(analysis.rawRules.includes('request.resource.data.storeId == storeId'));
+    assert.ok(analysis.rawRules.includes('request.resource.data.eventId == eventId'));
+    assert.ok(analysis.rawRules.includes('allow update: if false;'));
+    assert.ok(analysis.rawRules.includes('allow delete: if isStoreManager(storeId);'));
+  });
 });

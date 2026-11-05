@@ -90,6 +90,49 @@ const PROTOTYPE_MOCK_IDS = new Set([
   'usr_ssv_piotr_w',
 ]);
 
+export const TEST_AMREST_USER: ManagedAppUser = {
+  id: 'usr_test_amrest',
+  storeUnitCode: '108120',
+  fullName: 'Tester AmRest (Fleet QA)',
+  email: 'test@amrest.eu',
+  role: 'STORE_MANAGER',
+  isActive: true,
+  permissions: {
+    canViewFinancialSales: true,
+    canEditForecastTarget: true,
+    canModifyNcRules: true,
+    canViewWageRates: true,
+    canViewMedicalLeaves: true,
+    canPublishSchedule: true,
+    canApproveTor: true,
+    canImportFichajes: true,
+    canViewColPnl: true,
+    canViewZusRates: true,
+    canSimulateWhatIf: true,
+    canExportExcel: true,
+  },
+  deviceFingerprint: 'FPR-TEST-AMREST-MACBOOK-PRO-2026',
+  deviceName: 'MacBook Pro (AmRest Test Fleet)',
+  sessionVersion: 1,
+  createdAt: '2026-01-01T08:00:00.000Z',
+};
+
+export const TEST_AMREST_REQUEST: PendingAccessRequest = {
+  id: 'req_test_amrest_eu',
+  storeUnitCode: '108120',
+  fullName: 'Tester AmRest (Wniosek Stanowiska)',
+  email: 'test@amrest.eu',
+  requestedRole: 'STORE_MANAGER',
+  deviceFingerprint: 'FPR-TEST-AMREST-MACBOOK-PRO-2026',
+  deviceName: 'MacBook Pro (AmRest Test Fleet)',
+  ipAddress: '10.240.12.84 (VPN Starbucks)',
+  requestNote: 'Stanowisko testowe do audytu floty, uprawnień i kluczy licencyjnych',
+  createdAt: new Date().toISOString(),
+  status: 'PENDING',
+  isEmailVerified: true,
+  pairingToken: 'REQ-TST01',
+};
+
 export class AdminService {
   private static purgePrototypeData(): void {
     if (typeof localStorage === 'undefined') return;
@@ -144,10 +187,10 @@ export class AdminService {
 
   private static initDefaults(): void {
     if (StoreStorage.getItem('admin_managed_users') === null) {
-      StoreStorage.setItem('admin_managed_users', []);
+      StoreStorage.setItem('admin_managed_users', [TEST_AMREST_USER]);
     }
     if (StoreStorage.getItem('admin_pending_requests') === null) {
-      StoreStorage.setItem('admin_pending_requests', []);
+      StoreStorage.setItem('admin_pending_requests', [TEST_AMREST_REQUEST]);
     }
     if (StoreStorage.getItem('admin_security_logs') === null) {
       StoreStorage.setItem('admin_security_logs', []);
@@ -159,9 +202,14 @@ export class AdminService {
     this.initDefaults();
     try {
       const users = StoreStorage.getItem<ManagedAppUser[]>('admin_managed_users') || [];
-      return users.filter(u => !PROTOTYPE_MOCK_IDS.has(u.id) && !PROTOTYPE_MOCK_EMAILS.has(u.email?.toLowerCase()));
+      const filtered = users.filter(u => !PROTOTYPE_MOCK_IDS.has(u.id) && !PROTOTYPE_MOCK_EMAILS.has(u.email?.toLowerCase()));
+      if (!filtered.some(u => u.email?.toLowerCase() === 'test@amrest.eu')) {
+        filtered.push(TEST_AMREST_USER);
+        StoreStorage.setItem('admin_managed_users', filtered);
+      }
+      return filtered;
     } catch {
-      return [];
+      return [TEST_AMREST_USER];
     }
   }
 
@@ -198,9 +246,14 @@ export class AdminService {
   public static getPendingRequests(): PendingAccessRequest[] {
     this.initDefaults();
     try {
-      return StoreStorage.getItem<PendingAccessRequest[]>('admin_pending_requests') || [];
+      const list = StoreStorage.getItem<PendingAccessRequest[]>('admin_pending_requests') || [];
+      if (!list.some(r => r.email?.toLowerCase() === 'test@amrest.eu')) {
+        list.push(TEST_AMREST_REQUEST);
+        StoreStorage.setItem('admin_pending_requests', list);
+      }
+      return list;
     } catch {
-      return [];
+      return [TEST_AMREST_REQUEST];
     }
   }
 
@@ -239,7 +292,12 @@ export class AdminService {
     };
 
     const users = this.getUsers();
-    users.push(newUser);
+    const existingIdx = users.findIndex(u => u.email?.toLowerCase() === newUser.email?.toLowerCase());
+    if (existingIdx >= 0) {
+      users[existingIdx] = { ...users[existingIdx], ...newUser, id: users[existingIdx].id };
+    } else {
+      users.push(newUser);
+    }
     StoreStorage.setItem('admin_managed_users', users);
 
     this.addAuditLog({

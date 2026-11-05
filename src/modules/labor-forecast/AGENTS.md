@@ -40,8 +40,14 @@ src/modules/labor-forecast/
 │   ├── TrendIntelligencePanel.tsx   # Panel uczenia maszynowego trendów (AI Learning Engine)
 │   └── WeeklyScheduleTable.tsx      # Główna tabela tygodniowa W1-W5 z rytmem poniedziałkowym
 ├── services/
-│   ├── calculationEngine.ts         # Główny silnik obliczeniowy AOP, MTD i HANW
-│   └── trendLearningEngine.ts       # Adaptacyjny silnik analizy trendów historycznych
+│   ├── calculationEngine.ts         # Fasada kalkulacyjna delegująca do pod-silników
+│   ├── trendLearningEngine.ts       # Adaptacyjny silnik analizy trendów historycznych
+│   └── engine/                      # Mikro-silniki obliczeniowe (Dekompozycja monolitu)
+│       ├── partialWeekEngine.ts     # Dni cząstkowe i Floor Hours tygodnia
+│       ├── managerCoverageEngine.ts # Pokrycie menedżerskie i bilans Floor 32h
+│       ├── flexAllocationEngine.ts  # Alokacja puli Flex na szczyty handlowe
+│       ├── ensembleForecastEngine.ts # Predykcja zespołowa Multi-Model Ensemble AI
+│       └── crossMonthBridgeEngine.ts # Scalony most Split-Week W-1 / W+1 (224h)
 ├── index.ts                         # Barrel export modułu
 ├── CHANGELOG.md                     # Dedykowana historia zmian i wydań Modułu 1
 ├── AGENTS.md                        # Niniejsze instrukcje techniczne agenta

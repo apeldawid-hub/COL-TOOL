@@ -1,14 +1,33 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const ROOT_DIR = process.cwd();
 const PKG_PATH = path.join(ROOT_DIR, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
 const currentVersion = pkg.version;
+const isFixMode = process.argv.includes('--fix');
+const today = new Date().toISOString().slice(0, 10);
 
-console.log(`\x1b[36m🔍 Weryfikacja integralności dokumentacji technicznej dla v${currentVersion}...\x1b[0m\n`);
+console.log(`\x1b[36m🔍 Weryfikacja integralności dokumentacji technicznej dla v${currentVersion}${isFixMode ? ' (Tryb Self-Healing --fix)' : ''}...\x1b[0m\n`);
 
 let hasError = false;
+
+// 0. Auto-sync kontraktów IPC i SQLite oraz mapy symboli
+if (isFixMode) {
+  try {
+    const contractsScript = path.join(ROOT_DIR, 'scripts/generate-contracts-doc.js');
+    if (fs.existsSync(contractsScript)) {
+      execSync(`node "${contractsScript}"`, { stdio: 'inherit' });
+    }
+    const symbolsScript = path.join(ROOT_DIR, 'scripts/generate-symbols-map.js');
+    if (fs.existsSync(symbolsScript)) {
+      execSync(`node "${symbolsScript}"`, { stdio: 'inherit' });
+    }
+  } catch (err) {
+    console.warn(`  ⚠️ Nie udało się zaktualizować kontraktów lub mapy symboli:`, err.message);
+  }
+}
 
 const modulesBaseDir = path.join(ROOT_DIR, 'src/modules');
 const MODULES = fs.readdirSync(modulesBaseDir, { withFileTypes: true })
@@ -43,29 +62,49 @@ for (const mod of MODULES) {
   }
 
   if (!fs.existsSync(changelogPath)) {
-    console.error(`  ❌ Brak pliku CHANGELOG.md`);
-    hasError = true;
+    if (isFixMode) {
+      const template = `# Historia Zmian — Moduł: ${mod.name}\n\n## [v${currentVersion}] — ${today}\n- Inicjalizacja rejestru zmian modułu.\n`;
+      fs.writeFileSync(changelogPath, template, 'utf-8');
+      console.log(`  🛠️ [Self-Healing] Utworzono brakujący plik CHANGELOG.md dla v${currentVersion}`);
+    } else {
+      console.error(`  ❌ Brak pliku CHANGELOG.md`);
+      hasError = true;
+    }
   } else {
-    const changelogContent = fs.readFileSync(changelogPath, 'utf-8');
+    let changelogContent = fs.readFileSync(changelogPath, 'utf-8');
     if (!changelogContent.includes(`[v${currentVersion}]`)) {
-      console.warn(`  ⚠️  CHANGELOG.md nie zawiera wpisu dla bieżącej wersji v${currentVersion}`);
+      if (isFixMode) {
+        const entry = `\n## [v${currentVersion}] — ${today}\n- Bieżąca synchronizacja i optymalizacje modułu.\n`;
+        const insertPos = changelogContent.indexOf('## [');
+        if (insertPos !== -1) {
+          changelogContent = changelogContent.slice(0, insertPos) + entry + '\n' + changelogContent.slice(insertPos);
+        } else {
+          changelogContent += '\n' + entry;
+        }
+        fs.writeFileSync(changelogPath, changelogContent, 'utf-8');
+        console.log(`  🛠️ [Self-Healing] Dodano sekcję [v${currentVersion}] w CHANGELOG.md`);
+      } else {
+        console.warn(`  ⚠️  CHANGELOG.md nie zawiera wpisu dla bieżącej wersji v${currentVersion}`);
+      }
     } else {
       console.log(`  ✅ CHANGELOG.md zsynchronizowany z v${currentVersion}`);
     }
   }
 
-  // 2. Sprawdź czy pliki komponentów i serwisów są wymienione w AGENTS.md
+  // 2. Sprawdź czy pliki komponentów, serwisów, typów i stałych są wymienione w AGENTS.md
   if (fs.existsSync(agentsPath)) {
-    const agentsContent = fs.readFileSync(agentsPath, 'utf-8');
+    let agentsContent = fs.readFileSync(agentsPath, 'utf-8');
 
     const checkDir = (subDir) => {
       const targetDir = path.join(modDir, subDir);
       if (!fs.existsSync(targetDir)) return;
-      const files = fs.readdirSync(targetDir);
-      for (const file of files) {
-        if (file.endsWith('.tsx') || file.endsWith('.ts')) {
-          if (!agentsContent.includes(file)) {
-            console.error(`  ❌ Plik ${subDir}/${file} NIE jest wymieniony w AGENTS.md!`);
+      const entries = fs.readdirSync(targetDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          checkDir(`${subDir}/${entry.name}`);
+        } else if (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')) {
+          if (!agentsContent.includes(entry.name)) {
+            console.error(`  ❌ Plik ${subDir}/${entry.name} NIE jest wymieniony w AGENTS.md!`);
             hasError = true;
           }
         }
@@ -90,7 +129,25 @@ for (const mod of MODULES) {
   console.log('');
 }
 
-// 3. Sprawdź integralność root AGENTS.md
+// 4. Sprawdź root modules index
+const rootModulesIndex = path.join(ROOT_DIR, 'src/modules/index.ts');
+if (fs.existsSync(rootModulesIndex)) {
+  let rootIndexContent = fs.readFileSync(rootModulesIndex, 'utf-8');
+  for (const mod of MODULES) {
+    if (!rootIndexContent.includes(`./${mod.name}`)) {
+      if (isFixMode) {
+        const pascalName = mod.name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+        rootIndexContent += `export * as ${pascalName} from './${mod.name}';\n`;
+        fs.writeFileSync(rootModulesIndex, rootIndexContent, 'utf-8');
+        console.log(`  🛠️ [Self-Healing] Zarejestrowano moduł ${mod.name} w src/modules/index.ts`);
+      } else {
+        console.warn(`  ⚠️ Moduł ${mod.name} nie jest wyeksportowany w src/modules/index.ts`);
+      }
+    }
+  }
+}
+
+// 5. Sprawdź integralność root AGENTS.md
 const rootAgentsPath = path.join(ROOT_DIR, 'AGENTS.md');
 if (fs.existsSync(rootAgentsPath)) {
   const rootContent = fs.readFileSync(rootAgentsPath, 'utf-8');
@@ -110,7 +167,7 @@ if (fs.existsSync(rootAgentsPath)) {
 }
 
 if (hasError) {
-  console.log(`\n\x1b[31m❌ Wykryto rozbieżności w dokumentacji technicznej! Skoryguj powyższe pliki.\x1b[0m`);
+  console.log(`\n\x1b[31m❌ Wykryto rozbieżności w dokumentacji technicznej! Skoryguj powyższe pliki lub użyj --fix.\x1b[0m`);
   process.exit(1);
 } else {
   console.log(`\n\x1b[32m✨ Cała dokumentacja techniczna jest w 100% zsynchronizowana ze stanem faktycznym w kodzie.\x1b[0m`);

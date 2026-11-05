@@ -15,4 +15,5 @@ export * from './components/ManagerLaborBridgeModal';
 export * from './components/LaborForecastView';
 export * from './components/LaborForecastWidget';
 export * from './services/calculationEngine';
+export * from './services/engine';
 export * from './services/trendLearningEngine';

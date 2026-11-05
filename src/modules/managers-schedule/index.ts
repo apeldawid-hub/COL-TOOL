@@ -18,5 +18,6 @@ export * from './services/torEngine';
 export * from './services/autoSchedulerEngine';
 export * from './services/interStoreSupportEngine';
 export * from './services/managerExcelExport';
+export * from './services/smartSwapEngine';
 
 

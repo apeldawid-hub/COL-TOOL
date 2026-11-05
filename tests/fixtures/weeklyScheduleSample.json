@@ -1,0 +1,62 @@
+[
+  {
+    "week_key": "2026_Wrzesień_W1",
+    "year": 2026,
+    "month_name": "Wrzesień",
+    "week_num_in_month": "W1",
+    "days_count": 7,
+    "week_type": "Pełny (7 dni)",
+    "date_from": "01.09",
+    "date_to": "07.09",
+    "floor_hours": 224.0,
+    "day_weight": 0.2258
+  },
+  {
+    "week_key": "2026_Wrzesień_W2",
+    "year": 2026,
+    "month_name": "Wrzesień",
+    "week_num_in_month": "W2",
+    "days_count": 7,
+    "week_type": "Pełny (7 dni)",
+    "date_from": "08.09",
+    "date_to": "14.09",
+    "floor_hours": 224.0,
+    "day_weight": 0.2258
+  },
+  {
+    "week_key": "2026_Wrzesień_W3",
+    "year": 2026,
+    "month_name": "Wrzesień",
+    "week_num_in_month": "W3",
+    "days_count": 7,
+    "week_type": "Pełny (7 dni)",
+    "date_from": "15.09",
+    "date_to": "21.09",
+    "floor_hours": 224.0,
+    "day_weight": 0.2258
+  },
+  {
+    "week_key": "2026_Wrzesień_W4",
+    "year": 2026,
+    "month_name": "Wrzesień",
+    "week_num_in_month": "W4",
+    "days_count": 7,
+    "week_type": "Pełny (7 dni)",
+    "date_from": "22.09",
+    "date_to": "28.09",
+    "floor_hours": 224.0,
+    "day_weight": 0.2258
+  },
+  {
+    "week_key": "2026_Wrzesień_W5",
+    "year": 2026,
+    "month_name": "Wrzesień",
+    "week_num_in_month": "W5",
+    "days_count": 2,
+    "week_type": "Niepełny (2 dni)",
+    "date_from": "29.09",
+    "date_to": "30.09",
+    "floor_hours": 64.0,
+    "day_weight": 0.0968
+  }
+]

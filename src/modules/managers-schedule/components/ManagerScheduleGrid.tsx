@@ -9,7 +9,8 @@ import {
 import { ShiftPickerPopover } from './ShiftPickerPopover';
 import { LaborLawViolationDialog } from './LaborLawViolationDialog';
 import { ManagerScheduleEngine, formatManagerRole } from '../services/managerScheduleEngine';
-import { AlertTriangle, CheckCircle2, MessageSquare, Edit3, Calendar, Users, TrendingUp, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Columns, Eye, EyeOff } from 'lucide-react';
+import { SmartSwapEngine, SmartSwapChange } from '../services/smartSwapEngine';
+import { AlertTriangle, CheckCircle2, MessageSquare, Edit3, Calendar, Users, TrendingUp, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Columns, Eye, EyeOff, Sparkles, ArrowRightLeft, X } from 'lucide-react';
 import { useStore } from '../../../context/StoreContext';
 
 interface ManagerScheduleGridProps {
@@ -22,6 +23,7 @@ interface ManagerScheduleGridProps {
     customStartTime?: string,
     customEndTime?: string
   ) => Promise<void>;
+  onBatchUpdateShifts?: (shifts: ManagerScheduleShift[]) => Promise<void>;
   onUpdateDisposition?: (empId: number, day: number, disposition: string) => Promise<void>;
   onUpdateEvent: (day: number, text: string) => Promise<void>;
   onOpenComplianceModal?: () => void;
@@ -37,6 +39,7 @@ interface ManagerScheduleGridProps {
 export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
   data,
   onUpdateShift,
+  onBatchUpdateShifts,
   onUpdateDisposition,
   onUpdateEvent,
   onOpenComplianceModal,
@@ -47,6 +50,18 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
 }) => {
   const { currentStore } = useStore();
   const isReadOnly = Boolean(customIsReadOnly ?? data.isMonthClosed);
+  const [toastMessage, setToastMessage] = useState<{
+    type: 'success' | 'info' | 'warning';
+    title: string;
+    message: string;
+    details?: string[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 7000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
   const [activePicker, setActivePicker] = useState<{
     empId: number;
     empName: string;
@@ -99,6 +114,80 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
     empName?: string;
   } | null>(null);
   const [copiedFeedback, setCopiedFeedback] = useState<string | null>(null);
+
+  // Zastosowanie propozycji zamiany parzystej AI (Smart Swap)
+  const handleApplySwap = async (changes: SmartSwapChange[], summary: string) => {
+    if (isReadOnly) return;
+    const shiftsToSave: ManagerScheduleShift[] = changes.map(ch => ({
+      year: data.year,
+      month: data.month,
+      day: ch.day,
+      date: ch.date,
+      employee_id: ch.employeeId,
+      shift_code: ch.newShiftCode,
+      hours: ch.hours,
+      custom_start_time: ch.customStartTime,
+      custom_end_time: ch.customEndTime
+    }));
+
+    if (onBatchUpdateShifts) {
+      await onBatchUpdateShifts(shiftsToSave);
+    } else {
+      for (const ch of changes) {
+        await onUpdateShift(ch.employeeId, ch.day, ch.newShiftCode, ch.hours, ch.customStartTime, ch.customEndTime);
+      }
+    }
+
+    setActivePicker(null);
+    setToastMessage({
+      type: 'success',
+      title: '🔄 Zastosowano Inteligentną Zamianę!',
+      message: summary
+    });
+  };
+
+  // Uruchomienie AI Row Re-roll dla wskazanego menedżera
+  const handleRowReRoll = async (empId: number) => {
+    if (isReadOnly) return;
+    const emp = data.employees.find(e => e.id === empId);
+    const result = SmartSwapEngine.performRowReRoll(empId, data, boundaryShifts);
+
+    if (!result.success) {
+      setToastMessage({
+        type: 'info',
+        title: `✨ AI Re-roll: ${emp?.name || 'Menedżer'}`,
+        message: result.summary
+      });
+      return;
+    }
+
+    const shiftsToSave: ManagerScheduleShift[] = result.changes.map(ch => ({
+      year: data.year,
+      month: data.month,
+      day: ch.day,
+      date: ch.date,
+      employee_id: ch.employeeId,
+      shift_code: ch.newShiftCode,
+      hours: ch.hours,
+      custom_start_time: ch.customStartTime,
+      custom_end_time: ch.customEndTime
+    }));
+
+    if (onBatchUpdateShifts) {
+      await onBatchUpdateShifts(shiftsToSave);
+    } else {
+      for (const ch of result.changes) {
+        await onUpdateShift(ch.employeeId, ch.day, ch.newShiftCode, ch.hours, ch.customStartTime, ch.customEndTime);
+      }
+    }
+
+    setToastMessage({
+      type: 'success',
+      title: `✨ AI Re-roll: ${emp?.name || 'Menedżer'}`,
+      message: result.summary,
+      details: result.details
+    });
+  };
 
   // Bezpośrednie przypisanie zmiany ze skrótu klawiszowego (A, P, N, O, H, L, Del) z pre-flight walidacją Kodeksu Pracy
   const handleKeyboardShiftAssign = useCallback(async (shiftCodeToAssign: string) => {
@@ -865,19 +954,33 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                             </div>
                           </div>
                         </div>
-                        {hasViolations && (
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onOpenComplianceModal?.();
+                              handleRowReRoll(row.employee.id);
                             }}
-                            className="w-3.5 h-3.5 shrink-0 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-[8px] font-black cursor-pointer animate-pulse shadow-2xs"
-                            title={`⚠️ ${row.violations.length} naruszeń KP (kliknij, aby sprawdzić)`}
+                            disabled={isReadOnly}
+                            className="p-1 rounded-md text-stone-400 hover:text-[#006241] hover:bg-emerald-100 transition-colors cursor-pointer disabled:opacity-40"
+                            title={`✨ AI Row Re-roll dla: ${row.employee.name}\nWykonaj serię optymalnych mikrozamian bez psucia reszty grafiku`}
                           >
-                            !
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                           </button>
-                        )}
+                          {hasViolations && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenComplianceModal?.();
+                              }}
+                              className="w-3.5 h-3.5 shrink-0 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-[8px] font-black cursor-pointer animate-pulse shadow-2xs"
+                              title={`⚠️ ${row.violations.length} naruszeń KP (kliknij, aby sprawdzić)`}
+                            >
+                              !
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </td>
                   ) : (
@@ -1543,6 +1646,10 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
         const employee = data.employees.find(e => e.id === activePicker.empId);
         return (
           <ShiftPickerPopover
+            empId={activePicker.empId}
+            scheduleData={data}
+            boundaryShifts={boundaryShifts}
+            onApplySwap={handleApplySwap}
             day={activePicker.day}
             dayName={daySummary?.dayName}
             isSunday={isSunday}
@@ -1632,6 +1739,42 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
             setViolationPrompt(null);
           }}
         />
+      )}
+
+      {/* PŁYWAJĄCY TOAST POWIADOMIEŃ AI (SMART SWAP & RE-ROLL) */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-white text-stone-900 px-4 py-3 rounded-2xl border border-emerald-300 shadow-2xl flex items-start gap-3 animate-fade-in text-xs max-w-md">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold ${
+            toastMessage.type === 'success' ? 'bg-emerald-100 text-[#006241]' : 'bg-blue-100 text-blue-800'
+          }`}>
+            {toastMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <Sparkles className="w-4 h-4 text-amber-500" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-stone-900 text-xs">
+              {toastMessage.title}
+            </div>
+            <div className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
+              {toastMessage.message}
+            </div>
+            {toastMessage.details && toastMessage.details.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-stone-100 space-y-1">
+                {toastMessage.details.map((d, i) => (
+                  <div key={i} className="text-[10px] text-stone-500 flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
+                    <span>{d}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-stone-400 hover:text-stone-600 cursor-pointer p-0.5 ml-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );

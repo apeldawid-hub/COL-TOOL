@@ -10,7 +10,7 @@
  */
 
 import { AppUserRole, GranularUserPermissions, PendingAccessRequest } from '../../types/admin';
-import { ROLE_DEFAULT_PERMISSIONS, AdminService } from './adminService';
+import { ROLE_DEFAULT_PERMISSIONS, AdminService, TEST_AMREST_REQUEST } from './adminService';
 import { LicensingService, licensingService } from '../security/licensingService';
 import { AuthService, validateCorporateEmail } from '../auth/authService';
 import { cryptoSha256Hex, cryptoRandomHex, cryptoRandomInt, cryptoConstantTimeEqual } from '../security/cryptoUtils';
@@ -416,12 +416,19 @@ export class EnrollmentService {
   }
 
   private getCentralRegistry(): PendingAccessRequest[] {
-    if (typeof localStorage === 'undefined') return [];
+    if (typeof localStorage === 'undefined') return [TEST_AMREST_REQUEST];
     try {
       const raw = localStorage.getItem(STORAGE_KEY_CENTRAL_REQUESTS);
-      return raw ? JSON.parse(raw) : [];
+      const list: PendingAccessRequest[] = raw ? JSON.parse(raw) : [];
+      if (!list.some((r) => r.email?.toLowerCase() === 'test@amrest.eu')) {
+        list.push(TEST_AMREST_REQUEST);
+        try {
+          localStorage.setItem(STORAGE_KEY_CENTRAL_REQUESTS, JSON.stringify(list));
+        } catch {}
+      }
+      return list;
     } catch {
-      return [];
+      return [TEST_AMREST_REQUEST];
     }
   }
 

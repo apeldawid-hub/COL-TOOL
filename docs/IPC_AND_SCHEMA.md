@@ -1,11 +1,11 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-02T12:30:26.607Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-05T03:59:58.843Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
 ## 📡 1. Kontrakty Mostu IPC (`window.api.*` — `IElectronAPI`)
-Łącznie wykrytych metod IPC w `electron/preload.ts`: **132**.
+Łącznie wykrytych metod IPC w `electron/preload.ts`: **134**.
 
 | Metoda IPC | Opcjonalna | Podpis Typu | Kategoria / Uwagi |
 | :--- | :---: | :--- | :--- |
@@ -141,6 +141,8 @@
 | `window.api.revokeLicense` | Tak | `() => Promise<boolean>` | — |
 | `window.api.verifyMasterCredential` | Tak | `(credential: string) => Promise<any>` | Milestone 4: Feature F11 — Master Credential & Sliding-Window Rate Limiter |
 | `window.api.getMasterCredentialStatus` | Tak | `() => Promise<any>` | — |
+| `window.api.realtimePublishEvent` | Tak | `(input: any) => Promise<any>` | Feature F18: Real-time Cloud Transport Layer (Step 1) |
+| `window.api.realtimePollOnce` | Tak | `(storeId: string) => Promise<any>` | — |
 
 ---
 

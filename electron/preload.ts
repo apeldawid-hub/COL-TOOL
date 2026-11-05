@@ -148,6 +148,9 @@ export interface IElectronAPI {
   // Milestone 4: Feature F11 — Master Credential & Sliding-Window Rate Limiter
   verifyMasterCredential?: (credential: string) => Promise<any>;
   getMasterCredentialStatus?: () => Promise<any>;
+  // Feature F18: Real-time Cloud Transport Layer (Step 1)
+  realtimePublishEvent?: (input: any) => Promise<any>;
+  realtimePollOnce?: (storeId: string) => Promise<any>;
 }
 
 const api: IElectronAPI = {
@@ -300,6 +303,9 @@ const api: IElectronAPI = {
   saveLicense: (payload: string) => ipcRenderer.invoke('licensing:save-license', payload),
   loadLicense: () => ipcRenderer.invoke('licensing:load-license'),
   revokeLicense: () => ipcRenderer.invoke('licensing:revoke-license'),
+  // Feature F18: Real-time Cloud Transport Layer (Step 1)
+  realtimePublishEvent: (input: any) => ipcRenderer.invoke('realtime:publish-event', input),
+  realtimePollOnce: (storeId: string) => ipcRenderer.invoke('realtime:poll-once', storeId),
 };
 
 contextBridge.exposeInMainWorld('api', api);

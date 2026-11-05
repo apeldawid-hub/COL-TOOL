@@ -27,17 +27,11 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platf
 
 ---
 
-## ⚡ 0.1. Zasady Green AI i Oszczędzania Tokenów (Token Optimization)
+## ⚡ 0.1. Zasady Green AI i Prefiksy Zadaniowe
 
 > [!IMPORTANT]
-> Obowiązuje każdego agenta AI i subagenta we wszystkich sesjach w repozytorium:
-> 1. **Zero lania wody:** Brak powitań, wstępów ("Chętnie pomogę"), podsumowań i parafrazowania pytań użytkownika.
-> 2. **Maksymalna zwięzłość:** Odpowiedzi w punktach, wysoka gęstość informacji, brak zbędnych wyjaśnień teorii przy pytaniach o kod.
-> 3. **Higiena narzędzi (Tool Hygiene):** Zakaz zrzucania całych dużych plików i długich logów do kontekstu (nakaz używania `grep`, `head`/`tail`, zakresów linii).
-> 4. **Precyzyjne edycje:** Stosowanie edycji punktowych (`edit_file`) zamiast przepisywania całych plików.
-> 5. **Fail Fast:** Po 1 błędzie narzędzia natychmiastowa zmiana podejścia; przy braku kluczowych danych 1 krótkie pytanie zamiast zgadywania "na zapas".
-> 
-> Szczegółowe wytyczne znajdują się w pliku: [GEMINI.md](./GEMINI.md).
+> Wszystkie reguły optymalizacji tokenów, wytyczne higieny narzędzi oraz tabela prefiksów (`/m1`, `/m2`, `?m1`, itp.) są scentralizowane w dokumencie: **[GEMINI.md](./GEMINI.md)**.
+> Obowiązuje zakaz powielania tych reguł w niniejszym pliku.
 
 ---
 
@@ -50,6 +44,7 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platf
 > 2. **Historia zmian modułu (`src/modules/{modul}/CHANGELOG.md`):** Zarejestrowanie nowej wersji, daty i zwięzłego wykazu wprowadzonych zmian w dedykowanym rejestrze modułu.
 > 3. **Plik umiejętności agenta (`.agents/skills/{skill}/SKILL.md`):** Uaktualnienie parametrów domenowych i wytycznych agenta, jeśli zmiana wpływa na jego kompetencje.
 > 4. **Główny rejestr wydań (`VERSION_HISTORY.md`):** Przy wydaniach i mikropatchach OTA zarejestrowanie pełnego zakresu zmian.
+> 5. **Samonaprawialny Pre-flight (`npm run check`):** Przed zakończeniem pracy uruchom `npm run check`, który automatycznie generuje [docs/IPC_AND_SCHEMA.md](file:///Users/dawidapel/COL%20Tool/docs/IPC_AND_SCHEMA.md), naprawia wpisy w changelogach i weryfikuje typy TypeScript w <2 sekundy.
 > Zakaz kończenia zadania z pozostawieniem nieaktualnej dokumentacji lub rozbieżności między kodem a rejestrem agentów.
 
 ---
@@ -121,16 +116,6 @@ Wsparcie deweloperskie opiera się na wyspecjalizowanych umiejętnościach w `.a
    - `npm run dev` z szybkim odświeżaniem Vite Hot-Reload.
 2. **Publikacja Mikropoprawki OTA (`npm run patch`) — Błyskawiczna**:
    - Agent weryfikuje kompilację (`npm run build`), podbija wersję w `package.json`, rejestruje zmiany w `VERSION_HISTORY.md` i publikuje patch `.zip` (~1.16 MB) do GitHub Releases w 3-5 sekund.
-## 🏷️ 5. Błyskawiczne Prefiksy w Czacie (`/` oraz `?`)
 
-W promptach do agenta możesz używać krótkich prefiksów, które natychmiast zawężają obszar pracy:
-- `/m1` lub `[M1]` — TPLH Forecast & Robocizna (`src/modules/labor-forecast/`)
-- `/m2` lub `[M2]` — Grafik Managerski & TOR (`src/modules/managers-schedule/`)
-- `/m3` lub `[M3]` — Szkolenia Starbucks (`src/modules/trainings/`)
-- `/m4` lub `[M4]` — COL Calculator (`src/modules/col-calculator/`)
-- `/cloud` lub `[Cloud]` — Firestore & Outbox Queue (`src/services/sync/`)
-- `/fleet` lub `[Fleet]` — Flota & Przełącznik Kawiarni (`src/services/storeService.ts`)
-- `/auth` lub `[Auth]` — Bezpieczeństwo & Logowanie (`src/context/AuthContext.tsx`)
-- `/core` lub `[Core]` — Electron & SQLite (`electron/`)
-- `/ota` lub `[OTA]` — Mikropatche i Wydania (`scripts/publish-patch.js`)
-- `?m1`, `?m2`... — Tryb inspekcji i audytu (odpowiedź na pytanie bez modyfikacji kodu).
+👉 Szybkie prefiksy zadaniowe (`/m1`–`/m4`, `?m1`, itp.): **[GEMINI.md](./GEMINI.md)**
+

@@ -4,8 +4,13 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 ---
 
+
+## [v2.9.8] — 2026-11-05
+- Bieżąca synchronizacja i optymalizacje modułu.
+
 ## [v2.9.7] — 2026-11-02
 - **Dostosowanie Floty**: Integracja z dwukawiarniowym katalogiem floty (Janki `108120` & Kalisz Amber `108170`) oraz ujednolicenie liczników kawiarni.
+- **Dekompozycja Monolitu Obliczeniowego**: Zmniejszenie `calculationEngine.ts` o ~50% (z 1 620 linii do 885 linii) poprzez wydzielenie mikro-silników w `services/engine/` (`partialWeekEngine`, `managerCoverageEngine`, `flexAllocationEngine`, `ensembleForecastEngine`, `crossMonthBridgeEngine`) przy zachowaniu 100% kompatybilności wstecznej fasady `CalculationEngine`.
 
 ## [v2.9.6] — 2026-11-02
 - **Harmonizacja Bazy Floor**: Zaktualizowano dokumentację techniczną do nienaruszalnego standardu 224.0h/tydzień (32.0h/dzień: 1 MGR + 1 Barista rano i wieczorem).

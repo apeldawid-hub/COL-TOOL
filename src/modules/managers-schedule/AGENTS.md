@@ -50,6 +50,7 @@ src/modules/managers-schedule/
 │   ├── interStoreSupportEngine.ts  # Silnik kalkulacji wsparć międzykawiarnianych i podmian obsadowych
 │   ├── managerExcelExport.ts       # Generator eksportu grafiku miesięcznego oraz arkusza TOR do pliku .xlsx
 │   ├── managerScheduleEngine.ts    # Silnik wyliczania norm KP, świąt, bilansu godzin, L4 do etatu i walidacji
+│   ├── smartSwapEngine.ts          # Silnik inteligentnej wymiany parzystej (Smart Swap) i minimalnie inwazyjnego re-rollu wiersza
 │   └── torEngine.ts                # Silnik kwartalny TOR (agregacja 3 miesięcy, bilanse, status nadgodzin)
 ├── index.ts                        # Barrel export modułu
 ├── CHANGELOG.md                    # Dedykowana historia zmian i wydań Modułu 2
@@ -503,7 +504,29 @@ Narzędzie umożliwia Store Managerowi natychmiastową, zautomatyzowaną obsług
 
 ---
 
-## 📝 19. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+## 🔄 19. Smart Swap Assistant & AI Row Re-roll (`services/smartSwapEngine.ts`, `ShiftPickerPopover.tsx`, `ManagerScheduleGrid.tsx`)
+
+Narzędzie umożliwia Store Managerowi wykonywanie precyzyjnych, bezkolizyjnych korekt grafiku po wygenerowaniu przez AI bez niszczenia reszty zaplanowanego miesiąca:
+
+### 1. Dwa Poziomy Interaktywnej Korekty:
+1. **Smart Swap (Poziom Komórki)**:
+   - Dostępny w oknie wyboru zmiany `ShiftPickerPopover.tsx` pod dedykowaną zakładką `✨ Smart Swap AI`.
+   - Analizuje wybraną zmianę i wyszukuje 2–6 optymalnych wariantów wymiany z innymi menedżerami.
+   - **Typ 1: Same-Day Swap (Ten sam dzień)**: Wymiana dyżurów w tym samym dniu (np. $A$ ma `PM`, $B$ ma `AM` lub `MIB`) z identycznym wymiarem godzin (np. 8h vs 8h) i zachowaniem 11h odpoczynku u obu stron.
+   - **Typ 2: Cross-Day Balance Swap (Wymiana krzyżowa z kompensacją)**: Gdy $B$ przejmuje dyżur w dniu $D_1$ (gdzie $B$ miał `OFF`), system wyszukuje dzień $D_2$ w tym samym tygodniu roboczym lub miesiącu, gdzie $A$ odpracowuje wolne za $B$. Bilans obu menedżerów wynosi dokładnie $\Delta = 0.0\text{ h}$ w TOR.
+2. **AI Row Re-roll (Poziom Wiersza Menedżera)**:
+   - Uruchamiany 1-klikiem z kolumny menedżera na siatce grafiku (`ManagerScheduleGrid.tsx`) za pomocą przycisku `✨`.
+   - Heurystyka minimalnej inwazji (Swap Chain): identyfikuje 1–3 kluczowe kolizje w miesiącu danego pracownika (naruszenia KP, praca w deklarowanym `OFF`, niedopasowanie `M`/`Z`), wyszukuje najlepsze zamiany parzyste i aplikuje je w bazie bez naruszania pozostałych 95% grafiku zespołu.
+
+### 2. Twarde Reguły i Scoring AI:
+- **Twardy filtr KP**: Każdy wariant zamiany musi gwarantować 100% zgodności z Kodeksem Pracy (11h dobowo, 35h tygodniowo, 4. niedziela).
+- **Bezwzględna ochrona L4**: Zmiany chorobowe są trwale wyłączone z puli zamian.
+- **Transparentne etykiety**: Jeśli w zamianie uczestniczy urlop `H` lub administracja `NC`, karta jest wyróżniona odznaką `⚠️ Przesunięcie H` lub `📋 Przesunięcie NC`.
+- **Błyskawiczne 1-klik zatwierdzenie**: Bezpośrednia aktualizacja bazy SQLite i płynne powiadomienie Toast o dokonanych przesunięciach.
+
+---
+
+## 📝 20. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
 Po każdej modyfikacji kodu źródłowego, algorytmów Kodeksu Pracy, AutoSchedulera AI, interfejsu grafiku lub schematu SQLite w Module 2:
 1. Natychmiast zaktualizuj niniejszy plik `AGENTS.md` (struktura plików, algorytmy, parametry solvera).
 2. Zarejestruj zmiany w historii modułu: `src/modules/managers-schedule/CHANGELOG.md`.

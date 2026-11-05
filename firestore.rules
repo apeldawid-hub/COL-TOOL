@@ -57,7 +57,23 @@ rules_version = '2';
 //      - lastSyncAt: string or timestamp
 //      - updatedAt: timestamp
 //
-// 6. Backwards-Compatible Operational Collections:
+// 6. Collection: /stores/{storeId}/realtime_events/{eventId}
+//    Document ID: {eventId} (e.g. 'evt_1711234567890_abc1234')
+//    Description: Real-time Transport Layer event log (Feature F18).
+//                 Immutable audit stream for cross-station peer synchronization.
+//    Fields:
+//      - eventId: string (1-128 chars, matches path eventId, immutable)
+//      - storeId: string (1-32 chars, matches path storeId, immutable)
+//      - domain: string ('schedules', 'personnel', 'financials', 'trainings', 'system')
+//      - action: string ('UPSERT', 'DELETE')
+//      - entityId: string (1-128 chars)
+//      - payload: any (optional event payload data)
+//      - author: string (1-128 chars)
+//      - originDeviceId: string (1-128 chars)
+//      - timestamp: string (ISO timestamp, 1-64 chars)
+//      - version: int
+//
+// 7. Backwards-Compatible Operational Collections:
 //    - /stores/{storeId}/public_schedule/{docId} (Plaintext schedule view for in-store staff)
 //    - /stores/{storeId}/executive_financial_vault/{docId} (Legacy executive vault bridge)
 //    - /stores/{storeId}/private_staff_vault/{docId} (Personal staff contact and emergency info)
@@ -66,7 +82,7 @@ rules_version = '2';
 //    - /cloud_operational_docs/{docId} (Read-only operational standards)
 //    - /app_installations/{installId} (Isolated station telemetry)
 //
-// 7. Collection: /users/{userId}/settings/{docId}
+// 8. Collection: /users/{userId}/settings/{docId}
 //    Document ID: {docId} (e.g. 'preferences')
 //    Description: Cross-device user preferences & system configuration (Zero-Leak per user).
 //                 Strict personal access: Only the owning user (matching safeUserId or uid) can read/write.
@@ -265,6 +281,20 @@ service cloud.firestore {
              data.status in ['online', 'offline', 'syncing', 'idle', 'error'] &&
              validString(data.clientVersion, 1, 64) &&
              (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() > 0));
+    }
+
+    // Validates real-time event log payload (Feature F18 Real-time Transport Layer)
+    function isValidRealtimeEvent(data) {
+      return hasRequiredFields(['eventId', 'storeId', 'domain', 'action', 'entityId', 'author', 'originDeviceId', 'timestamp', 'version']) &&
+             validString(data.eventId, 1, 128) &&
+             validString(data.storeId, 1, 32) &&
+             data.domain in ['schedules', 'personnel', 'financials', 'trainings', 'system'] &&
+             data.action in ['UPSERT', 'DELETE'] &&
+             validString(data.entityId, 1, 128) &&
+             validString(data.author, 1, 128) &&
+             validString(data.originDeviceId, 1, 128) &&
+             validString(data.timestamp, 1, 64) &&
+             data.version is int;
     }
 
     function isValidManagedUser(data) {
@@ -475,11 +505,22 @@ service cloud.firestore {
         allow delete: if isStoreManager(storeId);
       }
 
+      // 6. REAL-TIME EVENTS (/stores/{storeId}/realtime_events/{eventId}) - Feature F18
+      match /realtime_events/{eventId} {
+        allow read: if isStoreStaff(storeId);
+        allow create: if isStoreStaff(storeId) &&
+                         request.resource.data.storeId == storeId &&
+                         request.resource.data.eventId == eventId &&
+                         isValidRealtimeEvent(request.resource.data);
+        allow update: if false; // zdarzenia są niezmienne (immutable event log)
+        allow delete: if isStoreManager(storeId);
+      }
+
       // -----------------------------------------------------------------------------------
       // BACKWARDS-COMPATIBLE OPERATIONAL COLLECTIONS
       // -----------------------------------------------------------------------------------
 
-      // 6. MANAGED USERS (/managed_users/{userId})
+      // 7. MANAGED USERS (/managed_users/{userId})
       match /managed_users/{userId} {
         allow read: if isCorporateUser() && isStoreAuthorized(storeId) && (isDocOwner(userId) || isAssistantOrStoreManager(storeId));
         allow create: if isStoreManager(storeId) &&
@@ -491,7 +532,7 @@ service cloud.firestore {
         allow delete: if isStoreManager(storeId);
       }
 
-      // 7. PUBLIC SCHEDULE (/public_schedule/{docId})
+      // 8. PUBLIC SCHEDULE (/public_schedule/{docId})
       match /public_schedule/{docId} {
         allow read: if isStoreStaff(storeId);
         allow create: if isAssistantOrStoreManager(storeId) &&
@@ -503,7 +544,7 @@ service cloud.firestore {
         allow delete: if isStoreManager(storeId);
       }
 
-      // 8. PRIVATE STAFF VAULT (/private_staff_vault/{docId})
+      // 9. PRIVATE STAFF VAULT (/private_staff_vault/{docId})
       match /private_staff_vault/{docId} {
         allow read: if isCorporateUser() && isStoreAuthorized(storeId) &&
                        (isDocOwner(resource.data.userId) || isAssistantOrStoreManager(storeId));
@@ -518,7 +559,7 @@ service cloud.firestore {
                          (isDocOwner(resource.data.userId) || isStoreManager(storeId));
       }
 
-      // 9. EXECUTIVE FINANCIAL VAULT (Legacy bridge collection)
+      // 10. EXECUTIVE FINANCIAL VAULT (Legacy bridge collection)
       match /executive_financial_vault/{docId} {
         allow read: if isExecutive(storeId);
         allow create: if isExecutive(storeId) &&
@@ -530,7 +571,7 @@ service cloud.firestore {
         allow delete: if isStoreManager(storeId);
       }
 
-      // 10. ACCESS REQUESTS (/access_requests/{requestId})
+      // 11. ACCESS REQUESTS (/access_requests/{requestId})
       match /access_requests/{requestId} {
         allow read: if isCorporateUser() &&
                        (isDocOwner(resource.data.userId) || (isStoreAuthorized(storeId) && isStoreManager(storeId)));

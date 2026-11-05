@@ -12,5 +12,6 @@ Gdy użytkownik wywołuje `/m2`:
    - Kodeks Pracy: odpoczynek dobowy min. 11h, tygodniowy min. 35h, max. 3 pracujące niedziele z rzędu.
    - Urlopy `H` i chorobowe `L4` liczą się do etatu wyłącznie w dni robocze ($8.0\text{h} \times \text{etat}$), w weekendy 0.0h.
    - AutoScheduler AI operuje na 2 000 prób (`2k`) z wczesnym zatrzymaniem.
+   - Smart Swap Assistant & AI Row Re-roll (`smartSwapEngine.ts`) realizują bezkolizyjne korekty parzyste (Same-Day & Cross-Day) z bilansem $\Delta = 0.0$h w TOR.
    - Wsparcia międzykawiarniane (`interStoreSupportEngine.ts`) rozliczają 3 scenariusze.
 4. Po modyfikacji kodu zaktualizuj `src/modules/managers-schedule/AGENTS.md` oraz zarejestruj wpis w `src/modules/managers-schedule/CHANGELOG.md`.

@@ -537,6 +537,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
             <ManagerScheduleGrid
               data={scheduleData}
               onUpdateShift={handleUpdateShift}
+              onBatchUpdateShifts={handleApplyAutoSchedule}
               onUpdateDisposition={handleUpdateDisposition}
               onUpdateEvent={handleUpdateEvent}
               onOpenComplianceModal={() => setShowComplianceModal(true)}

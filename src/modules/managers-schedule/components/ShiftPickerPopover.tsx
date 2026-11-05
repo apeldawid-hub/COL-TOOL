@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ShiftDefinition } from '../../../types';
-import { X, Clock, Sun, Moon, Briefcase, CalendarOff, Check, UserCheck, Plus, Minus, Sparkles, Search } from 'lucide-react';
+import { ShiftDefinition, ManagerScheduleMonthData, ManagerScheduleShift } from '../../../types';
+import { SmartSwapEngine, SmartSwapCandidate, SmartSwapChange } from '../services/smartSwapEngine';
+import { X, Clock, Sun, Moon, Briefcase, CalendarOff, Check, UserCheck, Plus, Minus, Sparkles, Search, ArrowRightLeft, ShieldCheck, AlertCircle } from 'lucide-react';
 
 interface ShiftPickerPopoverProps {
   currentShiftCode: string;
@@ -18,6 +19,13 @@ interface ShiftPickerPopoverProps {
   isWeekend?: boolean;
   employeeContractRatio?: number;
   managerName: string;
+  empId?: number;
+  scheduleData?: ManagerScheduleMonthData;
+  boundaryShifts?: {
+    prevMonthShifts?: ManagerScheduleShift[];
+    nextMonthShifts?: ManagerScheduleShift[];
+  };
+  onApplySwap?: (changes: SmartSwapChange[], summary: string) => Promise<void>;
   onSelectShift: (code: string, customHours?: number, customStartTime?: string, customEndTime?: string) => void;
   onSelectDisposition?: (disposition: string) => void;
   onClose: () => void;
@@ -81,10 +89,30 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
   isWeekend = false,
   employeeContractRatio = 1.0,
   managerName,
+  empId,
+  scheduleData,
+  boundaryShifts,
+  onApplySwap,
   onSelectShift,
   onSelectDisposition,
   onClose
 }) => {
+  const [activeTab, setActiveTab] = useState<'shifts' | 'smart_swap'>('shifts');
+  const [isApplyingSwap, setIsApplyingSwap] = useState(false);
+
+  // Obliczenie wariantów zamiany parzystej AI
+  const swapCandidates = useMemo(() => {
+    if (!empId || !scheduleData) return [];
+    return SmartSwapEngine.findSmartSwapCandidates(
+      scheduleData.year,
+      scheduleData.month,
+      day,
+      empId,
+      scheduleData,
+      boundaryShifts
+    );
+  }, [empId, scheduleData, day, boundaryShifts]);
+
   const rawInitDispo = currentDisposition || '';
   const initialDispo = rawInitDispo === 'FULL' ? '' : rawInitDispo;
   const [selectedDispo, setSelectedDispo] = useState<string>(initialDispo);
@@ -232,7 +260,162 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
           </button>
         </div>
 
-        <div className="p-5 max-h-[75vh] overflow-y-auto space-y-5">
+        {/* Pasek zakładek: Katalog Zmian vs Smart Swap AI */}
+        <div className="flex border-b border-stone-200 bg-stone-100/70 px-5 pt-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('shifts')}
+            className={`px-4 py-2 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-2 border-t border-x ${
+              activeTab === 'shifts'
+                ? 'bg-white text-[#1E3932] border-stone-200 -mb-px shadow-xs'
+                : 'text-stone-500 hover:text-stone-800 border-transparent hover:bg-stone-200/50'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Katalog Zmian & Godziny</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('smart_swap')}
+            className={`px-4 py-2 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-2 border-t border-x ${
+              activeTab === 'smart_swap'
+                ? 'bg-white text-[#006241] border-stone-200 -mb-px shadow-xs'
+                : 'text-emerald-700 hover:text-emerald-900 border-transparent hover:bg-emerald-100/50'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Smart Swap AI</span>
+            {swapCandidates.length > 0 && (
+              <span className="px-1.5 py-0.2 bg-emerald-600 text-white rounded-full text-[10px] font-black shadow-2xs">
+                {swapCandidates.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'smart_swap' ? (
+          <div className="p-5 max-h-[75vh] overflow-y-auto space-y-4">
+            <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3.5 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#006241] text-white flex items-center justify-center shrink-0 shadow-xs font-bold">
+                <ArrowRightLeft className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-bold text-[#1E3932] flex items-center gap-2">
+                  <span>Asystent Wymiany Parzystej dla: {managerName} (Dzień {day})</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-black">
+                    Aktualnie: {currentShiftCode} ({currentHours || 8}h)
+                  </span>
+                </h4>
+                <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
+                  AI przeszukało grafik zespołu i wyselekcjonowało bezkolizyjne warianty zamiany. Każda propozycja zachowuje 100% Kodeksu Pracy (11h/35h) oraz zerowy bilans etatów w TOR (0.0h).
+                </p>
+              </div>
+            </div>
+
+            {swapCandidates.length === 0 ? (
+              <div className="py-10 text-center bg-stone-50 rounded-xl border border-dashed border-stone-300 p-6">
+                <AlertCircle className="w-8 h-8 text-stone-400 mx-auto mb-2" />
+                <h5 className="text-xs font-bold text-stone-700">Brak bezkolizyjnych zamian parzystych</h5>
+                <p className="text-[11px] text-stone-500 max-w-sm mx-auto mt-1 leading-relaxed">
+                  W wybranym dniu żaden inny menedżer nie posiada pasującego dyżuru lub zamiana naruszyłaby 11h odpoczynku dobowego bądź serię niedziel.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {swapCandidates.map(cand => (
+                  <div
+                    key={cand.id}
+                    className="bg-white border border-stone-200 hover:border-emerald-500 rounded-xl p-4 transition-all shadow-xs hover:shadow-md space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">
+                          {cand.targetEmployeeName.charAt(0)}
+                        </span>
+                        <div>
+                          <div className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
+                            <span>{cand.targetEmployeeName}</span>
+                            <span className="text-[10px] text-stone-500 font-medium">({cand.targetRole})</span>
+                          </div>
+                          <div className="text-[10px] text-stone-500">
+                            {cand.type === 'same_day' ? 'Zamiana dyżurów w tym samym dniu' : `Zamiana krzyżowa (Dzień ${cand.primaryDay} ↔ Dzień ${cand.compensatingDay})`}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {cand.containsVacation && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold">
+                            ⚠️ Przesunięcie H
+                          </span>
+                        )}
+                        {cand.containsAdmin && (
+                          <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-bold">
+                            📋 Przesunięcie NC
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold">
+                          {cand.tag}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[10px] font-semibold flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          <span>100% KP • Δ 0.0h</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-stone-700 font-medium">
+                      {cand.description}
+                    </p>
+
+                    {/* Szczegóły zmian */}
+                    <div className="bg-stone-50 rounded-lg p-2.5 border border-stone-200 text-xs space-y-1 font-mono">
+                      {cand.changes.map((ch, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-stone-700 text-[11px]">
+                          <span className="font-sans font-semibold text-stone-800">
+                            {ch.employeeName} (Dzień {ch.day}):
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-stone-400 line-through">{ch.prevShiftCode}</span>
+                            <span>➔</span>
+                            <strong className="text-[#006241]">{ch.newShiftCode}</strong>
+                            <span className="text-[10px] text-stone-500 font-sans">({ch.hours}h)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] text-stone-500 italic max-w-xs truncate" title={cand.explanation}>
+                        {cand.explanation}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={isApplyingSwap || !onApplySwap}
+                        onClick={async () => {
+                          if (!onApplySwap) return;
+                          setIsApplyingSwap(true);
+                          try {
+                            await onApplySwap(cand.changes, cand.description);
+                            onClose();
+                          } finally {
+                            setIsApplyingSwap(false);
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold rounded-lg transition-all shadow-xs hover:shadow flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>{isApplyingSwap ? 'Zapisywanie...' : '⚡ Zastosuj Zamianę 1-Klik'}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="p-5 max-h-[75vh] overflow-y-auto space-y-5">
           {/* SEKCJA DYSPOZYCYJNOŚCI MENEDŻERA */}
           <div className="bg-stone-50/90 p-3.5 rounded-xl border border-stone-200">
             <div className="flex items-center justify-between mb-2">
@@ -754,6 +937,8 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
               })}
             </div>
           </div>
+        )}
+          </>
         )}
 
         {/* Dolny pasek */}

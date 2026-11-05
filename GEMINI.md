@@ -14,7 +14,8 @@ Dokument określa bezwzględne reguły optymalizacji zużycia kontekstu i energi
 - Zero zbędnej teorii: przy pytaniach o kod dostarczaj bezpośrednie rozwiązanie bez akademickich wykładów i tłumaczenia podstaw, chyba że użytkownik o to wyraźnie zapyta.
 
 ## 🧹 3. Higiena narzędzi (Tool Hygiene & Context Conservation)
-- **Zakaz zrzucania całych dużych plików do kontekstu:** Zawsze stosuj selektywne czytanie (`StartLine`, `EndLine`, `grep`, `head`, `tail`).
+- **Twardy limit `read_file`:** W plikach > 200 linii ZAWSZE używaj `StartLine` i `EndLine` (zakres 80–150 linii wokół edytowanego fragmentu). Zakaz zrzucania całego dużego pliku do kontekstu.
+- **Konsultacja mapy symboli:** Przed rozpoczęciem wyszukiwania symbolu sprawdź `docs/SYMBOLS_MAP.json` lub `docs/IPC_AND_SCHEMA.md` zamiast wykonywać pętle `grep`.
 - **Filtracja wyjścia poleceń terminalowych:** Ograniczaj rozmiar logów komend przez filtry (`| grep`, `| head -n 30`), by nie zapychać okna kontekstu.
 - **Minimalizacja wywołań:** Unikaj powtarzalnych i nadmiarowych operacji I/O.
 
