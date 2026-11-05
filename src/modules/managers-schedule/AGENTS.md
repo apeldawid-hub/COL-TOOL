@@ -401,6 +401,8 @@ Moduł automatycznie weryfikuje 4 kluczowe normy polskiego Kodeksu Pracy dla ka�
   - **Pole Do (Koniec)**: Manualna modyfikacja godziny zakończenia natychmiast aktualizuje czas trwania zmiany ($\text{Czas Trwania} = \text{Koniec} - \text{Start}$).
 - **Persystencja w SQLite (`manager_schedule_shifts`)**:
   - Kolumny `custom_start_time TEXT` i `custom_end_time TEXT` przechowują zdefiniowany przedział (np. `'09:00'`, `'17:00'`).
+  - **Mechanizm Write-Through (Feature F18)**: Każda modyfikacja grafiku przechodzi przez `ScheduleWriteThroughRepository`, zapisując natychmiast rekord lokalnie w SQLite (0 ms UI) oraz rozgłaszając granularne zdarzenie `UPSERT` do chmury Firestore (`stores/{storeId}/realtime_events/`) z automatycznym buforem awaryjnym `SyncEngine.enqueueMutation` w razie braku sieci.
+  - **Subskrypcja w czasie rzeczywistym**: `ManagerScheduleView` nasłuchuje zdarzeń kawiarni przez `CloudRealtimeTransport.subscribeToStore`, automatycznie odświeżając widok na innych stanowiskach bez interwencji użytkownika.
 - **Wizualizacja na Matrycy Grafiku (`ManagerScheduleGrid`)**:
   - Tooltip komórki wyświetla dokładne godziny: `• Godziny: 09:00 – 17:00 (8.0h)`.
   - Badge zmiany wyświetla skrótowy przedział (np. `9-17`) lub dostosowany wymiar.

@@ -2224,6 +2224,183 @@ function setupIpcHandlers() {
     const { CloudRealtimeTransport } = await import('../src/services/sync/cloudRealtimeTransport');
     return await CloudRealtimeTransport.pollOnce(storeId);
   });
+
+  // Feature F18: Real-time Cloud Inbound Sync Mirror (Step 3)
+  ipcMain.handle('realtime:apply-inbound-event', async (_event, event: any) => {
+    if (!event || !event.domain) {
+      return { success: false, error: 'Nieprawidłowe zdarzenie' };
+    }
+
+    const db = dbManager.getDb();
+    let applied = false;
+
+    try {
+      if (event.domain === 'schedules') {
+        const payload = event.payload;
+
+        // 1. Pojedyncza zmiana: shift_...
+        if (event.entityId?.startsWith('shift_') && payload) {
+          if (event.action === 'DELETE') {
+            const year = Number(payload.year);
+            const month = Number(payload.month);
+            const day = Number(payload.day);
+            const empId = Number(payload.employee_id);
+            db.run(`DELETE FROM manager_schedule_shifts WHERE year = ? AND month = ? AND day = ? AND employee_id = ?`, [year, month, day, empId]);
+          } else {
+            const stmt = db.prepare(`
+              INSERT INTO manager_schedule_shifts (year, month, day, date, employee_id, shift_code, hours, notes, disposition, custom_start_time, custom_end_time)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, ''), ?, ?)
+              ON CONFLICT(year, month, day, employee_id) DO UPDATE SET
+                shift_code = excluded.shift_code,
+                hours = excluded.hours,
+                notes = excluded.notes,
+                disposition = COALESCE(excluded.disposition, manager_schedule_shifts.disposition, ''),
+                custom_start_time = excluded.custom_start_time,
+                custom_end_time = excluded.custom_end_time
+            `);
+            stmt.run([
+              Number(payload.year),
+              Number(payload.month),
+              Number(payload.day),
+              String(payload.date),
+              Number(payload.employee_id),
+              String(payload.shift_code),
+              Number(payload.hours),
+              payload.notes || null,
+              payload.disposition || null,
+              payload.custom_start_time || null,
+              payload.custom_end_time || null,
+            ]);
+            stmt.free();
+          }
+          applied = true;
+        }
+
+        // 2. Paczka zmian: batch_shifts_...
+        else if (event.entityId?.startsWith('batch_shifts_') && payload?.shifts && Array.isArray(payload.shifts)) {
+          db.run('BEGIN TRANSACTION;');
+          const stmt = db.prepare(`
+            INSERT INTO manager_schedule_shifts (year, month, day, date, employee_id, shift_code, hours, notes, disposition, custom_start_time, custom_end_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, ''), ?, ?)
+            ON CONFLICT(year, month, day, employee_id) DO UPDATE SET
+              shift_code = excluded.shift_code,
+              hours = excluded.hours,
+              notes = excluded.notes,
+              disposition = COALESCE(excluded.disposition, manager_schedule_shifts.disposition, ''),
+              custom_start_time = excluded.custom_start_time,
+              custom_end_time = excluded.custom_end_time
+          `);
+          for (const s of payload.shifts) {
+            stmt.run([
+              Number(s.year),
+              Number(s.month),
+              Number(s.day),
+              String(s.date),
+              Number(s.employee_id),
+              String(s.shift_code),
+              Number(s.hours),
+              s.notes || null,
+              s.disposition || null,
+              s.custom_start_time || null,
+              s.custom_end_time || null,
+            ]);
+          }
+          stmt.free();
+          db.run('COMMIT;');
+          applied = true;
+        }
+
+        // 3. Pojedyncza dyspozycja: dispo_...
+        else if (event.entityId?.startsWith('dispo_') && payload) {
+          const stmt = db.prepare(`
+            INSERT INTO manager_schedule_shifts (year, month, day, date, employee_id, shift_code, hours, disposition)
+            VALUES (?, ?, ?, ?, ?, 'OFF', 0.0, ?)
+            ON CONFLICT(year, month, day, employee_id) DO UPDATE SET
+              disposition = excluded.disposition
+          `);
+          stmt.run([
+            Number(payload.year),
+            Number(payload.month),
+            Number(payload.day),
+            String(payload.date),
+            Number(payload.employee_id),
+            String(payload.disposition || ''),
+          ]);
+          stmt.free();
+          applied = true;
+        }
+
+        // 4. Paczka dyspozycji: batch_dispo_...
+        else if (event.entityId?.startsWith('batch_dispo_') && payload?.items && Array.isArray(payload.items)) {
+          db.run('BEGIN TRANSACTION;');
+          const stmt = db.prepare(`
+            INSERT INTO manager_schedule_shifts (year, month, day, date, employee_id, shift_code, hours, disposition)
+            VALUES (?, ?, ?, ?, ?, 'OFF', 0.0, ?)
+            ON CONFLICT(year, month, day, employee_id) DO UPDATE SET
+              disposition = excluded.disposition
+          `);
+          for (const it of payload.items) {
+            const dateStr = it.date || `${payload.year}-${String(payload.month).padStart(2, '0')}-${String(it.day).padStart(2, '0')}`;
+            stmt.run([
+              Number(payload.year),
+              Number(payload.month),
+              Number(it.day),
+              dateStr,
+              Number(it.employee_id),
+              String(it.disposition || ''),
+            ]);
+          }
+          stmt.free();
+          db.run('COMMIT;');
+          applied = true;
+        }
+      }
+
+      // 5. Personel i skład zespołu
+      else if (event.domain === 'personnel') {
+        const payload = event.payload;
+        if (event.entityId?.startsWith('team_roster_') && payload?.employees && Array.isArray(payload.employees)) {
+          const year = Number(payload.year);
+          const month = Number(payload.month);
+          db.run('BEGIN TRANSACTION;');
+          db.run('DELETE FROM manager_monthly_roster WHERE year = ? AND month = ?', [year, month]);
+          const rStmt = db.prepare(`
+            INSERT INTO manager_monthly_roster (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const emp of payload.employees) {
+            rStmt.run([
+              year,
+              month,
+              Number(emp.id),
+              String(emp.name || ''),
+              String(emp.role || 'BARISTA'),
+              String(emp.contract_type || 'UoP'),
+              Number(emp.contract_hours_ratio ?? 1.0),
+              Number(emp.hourly_rate ?? 0),
+              Number(emp.monthly_salary ?? 0),
+            ]);
+          }
+          rStmt.free();
+          db.run('COMMIT;');
+          applied = true;
+        }
+      }
+
+      if (applied) {
+        dbManager.persist();
+        if (mainWindow) {
+          mainWindow.webContents.send('data:refreshed', event);
+        }
+      }
+
+      return { success: true, applied, eventId: event.eventId };
+    } catch (err: any) {
+      try { db.run('ROLLBACK;'); } catch (_) {}
+      console.error('[InboundSyncConsumer] Błąd aplikowania zdarzenia w bazie SQLite:', err);
+      return { success: false, error: err?.message || 'Błąd zapisu w SQLite' };
+    }
+  });
 }
 
 app.whenReady().then(() => {

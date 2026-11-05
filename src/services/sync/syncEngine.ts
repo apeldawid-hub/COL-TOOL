@@ -136,6 +136,19 @@ export class SyncEngine {
   }
 
   /**
+   * Alias dla enqueueMutation
+   */
+  public static enqueueOutbox(entry: {
+    storeUnitCode: string;
+    vaultType: SyncOutboxEntry['vaultType'];
+    entityId: string;
+    action: 'UPSERT' | 'DELETE';
+    payload: any;
+  }): void {
+    return SyncEngine.enqueueMutation(entry);
+  }
+
+  /**
    * Dodaje operację do kolejki outbox (Zero-Leak)
    */
   public static enqueueMutation(entry: {

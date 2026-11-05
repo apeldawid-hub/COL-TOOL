@@ -23,6 +23,7 @@ Dokument stanowi **główny rejestr architektoniczny (Root Orchestrator)** platf
 >    - Przed wszelkimi pracami nad chmurą, synchronizacją lub wielodostępnością agent **ma bezwzględny obowiązek** zapoznać się z dokumentem:
 >      [docs/CLOUD_AND_FLEET_ARCHITECTURE.md](./docs/CLOUD_AND_FLEET_ARCHITECTURE.md)
 >    - Każda kawiarnia to odseparowany obszar `stores/{storeId}/...`. Obowiązuje zakaz stosowania płaskich kolekcji.
+>    - **Model Cloud-First Real-Time (Feature F18)**: Bezpośrednia replikacja w czasie rzeczywistym (`/stores/{storeId}/realtime_events/`) z mechanizmem Write-Through i lustrem lokalnym w SQLite (`store_${id}.db`).
 >    - Po modyfikacji logiki chmurowej agent **musi zaktualizować historię zmian** w tym dokumencie.
 
 ---

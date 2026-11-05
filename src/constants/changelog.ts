@@ -24,6 +24,52 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.9',
+    date: '2026-11-05',
+    title: 'Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Architektura Cloud-First Real-Time: Replikacja zdarzeń w czasie rzeczywistym między stacjami roboczymi przez dedykowany kanał Firestore /stores/{storeId}/realtime_events/ z adaptacyjną pętlą (1.5s/6s) i eliminacją echa własnych edycji (Echo Cancellation).',
+      'Wzorzec Write-Through (ScheduleWriteThroughRepository): Natychmiastowy zapis zmian grafiku, dyspozycji i personelu do lokalnego SQLite (0ms) z asynchronicznym rozgłoszeniem do chmury oraz awaryjnym buforem Outbox w trybie offline.',
+      'Inbound Sync Consumer: Globalny proces w tle odbierający zdarzenia z chmury, aplikujący je do bazy SQLite z deduplikacją LRU i powiadamiający interfejs o zmianach od innych użytkowników.',
+      'Wskaźnik Stanu Chmury w UI (CloudSyncIndicator): 4 stany połączenia (Na żywo, W kolejce Outbox, Tryb lokalny Offline, Łączenie) ze statystykami i powiadomieniami toast.',
+      'Twarde Reguły Bezpieczeństwa Firestore: Autoryzacja zdarzeń w firestore.rules z walidacją struktury isValidRealtimeEvent i niezmiennym dziennikiem audytowym.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Implementacja CloudRealtimeTransport z autoryzacją REST API Firestore, pętlą adaptacyjną (1.5s/6s) i eliminacją echa originDeviceId.',
+        module: 'system'
+      },
+      {
+        type: 'feature',
+        description: 'Implementacja repozytorium ScheduleWriteThroughRepository zapewniającego równoległy zapis do SQLite i rozgłaszanie mutacji grafiku do chmury.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Implementacja InboundSyncConsumer oraz handlera IPC realtime:apply-inbound-event z deduplikacją LRU i powiadomieniami UI.',
+        module: 'system'
+      },
+      {
+        type: 'feature',
+        description: 'Integracja komponentu CloudSyncIndicator w nagłówku aplikacji z monitoringiem stanu chmury na żywo i licznikiem Outbox.',
+        module: 'system'
+      },
+      {
+        type: 'compliance',
+        description: 'Wdrożenie twardych reguł bezpieczeństwa dla kolekcji realtime_events w firestore.rules z walidacją typów i uprawnień.',
+        module: 'database'
+      },
+      {
+        type: 'enhancement',
+        description: 'Podpięcie InboundSyncConsumer w App.tsx z dynamicznym przełączaniem nasłuchu przy zmianie aktywnej kawiarni (sbx:store-switched).',
+        module: 'all'
+      }
+    ]
+  },
+  {
     version: '2.9.8',
     date: '2026-11-05',
     title: 'Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2)',

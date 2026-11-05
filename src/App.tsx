@@ -16,6 +16,7 @@ import { AuthService } from './services/auth/authService';
 import { useStore } from './context/StoreContext';
 import { useAuth } from './context/AuthContext';
 import { StoreService } from './services/storeService';
+import { InboundSyncConsumer } from './services/sync/inboundSyncConsumer';
 import { FleetMasterDashboard } from './components/admin/FleetMasterDashboard';
 import { StoreClientView } from './components/StoreClientView';
 import { ActivationModal } from './components/ActivationModal';
@@ -137,6 +138,30 @@ export const App: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  // Feature F18 (Krok 3): Globalna inicjalizacja i nasłuch InboundSyncConsumer dla aktywnej kawiarni
+  useEffect(() => {
+    if (!hasCompletedOnboarding) return;
+
+    const currentStore = StoreService.getCurrentStore();
+    const storeId = currentStore?.id || currentStore?.unitCode || '108120';
+    InboundSyncConsumer.init(storeId);
+
+    const handleStoreChanged = (e: any) => {
+      const switchedStore = e?.detail?.currentStore || e?.detail;
+      if (switchedStore?.id) {
+        InboundSyncConsumer.init(switchedStore.id);
+      }
+    };
+
+    window.addEventListener('sbx:store-switched', handleStoreChanged);
+    window.addEventListener('sbx-store-changed', handleStoreChanged);
+
+    return () => {
+      window.removeEventListener('sbx:store-switched', handleStoreChanged);
+      window.removeEventListener('sbx-store-changed', handleStoreChanged);
+    };
+  }, [hasCompletedOnboarding]);
 
   // Stan sesji logowania (aplikacja startuje z ekranem logowania lub kreatorem)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);

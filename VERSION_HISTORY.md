@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.9](#v2.9.9--2026-11-05)** | 2026-11-05 | Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18) | `patch` | 🚀 Opublikowana |
 | **[v2.9.8](#v2.9.8--2026-11-05)** | 2026-11-05 | Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2) | `patch` | 🚀 Opublikowana |
 | **[v2.9.7](#v2.9.7--2026-11-02)** | 2026-11-02 | Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI | `patch` | 🚀 Opublikowana |
 | **[v2.8.67](#v2.8.67--2026-10-24)** | 2026-10-24 | Dwuetapowa Autoryzacja 2FA (@amrest.eu), Reguły Firestore Zero-Leak oraz Silnik Local-First Sync | `patch` | 🚀 Opublikowana |
@@ -38,6 +39,31 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.9] — 2026-11-05
+**Tytuł:** Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18)  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- Architektura Cloud-First Real-Time: Replikacja zdarzeń w czasie rzeczywistym między stacjami roboczymi przez dedykowany kanał Firestore /stores/{storeId}/realtime_events/ z adaptacyjną pętlą (1.5s/6s) i eliminacją echa własnych edycji (Echo Cancellation).
+- Wzorzec Write-Through (ScheduleWriteThroughRepository): Natychmiastowy zapis zmian grafiku, dyspozycji i personelu do lokalnego SQLite (0ms) z asynchronicznym rozgłoszeniem do chmury oraz awaryjnym buforem Outbox w trybie offline.
+- Inbound Sync Consumer: Globalny proces w tle odbierający zdarzenia z chmury, aplikujący je do bazy SQLite z deduplikacją LRU i powiadamiający interfejs o zmianach od innych użytkowników.
+- Wskaźnik Stanu Chmury w UI (CloudSyncIndicator): 4 stany połączenia (Na żywo, W kolejce Outbox, Tryb lokalny Offline, Łączenie) ze statystykami i powiadomieniami toast.
+- Twarde Reguły Bezpieczeństwa Firestore: Autoryzacja zdarzeń w firestore.rules z walidacją struktury isValidRealtimeEvent i niezmiennym dziennikiem audytowym.
+
+#### ✨ Nowe Funkcje:
+- Implementacja CloudRealtimeTransport z autoryzacją REST API Firestore, pętlą adaptacyjną (1.5s/6s) i eliminacją echa originDeviceId.
+- Implementacja repozytorium ScheduleWriteThroughRepository zapewniającego równoległy zapis do SQLite i rozgłaszanie mutacji grafiku do chmury.
+- Implementacja InboundSyncConsumer oraz handlera IPC realtime:apply-inbound-event z deduplikacją LRU i powiadomieniami UI.
+- Integracja komponentu CloudSyncIndicator w nagłówku aplikacji z monitoringiem stanu chmury na żywo i licznikiem Outbox.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Podpięcie InboundSyncConsumer w App.tsx z dynamicznym przełączaniem nasłuchu przy zmianie aktywnej kawiarni (sbx:store-switched).
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Wdrożenie twardych reguł bezpieczeństwa dla kolekcji realtime_events w firestore.rules z walidacją typów i uprawnień.
+
+---
 
 ### [v2.9.8] — 2026-11-05
 **Tytuł:** Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2)  

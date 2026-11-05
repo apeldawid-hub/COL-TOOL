@@ -26,6 +26,10 @@ import { DEFAULT_SHIFT_DEFINITIONS } from '../constants/defaultShifts';
 import { SystemClock } from '../../../services/systemClock';
 import { useTutorial } from '../../../context/TutorialContext';
 import { FeatureInfoButton } from '../../../components/FeatureInfoButton';
+import { ScheduleWriteThroughRepository } from '../../../services/sync/scheduleWriteThroughRepository';
+import { CloudRealtimeTransport } from '../../../services/sync/cloudRealtimeTransport';
+import { InboundSyncConsumer } from '../../../services/sync/inboundSyncConsumer';
+import { StoreService } from '../../../services/storeService';
 import {
   Calendar,
   Users,
@@ -131,6 +135,21 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
 
   useEffect(() => {
     loadScheduleData();
+
+    // Feature F18 (Krok 3): Inbound Sync Mirror — automatyczna replikacja zmian z chmury do SQLite
+    const store = StoreService.getCurrentStore();
+    const storeId = store?.id || store?.unitCode || '108120';
+    InboundSyncConsumer.init(storeId);
+
+    const unsubscribe = InboundSyncConsumer.onEventApplied((event) => {
+      if (event.domain === 'schedules' || event.domain === 'personnel') {
+        loadScheduleData();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [loadScheduleData]);
 
   // Weryfikacja czy przeglądany miesiąc jest zamknięty (przeszły względem czasu rzeczywistego)
@@ -199,10 +218,9 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
       custom_end_time: customEndTime || null
     };
 
-    if ((window as any).api?.saveManagerShift) {
-      await (window as any).api.saveManagerShift(shiftPayload);
-      await loadScheduleData();
-    }
+    // Feature F18: Write-Through (SQLite + Realtime Cloud Event + Outbox)
+    await ScheduleWriteThroughRepository.saveShift(shiftPayload);
+    await loadScheduleData();
   };
 
   // Aktualizacja deklarowanej dyspozycyjności menedżera
@@ -218,62 +236,41 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
       disposition
     };
 
-    if ((window as any).api?.saveManagerDisposition) {
-      await (window as any).api.saveManagerDisposition(dispoPayload);
-      await loadScheduleData();
-    }
+    await ScheduleWriteThroughRepository.saveDisposition(dispoPayload);
+    await loadScheduleData();
   };
 
   // Zbiorczy zapis dyspozycji z matrycy / Excela
   const handleSaveBatchDispositions = async (items: Array<{ day: number; employee_id: number; disposition: string }>) => {
     if (isClosed) return;
-    if ((window as any).api?.saveBatchManagerDispositions) {
-      await (window as any).api.saveBatchManagerDispositions({
-        year: selectedYear,
-        month: selectedMonth,
-        items
-      });
-      await loadScheduleData();
-    }
+    await ScheduleWriteThroughRepository.saveBatchDispositions({
+      year: selectedYear,
+      month: selectedMonth,
+      items
+    });
+    await loadScheduleData();
   };
 
   // Zastosowanie wygenerowanego grafiku AutoScheduling
   const handleApplyAutoSchedule = async (generatedShifts: ManagerScheduleShift[]) => {
     if (isClosed) return;
-    if ((window as any).api?.saveBatchManagerShifts) {
-      await (window as any).api.saveBatchManagerShifts({
-        year: selectedYear,
-        month: selectedMonth,
-        shifts: generatedShifts
-      });
-    } else if ((window as any).api?.saveManagerShift) {
-      // Fallback: zapis w pętli
-      for (const s of generatedShifts) {
-        await (window as any).api.saveManagerShift(s);
-      }
-    }
+    await ScheduleWriteThroughRepository.saveBatchShifts({
+      year: selectedYear,
+      month: selectedMonth,
+      shifts: generatedShifts
+    });
     await loadScheduleData();
   };
 
   // Zapis składu menedżerów
   const handleSaveTeam = async (payload: { employees: ManagerEmployee[]; propagateToFuture: boolean }) => {
     try {
-      const api = (window as any).api || (window as any).electronAPI;
-      if (api?.saveManagerEmployees) {
-        await api.saveManagerEmployees({
-          year: selectedYear,
-          month: selectedMonth,
-          employees: payload.employees,
-          propagateToFuture: payload.propagateToFuture
-        });
-      } else if (api?.manageEmployees) {
-        await api.manageEmployees({
-          year: selectedYear,
-          month: selectedMonth,
-          employees: payload.employees,
-          propagateToFuture: payload.propagateToFuture
-        });
-      }
+      await ScheduleWriteThroughRepository.saveTeam({
+        year: selectedYear,
+        month: selectedMonth,
+        employees: payload.employees,
+        propagateToFuture: payload.propagateToFuture
+      });
       await loadScheduleData();
     } catch (err) {
       console.error('Błąd zapisu składu zespołu:', err);
@@ -297,17 +294,11 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   const handleApplySupportShifts = async (shiftsToUpdate: ManagerScheduleShift[], successMessage: string) => {
     if (isClosed || !scheduleData) return;
     try {
-      if ((window as any).api?.saveBatchManagerShifts) {
-        await (window as any).api.saveBatchManagerShifts({
-          year: selectedYear,
-          month: selectedMonth,
-          shifts: shiftsToUpdate
-        });
-      } else if ((window as any).api?.saveManagerShift) {
-        for (const s of shiftsToUpdate) {
-          await (window as any).api.saveManagerShift(s);
-        }
-      }
+      await ScheduleWriteThroughRepository.saveBatchShifts({
+        year: selectedYear,
+        month: selectedMonth,
+        shifts: shiftsToUpdate
+      });
       await loadScheduleData();
       alert(`✅ Zastosowano zmiany wsparcia w grafiku!\n${successMessage}`);
     } catch (error) {

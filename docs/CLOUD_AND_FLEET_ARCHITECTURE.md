@@ -126,3 +126,12 @@ Wszelkie dodatkowe lokale dodawane przez użytkownika są oznaczane jako `isCust
   - Redukcja katalogu bazowego floty do 2 lokali (Janki `108120`, Kalisz Amber `108170`).
   - Wprowadzenie automatycznej alokacji `provisionStoreCloudArea`.
   - Wdrożenie profilu użytkownika `UserSettingsService` z synchronizacją cross-device.
+- **2026-11-05 (v2.9.8):**
+  - Wdrożenie Feature F18: Real-time Cloud Transport Layer (`CloudRealtimeTransport`).
+  - Utworzenie kanału zdarzeń w czasie rzeczywistym per lokal: `/stores/{storeId}/realtime_events/{eventId}`.
+  - Implementacja mechanizmu Echo Cancellation z identyfikacją sprzętową (`originDeviceId`).
+  - Wprowadzenie adaptacyjnej pętli nasłuchującej (1.5s active / 6s idle) oraz obsługi stanów `ONLINE`, `CONNECTING`, `OFFLINE`, `DISCONNECTED`.
+  - Rozszerzenie reguł bezpieczeństwa w `firestore.rules` o regułę `isValidRealtimeEvent` i immutable log zdarzeń.
+  - Wdrożenie wzorca Write-Through w `ScheduleWriteThroughRepository` z awaryjnym buforowaniem Outbox w `SyncEngine`.
+  - Wdrożenie `InboundSyncConsumer` oraz handlera IPC `realtime:apply-inbound-event` replikującego przychodzące zdarzenia chmurowe do lokalnego pliku SQLite `store_${id}.db`.
+  - Wdrożenie wskaźnika UI `CloudSyncIndicator` reprezentującego stany: `🟢 Na żywo (Cloud First)`, `🟡 Synchronizowanie (Outbox: N)`, `🔴 Tryb lokalny (Offline)`, `🔵 Łączenie...`.

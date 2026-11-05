@@ -6,8 +6,17 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
-## [v2.9.8] — 2026-11-05
+
+## [v2.9.9] — 2026-11-05
 - Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.8] — 2026-11-05
+- **Mechanizm Write-Through & Real-time Live Sync (Feature F18)**:
+  - Wdrożenie repozytorium `ScheduleWriteThroughRepository` dla wszystkich operacji zapisu grafiku i składu menedżerów.
+  - Natychmiastowy zapis lokalny w SQLite (0 ms latencji) połączony z asynchronicznym rozgłoszeniem zdarzenia do Google Cloud Firestore (`stores/{storeId}/realtime_events/`).
+  - Automatyczny bufor awaryjny (Outbox Fallback) w `SyncEngine` przy braku sieci internetowej.
+  - Wdrożenie `InboundSyncConsumer`: automatyczne replikowanie przychodzących z chmury zdarzeń do lokalnej bazy SQLite (`store_${id}.db`) z deduplikacją i powiadomieniami UI.
+  - Pełna subskrypcja na żywo w `ManagerScheduleView` z automatycznym odświeżaniem siatki grafiku przy edycjach na innych stacjach roboczych w kawiarni.
 
 ## [v2.9.7] — 2026-11-05
 - **Smart Swap Assistant AI (`smartSwapEngine.ts`, `ShiftPickerPopover.tsx`)**:
