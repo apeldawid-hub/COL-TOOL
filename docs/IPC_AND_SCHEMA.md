@@ -1,11 +1,11 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-05T04:21:22.294Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-06T22:42:23.840Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
 ## 📡 1. Kontrakty Mostu IPC (`window.api.*` — `IElectronAPI`)
-Łącznie wykrytych metod IPC w `electron/preload.ts`: **135**.
+Łącznie wykrytych metod IPC w `electron/preload.ts`: **141**.
 
 | Metoda IPC | Opcjonalna | Podpis Typu | Kategoria / Uwagi |
 | :--- | :---: | :--- | :--- |
@@ -144,6 +144,12 @@
 | `window.api.realtimePublishEvent` | Tak | `(input: any) => Promise<any>` | Feature F18: Real-time Cloud Transport Layer (Step 1 & Step 3) |
 | `window.api.realtimePollOnce` | Tak | `(storeId: string) => Promise<any>` | — |
 | `window.api.realtimeApplyInboundEvent` | Tak | `(event: any) => Promise<any>` | — |
+| `window.api.createCloudSnapshot` | Tak | `(options: any) => Promise<any>` | Feature F19: Cloud Snapshots & 3-Tier Collision Guard |
+| `window.api.listCloudSnapshots` | Tak | `(storeId: string) => Promise<any>` | — |
+| `window.api.checkSnapshotCollisions` | Tak | `(storeId: string, snapshotCreatedAt: string) => Promise<any>` | — |
+| `window.api.restoreCloudSnapshotSelective` | Tak | `(options: any) => Promise<any>` | — |
+| `window.api.onStoreRestored` | Tak | `(callback: (event: any, data: any) => void) => void` | — |
+| `window.api.removeStoreRestoredListener` | Tak | `(callback: (event: any, data: any) => void) => void` | — |
 
 ---
 

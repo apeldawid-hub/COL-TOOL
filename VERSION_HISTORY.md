@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.10](#v2.9.10--2026-11-06)** | 2026-11-06 | Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19) | `patch` | 🚀 Opublikowana |
 | **[v2.9.9](#v2.9.9--2026-11-05)** | 2026-11-05 | Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18) | `patch` | 🚀 Opublikowana |
 | **[v2.9.8](#v2.9.8--2026-11-05)** | 2026-11-05 | Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2) | `patch` | 🚀 Opublikowana |
 | **[v2.9.7](#v2.9.7--2026-11-02)** | 2026-11-02 | Redukcja Katalogu Floty do 2 Aktywnych Jednostek (Janki & Kalisz Amber) oraz Dynamiczne Liczniki Floty w UI | `patch` | 🚀 Opublikowana |
@@ -39,6 +40,28 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.10] — 2026-11-06
+**Tytuł:** Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19)  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- W 100% Automatyczne Cloud Snapshots: Całkowicie bezobsługowe tworzenie punktów przywracania w chmurze Firestore (stores/{storeId}/snapshots/) raz na 24h w tle oraz przed operacjami masowymi.
+- Trzypoziomowa Tarcza Kolizyjna: Ostrzeżenie o nowszych edycjach innych menedżerów, gwarantowany Pre-Restore Safety Snapshot oraz selektywne przywracanie domen (grafik, MAPAL, zespół, szkolenia).
+- Nowy Interfejs Kopii Zapasowych: Usunięcie dawnej „Migracji do Chmury” oraz sekcji ./IMPORT/ i Clean Slate; nowy wskaźnik Automatyczna Tarcza Chmurowa AES-256.
+- Autorytatywna Synchronizacja Floty: Powiadamianie innych stacji w kawiarni o przywróceniu bazy (CloudRestoreNoticeModal) bez ryzyka split-brain.
+
+#### ✨ Nowe Funkcje:
+- Implementacja CloudSnapshotService z automatycznymi migawkami dobowymi (24h) i pre-action oraz zapisem do Firestore.
+- Wdrożenie CloudRestoreNoticeModal: informacyjny modal z synchronizacją stanu dla stacji podrzędnych w kawiarni.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Przebudowa DatabaseBackupModal: eliminacja podatności z ./IMPORT/ i przycisku Clean Slate, nowy wskaźnik tarczy chmurowej.
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Trzypoziomowa Tarcza Kolizyjna: detekcja nowszych edycji, automatyczny safety snapshot przed cofnięciem i selektywny restore.
+
+---
 
 ### [v2.9.9] — 2026-11-05
 **Tytuł:** Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18)  

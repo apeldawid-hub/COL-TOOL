@@ -1,5 +1,6 @@
 import { DatabaseHealthStatus, DatabaseOptimizationResult } from '../types';
 import { todoService } from './todoService';
+import { CloudSnapshotService } from './sync/cloudSnapshotService';
 
 class DatabaseHealthService {
   private currentHealth: DatabaseHealthStatus | null = null;
@@ -53,6 +54,16 @@ class DatabaseHealthService {
       const api = (window as any).api || (window as any).electronAPI;
       if (api?.checkDatabaseHealth) {
         const res: DatabaseHealthStatus = await api.checkDatabaseHealth();
+        
+        // Jeśli Cloud Snapshot był wykonany w ciągu ostatnich 7 dni, ochrona chmurowa jest aktualna
+        const lastSnapshot = CloudSnapshotService.getLastSnapshotTime();
+        if (lastSnapshot && res.isBackupOverdue) {
+          const snapshotAgeDays = Math.floor((Date.now() - new Date(lastSnapshot).getTime()) / (24 * 60 * 60 * 1000));
+          if (snapshotAgeDays < 7) {
+            res.isBackupOverdue = false;
+          }
+        }
+
         this.currentHealth = res;
 
         // Synchronizacja zadania w To-Do Store Managera

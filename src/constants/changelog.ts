@@ -24,6 +24,41 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.10',
+    date: '2026-11-06',
+    title: 'Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'W 100% Automatyczne Cloud Snapshots: Całkowicie bezobsługowe tworzenie punktów przywracania w chmurze Firestore (stores/{storeId}/snapshots/) raz na 24h w tle oraz przed operacjami masowymi.',
+      'Trzypoziomowa Tarcza Kolizyjna: Ostrzeżenie o nowszych edycjach innych menedżerów, gwarantowany Pre-Restore Safety Snapshot oraz selektywne przywracanie domen (grafik, MAPAL, zespół, szkolenia).',
+      'Nowy Interfejs Kopii Zapasowych: Usunięcie dawnej „Migracji do Chmury” oraz sekcji ./IMPORT/ i Clean Slate; nowy wskaźnik Automatyczna Tarcza Chmurowa AES-256.',
+      'Autorytatywna Synchronizacja Floty: Powiadamianie innych stacji w kawiarni o przywróceniu bazy (CloudRestoreNoticeModal) bez ryzyka split-brain.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Implementacja CloudSnapshotService z automatycznymi migawkami dobowymi (24h) i pre-action oraz zapisem do Firestore.',
+        module: 'system'
+      },
+      {
+        type: 'compliance',
+        description: 'Trzypoziomowa Tarcza Kolizyjna: detekcja nowszych edycji, automatyczny safety snapshot przed cofnięciem i selektywny restore.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Przebudowa DatabaseBackupModal: eliminacja podatności z ./IMPORT/ i przycisku Clean Slate, nowy wskaźnik tarczy chmurowej.',
+        module: 'system'
+      },
+      {
+        type: 'feature',
+        description: 'Wdrożenie CloudRestoreNoticeModal: informacyjny modal z synchronizacją stanu dla stacji podrzędnych w kawiarni.',
+        module: 'system'
+      }
+    ]
+  },
+  {
     version: '2.9.9',
     date: '2026-11-05',
     title: 'Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18)',

@@ -2143,7 +2143,13 @@ function setupIpcHandlers() {
           try {
             const unpacked = await VaultService.unpackageScheduleVault(doc as any, storeId, storeId);
             if (unpacked?.payload) {
-              unpackedData.schedules = unpacked.payload;
+              if (!unpackedData.schedules) {
+                unpackedData.schedules = { shifts: [], versions: [], trainingShifts: [], fichajesLogs: [] };
+              }
+              unpackedData.schedules.shifts = (unpackedData.schedules.shifts || []).concat(unpacked.payload.shifts || []);
+              unpackedData.schedules.versions = (unpackedData.schedules.versions || []).concat(unpacked.payload.versions || []);
+              unpackedData.schedules.trainingShifts = (unpackedData.schedules.trainingShifts || []).concat(unpacked.payload.trainingShifts || []);
+              unpackedData.schedules.fichajesLogs = (unpackedData.schedules.fichajesLogs || []).concat(unpacked.payload.fichajesLogs || []);
               totalImported += (unpacked.payload.shifts?.length || 0);
             }
           } catch (_) {}
@@ -2387,6 +2393,23 @@ function setupIpcHandlers() {
         }
       }
 
+      // 6. Zdarzenia systemowe i przywracanie stanu
+      else if (event.domain === 'system') {
+        const payload = event.payload;
+        if (payload?.type === 'STORE_RESTORED') {
+          if (mainWindow) {
+            mainWindow.webContents.send('store:restored-notification', {
+              snapshotId: payload.snapshotId,
+              restoredDomains: payload.restoredDomains,
+              restoredAt: payload.restoredAt,
+              author: payload.author,
+            });
+            mainWindow.webContents.send('data:refreshed', event);
+          }
+          applied = true;
+        }
+      }
+
       if (applied) {
         dbManager.persist();
         if (mainWindow) {
@@ -2399,6 +2422,196 @@ function setupIpcHandlers() {
       try { db.run('ROLLBACK;'); } catch (_) {}
       console.error('[InboundSyncConsumer] Błąd aplikowania zdarzenia w bazie SQLite:', err);
       return { success: false, error: err?.message || 'Błąd zapisu w SQLite' };
+    }
+  });
+
+  // Feature F19: Cloud Snapshots & 3-Tier Collision Guard
+  ipcMain.handle('snapshot:create', async (_event, options: {
+    storeId: string;
+    snapshotId: string;
+    reason: string;
+    author: string;
+    domains: string[];
+    timestamp: string;
+  }) => {
+    try {
+      const { storeId, snapshotId, reason, author, domains, timestamp } = options;
+      const backupRes = BackupManager.getInstance().createBackup(reason || 'Cloud Snapshot', storeId);
+
+      const db = dbManager.getDb();
+      let shiftsCount = 0;
+      let employeesCount = 0;
+      let mapalRecordsCount = 0;
+      let aopRecordsCount = 0;
+
+      try {
+        const r = db.exec("SELECT COUNT(*) FROM manager_schedule_shifts;");
+        if (r.length && r[0].values.length) shiftsCount = Number(r[0].values[0][0]);
+      } catch (_) {}
+      try {
+        const r = db.exec("SELECT COUNT(*) FROM manager_employees;");
+        if (r.length && r[0].values.length) employeesCount = Number(r[0].values[0][0]);
+      } catch (_) {}
+      try {
+        const r = db.exec("SELECT COUNT(*) FROM labor_actuals_log;");
+        if (r.length && r[0].values.length) mapalRecordsCount = Number(r[0].values[0][0]);
+      } catch (_) {}
+      try {
+        const r = db.exec("SELECT COUNT(*) FROM aop_plans;");
+        if (r.length && r[0].values.length) aopRecordsCount = Number(r[0].values[0][0]);
+      } catch (_) {}
+
+      const FIRESTORE_PROJECT_ID = 'starbucks-ops-suite';
+      const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
+      const url = `${FIRESTORE_BASE_URL}/stores/${storeId}/snapshots/${snapshotId}`;
+
+      const payload = {
+        fields: {
+          snapshotId: { stringValue: snapshotId },
+          storeId: { stringValue: storeId },
+          createdAt: { stringValue: timestamp || new Date().toISOString() },
+          author: { stringValue: author || 'System' },
+          reason: { stringValue: reason || 'Kopia zapasowa' },
+          domains: { arrayValue: { values: (domains || []).map((d: string) => ({ stringValue: d })) } },
+          shiftsCount: { integerValue: String(shiftsCount) },
+          employeesCount: { integerValue: String(employeesCount) },
+          mapalRecordsCount: { integerValue: String(mapalRecordsCount) },
+          aopRecordsCount: { integerValue: String(aopRecordsCount) },
+          sha256: { stringValue: backupRes.sha256 || '' },
+          sizeBytes: { integerValue: String(backupRes.sizeBytes || 0) },
+          filename: { stringValue: backupRes.filename || '' },
+        }
+      };
+
+      try {
+        await fetch(url, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (err: any) {
+        console.warn(`[Snapshot] Ostrzeżenie: Zapis w Firestore nie powiódł się (lokalny backup zachowany): ${err.message}`);
+      }
+
+      return {
+        success: true,
+        snapshotId,
+        backupFile: backupRes.filename,
+        sha256: backupRes.sha256,
+        sizeBytes: backupRes.sizeBytes,
+        summary: { shiftsCount, employeesCount, mapalRecordsCount, aopRecordsCount }
+      };
+    } catch (err: any) {
+      console.error('[Snapshot] Błąd tworzenia snapshotu:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('snapshot:list', async (_event, storeId: string) => {
+    try {
+      const FIRESTORE_PROJECT_ID = 'starbucks-ops-suite';
+      const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
+      const url = `${FIRESTORE_BASE_URL}/stores/${storeId}/snapshots?pageSize=30`;
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const docs = data.documents || [];
+        return docs.map((doc: any) => {
+          const fields = doc.fields || {};
+          const snapshotId = fields.snapshotId?.stringValue || doc.name.split('/').pop();
+          const createdAt = fields.createdAt?.stringValue || new Date().toISOString();
+          const dateObj = new Date(createdAt);
+          return {
+            snapshotId,
+            storeId: fields.storeId?.stringValue || storeId,
+            createdAt,
+            formattedDate: dateObj.toLocaleString('pl-PL', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            author: fields.author?.stringValue || 'System',
+            reason: fields.reason?.stringValue || 'Kopia zapasowa',
+            domains: (fields.domains?.arrayValue?.values || []).map((v: any) => v.stringValue),
+            summary: {
+              shiftsCount: parseInt(fields.shiftsCount?.integerValue || '0', 10),
+              employeesCount: parseInt(fields.employeesCount?.integerValue || '0', 10),
+              mapalRecordsCount: parseInt(fields.mapalRecordsCount?.integerValue || '0', 10),
+              aopRecordsCount: parseInt(fields.aopRecordsCount?.integerValue || '0', 10),
+            },
+            sizeBytes: parseInt(fields.sizeBytes?.integerValue || '0', 10),
+            sha256: fields.sha256?.stringValue,
+          };
+        });
+      }
+      return [];
+    } catch (err) {
+      return [];
+    }
+  });
+
+  ipcMain.handle('snapshot:check-collisions', async (_event, storeId: string, snapshotCreatedAt: string) => {
+    try {
+      const snapshotTime = new Date(snapshotCreatedAt).getTime();
+      const FIRESTORE_PROJECT_ID = 'starbucks-ops-suite';
+      const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
+      const url = `${FIRESTORE_BASE_URL}/stores/${storeId}/realtime_events?pageSize=50`;
+
+      const res = await fetch(url);
+      if (!res.ok) return { hasCollision: false, newerEventsCount: 0, affectedDomains: [] };
+
+      const data = await res.json();
+      const docs = data.documents || [];
+      let collisionCount = 0;
+      let lastEditor: string | undefined;
+      let lastEditedAt: string | undefined;
+      const affectedDomains = new Set<string>();
+
+      for (const doc of docs) {
+        const fields = doc.fields || {};
+        const tsStr = fields.timestamp?.stringValue;
+        if (!tsStr) continue;
+        const evTime = new Date(tsStr).getTime();
+        if (evTime > snapshotTime) {
+          collisionCount++;
+          if (!lastEditedAt || evTime > new Date(lastEditedAt).getTime()) {
+            lastEditedAt = tsStr;
+            lastEditor = fields.author?.stringValue || 'Inny użytkownik';
+          }
+          const d = fields.domain?.stringValue;
+          if (d) affectedDomains.add(d);
+        }
+      }
+
+      return {
+        hasCollision: collisionCount > 0,
+        newerEventsCount: collisionCount,
+        lastEditor,
+        lastEditedAt,
+        affectedDomains: Array.from(affectedDomains),
+      };
+    } catch (err) {
+      return { hasCollision: false, newerEventsCount: 0, affectedDomains: [] };
+    }
+  });
+
+  ipcMain.handle('snapshot:restore-selective', async (_event, options: {
+    storeId: string;
+    snapshotId: string;
+    selectedDomains: string[];
+  }) => {
+    try {
+      const { snapshotId, selectedDomains } = options;
+      const res = await BackupManager.getInstance().restoreBackupSelective(snapshotId, selectedDomains);
+      if (res.success && mainWindow) {
+        mainWindow.webContents.send('data:refreshed');
+      }
+      return res;
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
   });
 }

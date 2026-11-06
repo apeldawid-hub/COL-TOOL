@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useStore } from '../../../context/StoreContext';
+import { CloudSnapshotService } from '../../../services/sync/cloudSnapshotService';
 import {
   X,
   UploadCloud,
@@ -675,6 +676,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         setIsSaving(false);
         return;
       }
+
+      // Pre-action safety snapshot
+      try {
+        await CloudSnapshotService.triggerPreActionSnapshot('Import Dziennego KPI MAPAL');
+      } catch (_) {}
 
       const res = await api.commitDailyKpiImport({
         year: dailyKpiData.year,

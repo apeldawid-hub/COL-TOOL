@@ -264,6 +264,11 @@
     "line": 96,
     "kind": "class"
   },
+  "CloudSnapshotService": {
+    "file": "src/services/sync/cloudSnapshotService.ts",
+    "line": 56,
+    "kind": "class"
+  },
   "CloudSyncService": {
     "file": "src/services/sync/cloudSyncService.ts",
     "line": 34,
@@ -716,7 +721,7 @@
   },
   "ImportModal": {
     "file": "src/modules/labor-forecast/components/ImportModal.tsx",
-    "line": 119,
+    "line": 120,
     "kind": "const"
   },
   "InboundApplicationResult": {
@@ -1369,6 +1374,21 @@
     "line": 72,
     "kind": "class"
   },
+  "SnapshotCollisionReport": {
+    "file": "src/services/sync/cloudSnapshotService.ts",
+    "line": 44,
+    "kind": "interface"
+  },
+  "SnapshotDomain": {
+    "file": "src/services/sync/cloudSnapshotService.ts",
+    "line": 22,
+    "kind": "type"
+  },
+  "SnapshotSummary": {
+    "file": "src/services/sync/cloudSnapshotService.ts",
+    "line": 24,
+    "kind": "interface"
+  },
   "StandardShiftTemplate": {
     "file": "src/modules/trainings/types/index.ts",
     "line": 84,
@@ -1383,6 +1403,11 @@
     "file": "src/types/licensing.ts",
     "line": 8,
     "kind": "type"
+  },
+  "StoreCloudSnapshotRecord": {
+    "file": "src/services/sync/cloudSnapshotService.ts",
+    "line": 31,
+    "kind": "interface"
   },
   "StoreConnectionPool": {
     "file": "electron/database/db.ts",
@@ -1751,7 +1776,7 @@
   },
   "databaseHealthService": {
     "file": "src/services/databaseHealthService.ts",
-    "line": 154,
+    "line": 165,
     "kind": "const"
   },
   "decryptPayloadSync": {
@@ -1811,7 +1836,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 955,
+    "line": 990,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1826,7 +1851,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 940,
+    "line": 975,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1841,7 +1866,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 947,
+    "line": 982,
     "kind": "function"
   },
   "isManagerInTraining": {

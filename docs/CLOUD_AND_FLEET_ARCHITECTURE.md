@@ -126,7 +126,7 @@ Wszelkie dodatkowe lokale dodawane przez użytkownika są oznaczane jako `isCust
   - Redukcja katalogu bazowego floty do 2 lokali (Janki `108120`, Kalisz Amber `108170`).
   - Wprowadzenie automatycznej alokacji `provisionStoreCloudArea`.
   - Wdrożenie profilu użytkownika `UserSettingsService` z synchronizacją cross-device.
-- **2026-11-05 (v2.9.8):**
+- **2026-11-05 (v2.9.8 - v2.9.9):**
   - Wdrożenie Feature F18: Real-time Cloud Transport Layer (`CloudRealtimeTransport`).
   - Utworzenie kanału zdarzeń w czasie rzeczywistym per lokal: `/stores/{storeId}/realtime_events/{eventId}`.
   - Implementacja mechanizmu Echo Cancellation z identyfikacją sprzętową (`originDeviceId`).
@@ -135,3 +135,13 @@ Wszelkie dodatkowe lokale dodawane przez użytkownika są oznaczane jako `isCust
   - Wdrożenie wzorca Write-Through w `ScheduleWriteThroughRepository` z awaryjnym buforowaniem Outbox w `SyncEngine`.
   - Wdrożenie `InboundSyncConsumer` oraz handlera IPC `realtime:apply-inbound-event` replikującego przychodzące zdarzenia chmurowe do lokalnego pliku SQLite `store_${id}.db`.
   - Wdrożenie wskaźnika UI `CloudSyncIndicator` reprezentującego stany: `🟢 Na żywo (Cloud First)`, `🟡 Synchronizowanie (Outbox: N)`, `🔴 Tryb lokalny (Offline)`, `🔵 Łączenie...`.
+  - Obsługa partycjonowania dużych zbiorów danych (multi-part chunking 400 rekordów/dokument) w `CloudMigrationService` i `main.ts` gwarantująca bezbłędny transport baz >1 MiB (np. kawiarnia 108120 Janki: 8 881 rekordów w 15 sejfach) z zachowaniem limitów Firestore.
+- **2026-11-06 (v2.9.9):**
+  - Wdrożenie Feature F19: Architektura Zautomatyzowanych Kopii Zapasowych & Cloud Snapshots (`CloudSnapshotService`).
+  - Utworzenie dedykowanego silosu punktów przywracania w Firestore: `/stores/{storeId}/snapshots/{snapshotId}` z regułami bezpieczeństwa.
+  - Wycofanie ręcznego procesu „Migracja do Chmury (AES-256)” oraz eliminacja podatności z folderu `./IMPORT` i przycisku `Clean Slate`.
+  - Wdrożenie Trzypoziomowej Tarczy Kolizyjnej (3-Tier Collision Guard):
+    1. Detekcja nowszych zmian w chmurze (ostrzeżenie w oknie podglądu przed nadpisaniem pracy innego managera).
+    2. Pre-Restore Safety Snapshot (automatyczna migawka ratunkowa bieżącego stanu tuż przed cofnięciem).
+    3. Selektywne przywracanie domenowe (`schedules`, `personnel`, `financials`, `trainings`).
+  - Wdrożenie dwustopniowego przywracania (Read-Only Preview) oraz komunikatu autorytatywnego dla stacji podrzędnych (`CloudRestoreNoticeModal`).

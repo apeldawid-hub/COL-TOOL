@@ -12,10 +12,6 @@ import {
   PlusCircle,
   FileCheck,
   ShieldAlert,
-  FolderArchive,
-  UploadCloud,
-  DownloadCloud,
-  Trash2,
   Activity,
   Zap,
   Layers,
@@ -23,11 +19,21 @@ import {
   ChevronUp,
   CloudLightning,
   Lock,
+  Cloud,
+  Calendar,
+  Users,
+  DollarSign,
+  GraduationCap,
 } from 'lucide-react';
 import { databaseHealthService } from '../services/databaseHealthService';
 import { DatabaseHealthStatus } from '../types';
 import { useStore } from '../context/StoreContext';
 import { ProfilePolicyService, AppRuntimeMode } from '../services/security/profilePolicyService';
+import {
+  CloudSnapshotService,
+  SnapshotDomain,
+  SnapshotCollisionReport,
+} from '../services/sync/cloudSnapshotService';
 
 interface DatabaseBackupRecord {
   filename: string;
@@ -74,20 +80,33 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [isRestoring, setIsRestoring] = useState<boolean>(false);
+  const [isCreatingCloudSnapshot, setIsCreatingCloudSnapshot] = useState<boolean>(false);
   const [customReason, setCustomReason] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [confirmRestoreFile, setConfirmRestoreFile] = useState<string | null>(null);
-  const [confirmCleanSlate, setConfirmCleanSlate] = useState<boolean>(false);
-  const [confirmHistoricalImport, setConfirmHistoricalImport] = useState<boolean>(false);
-  const [isProcessingPackage, setIsProcessingPackage] = useState<boolean>(false);
-  const [isMigratingCloud, setIsMigratingCloud] = useState<boolean>(false);
-  const [migrationStatus, setMigrationStatus] = useState<{
-    percent: number;
-    phase: string;
-    message?: string;
-  } | null>(null);
+
+  // Dwustopniowe Przywracanie & Trzypoziomowa Tarcza Kolizyjna
+  const [previewBackup, setPreviewBackup] = useState<DatabaseBackupRecord | null>(null);
+  const [collisionReport, setCollisionReport] = useState<SnapshotCollisionReport | null>(null);
+  const [isCheckingCollision, setIsCheckingCollision] = useState<boolean>(false);
+  const [isRestoring, setIsRestoring] = useState<boolean>(false);
+  const [selectedDomains, setSelectedDomains] = useState<SnapshotDomain[]>([
+    'schedules',
+    'personnel',
+    'financials',
+    'trainings',
+  ]);
+
+  const lastSnapshotTs = CloudSnapshotService.getLastSnapshotTime(currentStore?.id);
+  const lastSnapshotFormatted = lastSnapshotTs
+    ? new Date(lastSnapshotTs).toLocaleString('pl-PL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
 
   const loadBackupData = async () => {
     if (!isOpen) return;
@@ -96,9 +115,9 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
     try {
       if ((window as any).api?.getDatabaseBackups) {
         const [loadedBackups, status, health] = await Promise.all([
-          (window as any).api.getDatabaseBackups(),
-          (window as any).api.getDatabaseStatus ? (window as any).api.getDatabaseStatus() : Promise.resolve(null),
-          databaseHealthService.checkHealth().catch(() => null)
+          (window as any).api.getDatabaseBackups(currentStore?.id),
+          (window as any).api.getDatabaseStatus ? (window as any).api.getDatabaseStatus(currentStore?.id) : Promise.resolve(null),
+          databaseHealthService.checkHealth().catch(() => null),
         ]);
         setBackups(loadedBackups || []);
         if (status) setDbStatus(status);
@@ -121,7 +140,11 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
     try {
       const res = await databaseHealthService.checkHealth();
       setHealthStatus(res);
-      setSuccessMessage(`Test spójności SQLite zakończony: ${res.integrity === 'ok' ? 'Baza jest w 100% spójna ✓' : res.integrityMessage}`);
+      setSuccessMessage(
+        `Test spójności SQLite zakończony: ${
+          res.integrity === 'ok' ? 'Baza jest w 100% spójna ✓' : res.integrityMessage
+        }`
+      );
     } catch (err: any) {
       console.error('Błąd testu spójności bazy:', err);
       setErrorMessage(err.message || 'Nie udało się przeprowadzić testu spójności.');
@@ -152,9 +175,8 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
       loadBackupData();
       setSuccessMessage(null);
       setErrorMessage(null);
-      setConfirmRestoreFile(null);
-      setConfirmCleanSlate(false);
-      setConfirmHistoricalImport(false);
+      setPreviewBackup(null);
+      setCollisionReport(null);
       setCustomReason('');
     }
   }, [isOpen]);
@@ -168,7 +190,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
     try {
       const reason = customReason.trim() || 'Ręczna kopia Store Managera';
       if ((window as any).api?.createDatabaseBackup) {
-        const res = await (window as any).api.createDatabaseBackup(reason);
+        const res = await (window as any).api.createDatabaseBackup(reason, currentStore?.id);
         if (res.success) {
           setSuccessMessage(res.message || 'Kopia zapasowa została pomyślnie utworzona.');
           setCustomReason('');
@@ -187,133 +209,79 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
     }
   };
 
-  const handleExportPackage = async () => {
-    setIsProcessingPackage(true);
+  const handleCreateCloudSnapshot = async () => {
+    const storeId = currentStore?.id || '108120';
+    setIsCreatingCloudSnapshot(true);
     setSuccessMessage(null);
     setErrorMessage(null);
     try {
-      if ((window as any).api?.exportHistoricalPackage) {
-        const res = await (window as any).api.exportHistoricalPackage();
-        if (res.success) {
-          setSuccessMessage(res.message || 'Pomyślnie wyeksportowano pełną paczkę danych i otwarto folder w Finderze.');
-        } else {
-          setErrorMessage('Wystąpił błąd podczas eksportu paczki danych.');
-        }
+      const res = await CloudSnapshotService.createSnapshot(
+        storeId,
+        customReason.trim() || 'Ręczny Cloud Snapshot (AES-256)'
+      );
+      if (res.success) {
+        setSuccessMessage(res.message);
+        setCustomReason('');
+        await loadBackupData();
       } else {
-        setSuccessMessage('Paczka wyeksportowana pomyślnie.');
+        setErrorMessage(res.message || 'Nie udało się wykonać snapshotu w chmurze.');
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Błąd eksportu do folderu IMPORT.');
+      setErrorMessage(err.message || 'Błąd tworzenia snapshotu.');
     } finally {
-      setIsProcessingPackage(false);
+      setIsCreatingCloudSnapshot(false);
     }
   };
 
-  const handleCloudVaultMigration = async () => {
-    const storeId = currentStore?.id || 'default';
-    setIsMigratingCloud(true);
-    setSuccessMessage(null);
+  const handleOpenRestorePreview = async (backup: DatabaseBackupRecord) => {
+    setPreviewBackup(backup);
+    setSelectedDomains(['schedules', 'personnel', 'financials', 'trainings']);
+    setIsCheckingCollision(true);
+    setCollisionReport(null);
     setErrorMessage(null);
-    setMigrationStatus({ percent: 10, phase: 'Inicjalizacja', message: 'Tworzenie migawki bezpieczeństwa (pre-flight backup)...' });
+
     try {
-      const api = (window as any).api || (window as any).electronAPI;
-      if (api?.executeStoreMigration) {
-        const result = await api.executeStoreMigration({
-          storeId,
-          unitCode: currentStore?.unitCode || '',
-          dryRun: false,
-        });
-        if (result && result.success) {
-          setSuccessMessage(
-            `Pomyślnie wyemigrowano i zaszyfrowano dane lokalu ${storeId} w chmurze Firebase (Przesłano paczek: ${result.batchesUploaded || 0}).`
-          );
-          setMigrationStatus(null);
-          await loadBackupData();
-        } else {
-          setErrorMessage(result?.error?.message || 'Błąd podczas synchronizacji skarbców chmurowych.');
-          setMigrationStatus(null);
-        }
-      } else {
-        setErrorMessage('Synchronizacja skarbców wymaga uruchomienia w aplikacji desktopowej.');
-        setMigrationStatus(null);
-      }
+      const storeId = currentStore?.id || '108120';
+      const report = await CloudSnapshotService.checkCollisions(storeId, backup.timestamp);
+      setCollisionReport(report);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Wystąpił błąd podczas migracji do chmury.');
-      setMigrationStatus(null);
+      console.warn('Błąd sprawdzania kolizji:', err);
     } finally {
-      setIsMigratingCloud(false);
+      setIsCheckingCollision(false);
     }
   };
 
-  const handleImportHistoricalPackage = async () => {
-    setIsProcessingPackage(true);
-    setSuccessMessage(null);
-    setErrorMessage(null);
-    setConfirmHistoricalImport(false);
-    try {
-      if ((window as any).api?.importHistoricalPackage) {
-        const res = await (window as any).api.importHistoricalPackage();
-        if (res.success) {
-          setSuccessMessage(res.message || 'Pomyślnie wgrano pełną paczkę danych historycznych.');
-          await loadBackupData();
-          if (onRestoreSuccess) onRestoreSuccess();
-        } else {
-          setErrorMessage('Nie udało się wgrać paczki historycznej.');
-        }
-      } else {
-        setSuccessMessage('Pomyślnie wgrano paczkę danych.');
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Błąd importu paczki z folderu IMPORT.');
-    } finally {
-      setIsProcessingPackage(false);
-    }
-  };
-
-  const handleCleanSlateReset = async () => {
-    setIsProcessingPackage(true);
-    setSuccessMessage(null);
-    setErrorMessage(null);
-    setConfirmCleanSlate(false);
-    try {
-      if ((window as any).api?.resetToCleanSlate) {
-        const res = await (window as any).api.resetToCleanSlate();
-        if (res.success) {
-          setSuccessMessage(res.message || 'Baza danych została zresetowana do czystego stanu instalacyjnego.');
-          await loadBackupData();
-          if (onRestoreSuccess) onRestoreSuccess();
-        } else {
-          setErrorMessage('Nie udało się zresetować bazy.');
-        }
-      } else {
-        setSuccessMessage('Zresetowano do wersji startowej.');
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Błąd resetowania bazy.');
-    } finally {
-      setIsProcessingPackage(false);
-    }
+  const toggleDomain = (domain: SnapshotDomain) => {
+    setSelectedDomains((prev) =>
+      prev.includes(domain) ? prev.filter((d) => d !== domain) : [...prev, domain]
+    );
   };
 
   const handleExecuteRestore = async () => {
-    if (!confirmRestoreFile) return;
+    if (!previewBackup) return;
+    if (selectedDomains.length === 0) {
+      setErrorMessage('Wybierz przynajmniej jeden obszar danych do przywrócenia.');
+      return;
+    }
+
     setIsRestoring(true);
     setSuccessMessage(null);
     setErrorMessage(null);
     try {
-      if ((window as any).api?.restoreDatabaseBackup) {
-        const res = await (window as any).api.restoreDatabaseBackup(confirmRestoreFile);
-        if (res.success) {
-          setSuccessMessage(res.message || 'Baza została pomyślnie przywrócona.');
-          setConfirmRestoreFile(null);
-          await loadBackupData();
-          if (onRestoreSuccess) onRestoreSuccess();
-        } else {
-          setErrorMessage('Nie udało się przywrócić bazy danych.');
-        }
+      const storeId = currentStore?.id || '108120';
+      const res = await CloudSnapshotService.executeRestore({
+        storeId,
+        snapshotId: previewBackup.filename,
+        selectedDomains,
+      });
+
+      if (res.success) {
+        setSuccessMessage(res.message);
+        setPreviewBackup(null);
+        await loadBackupData();
+        if (onRestoreSuccess) onRestoreSuccess();
       } else {
-        setSuccessMessage(`Przywrócono bazę danych z pliku ${confirmRestoreFile}`);
-        setConfirmRestoreFile(null);
+        setErrorMessage(res.message || 'Nie udało się przywrócić bazy danych.');
       }
     } catch (err: any) {
       console.error('Błąd przywracania bazy:', err);
@@ -333,7 +301,6 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none">
       <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-[#E2E8E5] flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in duration-200">
-        
         {/* NAGŁÓWEK OKNA */}
         <div className="px-6 py-5 border-b border-[#E2E8E5] flex items-center justify-between bg-[#F7F9F8]">
           <div className="flex items-center space-x-3">
@@ -348,7 +315,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-[#5C6F68]">
-                Lokalna persystencja kawiarni {currentStore.shortName || currentStore.name || 'Starbucks'} • Automatyczna rotacja ostatnich 15 kopii
+                Lokalna persystencja kawiarni {currentStore?.shortName || currentStore?.name || 'Starbucks'} • Automatyczna rotacja ostatnich 15 kopii
               </p>
             </div>
           </div>
@@ -391,32 +358,125 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
           </div>
         )}
 
-        {/* DIALOG POTWIERDZENIA PRZYWRÓCENIA KOPII */}
-        {confirmRestoreFile && (
-          <div className="mx-6 mt-4 p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 shadow-sm animate-in fade-in">
+        {/* DWUSTOPNIOWY MODAL PODGLĄDU I PRZYWRACANIA Z TARCZĄ KOLIZYJNĄ */}
+        {previewBackup && (
+          <div className="mx-6 mt-4 p-4 rounded-2xl bg-amber-50/80 border-2 border-amber-300 shadow-sm animate-in fade-in">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-amber-200 text-amber-900 shrink-0 mt-0.5">
-                <ShieldAlert className="w-5 h-5" />
+              <div className="p-2.5 rounded-xl bg-amber-200 text-amber-900 shrink-0 mt-0.5">
+                <RotateCcw className="w-5 h-5 text-amber-800" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-black text-amber-950">
-                  Potwierdzenie przywrócenia bazy danych
-                </h3>
-                <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                  Czy na pewno chcesz przywrócić stan bazy danych z pliku:
-                  <br />
-                  <code className="font-bold bg-amber-200/70 px-1.5 py-0.5 rounded text-[11px] text-amber-950 mt-1 inline-block">
-                    {confirmRestoreFile}
-                  </code>
-                </p>
-                <p className="text-[11px] text-amber-800 font-semibold mt-2 flex items-center gap-1.5">
+              <div className="flex-1 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-amber-950 flex items-center gap-2">
+                      <span>Dwustopniowe Przywracanie Bazy (Podgląd)</span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-bold">
+                        Read-Only Preview
+                      </span>
+                    </h3>
+                    <span className="text-[11px] font-mono text-amber-900">
+                      {formatFileSize(previewBackup.sizeBytes)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900 mt-0.5">
+                    Punkt kontrolny z dnia <strong>{previewBackup.formattedDate}</strong> • Powód: <em>{previewBackup.reason}</em>
+                  </p>
+                </div>
+
+                {/* FILAR 1: OSTRZEŻENIE O KOLIZJI NOWSZYCH ZMIAN */}
+                {isCheckingCollision ? (
+                  <div className="p-2.5 rounded-xl bg-white/70 border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                    <span>Weryfikacja zmian w chmurze (Tarcza Kolizyjna)...</span>
+                  </div>
+                ) : collisionReport?.hasCollision ? (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-950 animate-in fade-in">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <span className="font-bold">⚠️ Uwaga: Wykryto nowsze zmiany w lokalu!</span>
+                        <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
+                          Użytkownik <strong>{collisionReport.lastEditor || 'Inny manager'}</strong> wprowadził{' '}
+                          <strong>{collisionReport.newerEventsCount}</strong> modyfikacji w chmurze po dacie tej kopii
+                          {collisionReport.lastEditedAt && (
+                            <> (ostatnia edycja: {new Date(collisionReport.lastEditedAt).toLocaleTimeString('pl-PL')})</>
+                          )}.
+                          Przywrócenie pełnego stanu nadpisze te zmiany.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-2 rounded-xl bg-emerald-50/80 border border-emerald-200 text-[11px] text-[#006241] flex items-center gap-1.5 font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Brak nowszych kolizji w chmurze – stan bezpieczny do przywrócenia.</span>
+                  </div>
+                )}
+
+                {/* FILAR 3: SELEKTYWNY WYBÓR DOMEN DO PRZYWRÓCENIA */}
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-950 mb-1.5 flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-amber-800" />
+                    Wybierz obszary do przywrócenia (Selektywna Tarcza):
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <label className="flex items-center gap-2 bg-white/80 p-2 rounded-xl border border-amber-200 cursor-pointer hover:bg-white transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedDomains.includes('schedules')}
+                        onChange={() => toggleDomain('schedules')}
+                        className="rounded accent-[#006241]"
+                      />
+                      <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span className="font-semibold text-stone-800">Grafik Kierowniczy</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 bg-white/80 p-2 rounded-xl border border-amber-200 cursor-pointer hover:bg-white transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedDomains.includes('financials')}
+                        onChange={() => toggleDomain('financials')}
+                        className="rounded accent-[#006241]"
+                      />
+                      <DollarSign className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                      <span className="font-semibold text-stone-800">MAPAL Fichajes & AOP</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 bg-white/80 p-2 rounded-xl border border-amber-200 cursor-pointer hover:bg-white transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedDomains.includes('personnel')}
+                        onChange={() => toggleDomain('personnel')}
+                        className="rounded accent-[#006241]"
+                      />
+                      <Users className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                      <span className="font-semibold text-stone-800">Kierownicy & Skład</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 bg-white/80 p-2 rounded-xl border border-amber-200 cursor-pointer hover:bg-white transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedDomains.includes('trainings')}
+                        onChange={() => toggleDomain('trainings')}
+                        className="rounded accent-[#006241]"
+                      />
+                      <GraduationCap className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      <span className="font-semibold text-stone-800">Baza Szkoleń First 30</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* FILAR 2: GWARANCJA AUTOMATYCZNEJ KOPII RATUNKOWEJ */}
+                <p className="text-[11px] text-amber-900 font-semibold flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                  Przed przywróceniem system automatycznie wykona bezpieczną kopię ratunkową obecnego stanu.
+                  Przed przywróceniem system automatycznie utworzy kopię ratunkową obecnego stanu (praca nikogo nie zginie).
                 </p>
-                <div className="mt-3 flex items-center gap-2">
+
+                {/* PRZYCISKI AKCJI */}
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={handleExecuteRestore}
-                    disabled={isRestoring}
+                    disabled={isRestoring || selectedDomains.length === 0}
                     className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {isRestoring ? (
@@ -424,101 +484,11 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                     ) : (
                       <RotateCcw className="w-3.5 h-3.5" />
                     )}
-                    <span>{isRestoring ? 'Przywracanie bazy...' : 'Tak, przywróć ten stan'}</span>
+                    <span>{isRestoring ? 'Przywracanie danych...' : 'Zatwierdź Przywrócenie'}</span>
                   </button>
                   <button
-                    onClick={() => setConfirmRestoreFile(null)}
+                    onClick={() => setPreviewBackup(null)}
                     disabled={isRestoring}
-                    className="px-3.5 py-2 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer"
-                  >
-                    Anuluj
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* DIALOG POTWIERDZENIA IMPORTU PACZKI HISTORYCZNEJ */}
-        {policy.allowHistoricalImport && confirmHistoricalImport && (
-          <div className="mx-6 mt-4 p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-400 shadow-sm animate-in fade-in">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-emerald-200 text-emerald-900 shrink-0 mt-0.5">
-                <DownloadCloud className="w-5 h-5 text-[#006241]" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-black text-emerald-950">
-                  Wgranie pełnej paczki danych historycznych z folderu IMPORT
-                </h3>
-                <p className="text-xs text-emerald-900 mt-1 leading-relaxed">
-                  Ta operacja wgra kompletną bazę master ze wszystkimi danymi operacyjnymi (AOP 2021–2036, logowania MAPAL Fichajes, 9 miesięcy grafików 2026, zespół i szkolenia).
-                </p>
-                <p className="text-[11px] text-emerald-800 font-semibold mt-2 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                  Przed wgraniem system automatycznie wykona bezpieczną kopię ratunkową obecnego stanu.
-                </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    onClick={handleImportHistoricalPackage}
-                    disabled={isProcessingPackage}
-                    className="px-4 py-2 rounded-xl bg-[#006241] hover:bg-[#004f34] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    {isProcessingPackage ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <DownloadCloud className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isProcessingPackage ? 'Wgrywanie paczki...' : 'Wgraj Paczkę Historyczną'}</span>
-                  </button>
-                  <button
-                    onClick={() => setConfirmHistoricalImport(false)}
-                    disabled={isProcessingPackage}
-                    className="px-3.5 py-2 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer"
-                  >
-                    Anuluj
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* DIALOG POTWIERDZENIA CLEAN SLATE (CZYSTA WERSJA STARTOWA) */}
-        {policy.allowCleanSlateReset && confirmCleanSlate && (
-          <div className="mx-6 mt-4 p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 shadow-sm animate-in fade-in">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-rose-200 text-rose-900 shrink-0 mt-0.5">
-                <Trash2 className="w-5 h-5 text-rose-700" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-black text-rose-950">
-                  Przywrócenie Czystej Wersji Startowej (Clean Slate)
-                </h3>
-                <p className="text-xs text-rose-900 mt-1 leading-relaxed">
-                  Czy na pewno chcesz wyczyścić wszystkie dane operacyjne (grafiki, zespół, logowania MAPAL, szkolenia)?
-                  <br />
-                  <strong>Zachowane zostaną nienaruszalne fundamenty</strong> (katalog 25 kodów zmian Starbucks, 252 miesiące norm Kodeksu Pracy 2016–2036, kalendarz tygodni biznesowych i reguły floor/NC).
-                </p>
-                <p className="text-[11px] text-rose-800 font-semibold mt-2 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                  Przed wyczyszczeniem system automatycznie utworzy kopię ratunkową w backups/db_backups/.
-                </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    onClick={handleCleanSlateReset}
-                    disabled={isProcessingPackage}
-                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    {isProcessingPackage ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isProcessingPackage ? 'Czyszczenie bazy...' : 'Tak, wyczyść do wersji startowej'}</span>
-                  </button>
-                  <button
-                    onClick={() => setConfirmCleanSlate(false)}
-                    disabled={isProcessingPackage}
                     className="px-3.5 py-2 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer"
                   >
                     Anuluj
@@ -530,9 +500,39 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
         )}
 
         {/* ZAWARTOŚĆ GŁÓWNA ZE SCROLLEM */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
+          {/* NOWY KOMPONENT: AUTOMATYCZNA TARCZA CHMUROWA (CLOUD SNAPSHOT) */}
+          <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-[#006241] border border-emerald-200 shadow-2xs">
+                <Cloud className="w-4 h-4 text-[#006241]" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-[#1E3932] flex items-center gap-1.5">
+                  <span>Automatyczna Tarcza Chmurowa (Cloud Snapshot)</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-200/80 text-[#006241] text-[9px] font-bold">
+                    AES-256
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-600 mt-0.5">
+                  {lastSnapshotFormatted
+                    ? `Ostatni snapshot w chmurze: ${lastSnapshotFormatted} • Stan lokalu w 100% zabezpieczony`
+                    : 'Automatyczna ochrona aktywna (synchronizacja w czasie rzeczywistym)'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleCreateCloudSnapshot}
+              disabled={isCreatingCloudSnapshot}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-emerald-300 text-[#006241] text-xs font-bold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+              title="Wymusza natychmiastowe utworzenie punktu kontrolnego w chmurze Google Cloud"
+            >
+              <CloudLightning className={`w-3.5 h-3.5 text-emerald-600 ${isCreatingCloudSnapshot ? 'animate-bounce' : ''}`} />
+              <span>{isCreatingCloudSnapshot ? 'Tworzenie snapshotu...' : 'Zrób Snapshot w Chmurze'}</span>
+            </button>
+          </div>
 
-          {/* INSPEKTOR ZDROWIA & OPTYMALIZACJI SQLITE (DATABASE HEALTH & VACUUM) */}
+          {/* INSPEKTOR ZDROWIA & OPTYMALIZACJI SQLITE */}
           <div className="bg-gradient-to-br from-stone-50 via-emerald-50/20 to-stone-50 p-4.5 rounded-2xl border border-emerald-900/15 shadow-2xs space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/10 pb-3">
               <div className="flex items-center gap-2.5">
@@ -560,7 +560,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                 </div>
               </div>
 
-              {/* Przyciski szybkiej akcji testu i VACUUM */}
+              {/* Przyciski testu i VACUUM */}
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={handleRunHealthCheck}
@@ -584,7 +584,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
               </div>
             </div>
 
-            {/* OSTRZEŻENIE O ZALEGŁEJ KOPII ZAPASOWEJ (> 7 DNI) */}
+            {/* OSTRZEŻENIE O ZALEGŁEJ KOPII ZAPASOWEJ (> 7 DNI BEZ INTERNETU) */}
             {healthStatus?.isBackupOverdue && (
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-start gap-2.5 text-amber-950 animate-in fade-in">
                 <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -596,99 +596,58 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                     </span>
                   </div>
                   <p className="text-[11px] text-amber-800 mt-0.5">
-                    {healthStatus.daysSinceLastBackup !== undefined
-                      ? `Od ostatniego zapisu minęło już ${healthStatus.daysSinceLastBackup} dni (zalecane: max 7 dni). Utwórz nową kopię, aby zabezpieczyć najnowsze grafiki i logowania.`
-                      : 'W systemie nie znaleziono żadnej kopii bezpieczeństwa. Zaleca się wykonanie pierwszej kopii.'}
+                    Od ostatniego zapisu minęło ponad 7 dni offline. Utwórz nową kopię zapasową lub wykonaj snapshot do chmury.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* METRYKI BAZY DANYCH */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* STATYSTYKI PLIKU BAZY */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
               <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                  Rozmiar Pliku
-                </span>
-                <span className="text-sm font-black text-stone-900">
-                  {healthStatus?.sizeFormatted || '—'}
-                </span>
-                <span className="text-[10px] text-stone-500 block mt-0.5">
-                  Strony: {healthStatus?.pageCount || 0} x {healthStatus?.pageSize || 4096}B
-                </span>
+                <div className="text-[10px] font-bold text-stone-500 uppercase">Rozmiar Pliku</div>
+                <div className="text-sm font-black text-stone-800 mt-0.5">{healthStatus?.sizeFormatted || '—'}</div>
+                <div className="text-[10px] text-stone-400">Strony: {healthStatus?.pageCount || 0} x {healthStatus?.pageSize || 4096}B</div>
               </div>
 
               <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                  Wolne / Pofragmentowane
-                </span>
-                <div className="flex items-center gap-1">
-                  <span className={`text-sm font-black ${healthStatus?.wastedBytes && healthStatus.wastedBytes > 128 * 1024 ? 'text-amber-600' : 'text-stone-900'}`}>
-                    {healthStatus?.wastedFormatted || '0.0 KB'}
-                  </span>
-                  {healthStatus?.wastedBytes && healthStatus.wastedBytes > 128 * 1024 ? (
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">VACUUM</span>
-                  ) : (
-                    <span className="text-[9px] text-emerald-600 font-bold">✓ Czysto</span>
-                  )}
-                </div>
-                <span className="text-[10px] text-stone-500 block mt-0.5">
-                  Freelist: {healthStatus?.freelistCount || 0} stron
-                </span>
+                <div className="text-[10px] font-bold text-stone-500 uppercase">Wolne / Poframentowane</div>
+                <div className="text-sm font-black text-emerald-700 mt-0.5">{healthStatus?.wastedFormatted || '0.0 KB'}</div>
+                <div className="text-[10px] text-stone-400">Freelist: {healthStatus?.freelistCount || 0} stron</div>
               </div>
 
               <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                  Rekordy w Tabelach
-                </span>
-                <span className="text-sm font-black text-emerald-800">
-                  {healthStatus?.totalRecordsCount.toLocaleString('pl-PL') || '—'}
-                </span>
+                <div className="text-[10px] font-bold text-stone-500 uppercase">Rekordy w Tabelach</div>
+                <div className="text-sm font-black text-stone-800 mt-0.5">{healthStatus?.totalRecordsCount || '—'}</div>
                 <button
-                  type="button"
                   onClick={() => setShowTableDetails(!showTableDetails)}
-                  className="text-[10px] text-[#006241] font-bold hover:underline flex items-center gap-0.5 mt-0.5 cursor-pointer"
+                  className="text-[10px] font-bold text-[#006241] hover:underline flex items-center gap-0.5 mt-0.5 cursor-pointer"
                 >
-                  <span>15 tabel operacyjnych</span>
+                  <span>{healthStatus?.tableStats?.length || 15} tabel operacyjnych</span>
                   {showTableDetails ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
                 </button>
               </div>
 
               <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                  Logi Czarnej Skrzynki
-                </span>
-                <span className="text-sm font-black text-stone-900">
-                  {healthStatus?.archivedLogsCount || 0} plików
-                </span>
-                <span className="text-[10px] text-stone-500 block mt-0.5">
-                  Łącznie: {healthStatus?.archivedLogsSizeFormatted || '0.0 KB'}
-                </span>
+                <div className="text-[10px] font-bold text-stone-500 uppercase">Logi Czarnej Skrzynki</div>
+                <div className="text-sm font-black text-stone-800 mt-0.5">{healthStatus?.archivedLogsCount || 0} plików</div>
+                <div className="text-[10px] text-stone-400">Łącznie: {healthStatus?.archivedLogsSizeFormatted || '0 B'}</div>
               </div>
             </div>
 
-            {/* ROZWIJANA LISTA SZCZEGÓŁOWA 15 TABEL OPERACYJNYCH */}
+            {/* SZCZEGÓŁOWA LISTA TABEL */}
             {showTableDetails && healthStatus?.tableStats && (
-              <div className="bg-white p-3 rounded-xl border border-emerald-200 animate-in fade-in">
-                <div className="text-xs font-bold text-stone-800 mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-[#006241]" />
-                    Struktura tabel SQLite w pliku tplh_forecast.db
-                  </span>
-                  <span className="text-[10px] text-stone-500 font-mono">
-                    Łącznie wierszy: {healthStatus.totalRecordsCount.toLocaleString('pl-PL')}
-                  </span>
+              <div className="mt-3 p-3 bg-white rounded-xl border border-stone-200 animate-in fade-in">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-stone-500 mb-2">
+                  Rozkład rekordów według tabel SQLite
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                   {healthStatus.tableStats.map((t) => (
-                    <div key={t.tableName} className="flex items-center justify-between p-1.5 px-2 rounded-lg bg-stone-50 border border-stone-100 text-[11px]">
-                      <div className="truncate mr-2">
-                        <span className="font-semibold text-stone-800 block truncate">{t.label}</span>
-                        <code className="text-[9px] text-stone-400 font-mono">{t.tableName}</code>
-                      </div>
-                      <span className="font-mono font-bold text-[#006241] shrink-0">
-                        {t.rowCount.toLocaleString('pl-PL')}
+                    <div key={t.tableName} className="flex items-center justify-between p-1.5 rounded-lg bg-stone-50 border border-stone-100">
+                      <span className="text-[11px] text-stone-700 truncate mr-2" title={t.tableName}>
+                        {t.label || t.tableName}
                       </span>
+                      <span className="font-mono font-bold text-stone-900 text-[11px]">{t.rowCount}</span>
                     </div>
                   ))}
                 </div>
@@ -696,143 +655,8 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
             )}
           </div>
 
-          {/* CENTRUM DANYCH & PACZEK HISTORYCZNYCH (CLEAN SLATE & IMPORT HUB) - FLEET_MASTER ONLY */}
-          {policy.allowCleanSlateReset || policy.allowHistoricalImport ? (
-            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="text-xs font-black tracking-wider uppercase text-[#1E3932] flex items-center gap-1.5">
-                    <FolderArchive className="w-4 h-4 text-[#006241]" />
-                    Centrum Paczek Danych & Instalacji (Folder ./IMPORT)
-                  </h3>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    Zarządzaj kompletną paczką danych lub zresetuj aplikację do czystego stanu instalacyjnego.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                {/* Szyfrowana Migracja do Chmury Firebase */}
-                <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-300 flex flex-col justify-between shadow-sm">
-                  <div>
-                    <div className="text-xs font-bold text-[#006241] flex items-center gap-1.5 mb-1">
-                      <CloudLightning className="w-3.5 h-3.5 text-emerald-600" />
-                      Migracja do Chmury (AES-256)
-                    </div>
-                    <p className="text-[10px] text-stone-600">
-                      Zaszyfruj i przenieś bazę lokalu <strong>{currentStore?.shortName || currentStore?.name || 'aktywnej kawiarni'}</strong> do skarbców Firebase.
-                    </p>
-                    {migrationStatus && (
-                      <div className="mt-2 text-[10px] text-emerald-800 bg-emerald-100/70 p-1.5 rounded flex items-center gap-1.5">
-                        <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                        <span>{migrationStatus.message}</span>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleCloudVaultMigration}
-                    disabled={isMigratingCloud || isProcessingPackage}
-                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-[#006241] hover:bg-[#1E3932] text-white text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
-                  >
-                    {isMigratingCloud ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Lock className="w-3 h-3 text-emerald-200" />}
-                    <span>{isMigratingCloud ? 'Migrowanie...' : 'Migruj do Chmury'}</span>
-                  </button>
-                </div>
-
-                {/* Eksport paczki do IMPORT */}
-                <div className="bg-white p-3 rounded-xl border border-stone-200 flex flex-col justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-1">
-                      <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-                      Eksport do ./IMPORT/
-                    </div>
-                    <p className="text-[10px] text-stone-500">
-                      Wyeksportuj 17 tabel i bazę master do folderu IMPORT.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleExportPackage}
-                    disabled={isProcessingPackage}
-                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                  >
-                    {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UploadCloud className="w-3 h-3" />}
-                    <span>Eksportuj Paczkę</span>
-                  </button>
-                </div>
-
-                {/* Import paczki z IMPORT */}
-                <div className="bg-white p-3 rounded-xl border border-stone-200 flex flex-col justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-1">
-                      <DownloadCloud className="w-3.5 h-3.5 text-emerald-600" />
-                      Wgraj z ./IMPORT/
-                    </div>
-                    <p className="text-[10px] text-stone-500">
-                      Wgraj pełną historię: AOP 2021–2036, MAPAL i 9 mies. grafików.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setConfirmHistoricalImport(true)}
-                    disabled={isProcessingPackage}
-                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#006241] border border-emerald-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                  >
-                    {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <DownloadCloud className="w-3 h-3" />}
-                    <span>Wgraj Historię</span>
-                  </button>
-                </div>
-
-                {/* Czysta Wersja Startowa */}
-                <div className="bg-white p-3 rounded-xl border border-rose-200/80 flex flex-col justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-rose-900 flex items-center gap-1.5 mb-1">
-                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                      Wersja Startowa
-                    </div>
-                    <p className="text-[10px] text-stone-500">
-                      Wyczyść dane operacyjne (Clean Slate) z zachowaniem norm KP.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setConfirmCleanSlate(true)}
-                    disabled={isProcessingPackage}
-                    className="mt-3 w-full py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                  >
-                    {isProcessingPackage ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                    <span>Clean Slate (Wyczyść)</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Zabezpieczony panel dla STORE_CLIENT */
-            <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-white border border-emerald-200 text-[#006241]">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[#1E3932] uppercase tracking-wide">
-                    Automatyczna Ochrona Danych Kawiarni
-                  </h4>
-                  <p className="text-[11px] text-stone-600 mt-0.5">
-                    System tworzy automatyczne punkty przywracania przed każdą zmianą w grafiku. Ostatnie 15 kopii jest chronione rotacyjnie.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handleCreateBackup}
-                disabled={isCreating}
-                className="px-3.5 py-2 rounded-xl bg-[#006241] hover:bg-[#004f34] text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
-              >
-                <PlusCircle className="w-3.5 h-3.5 text-[#CBA258]" />
-                <span>{isCreating ? 'Tworzenie...' : 'Utwórz Kopię Ratunkową'}</span>
-              </button>
-            </div>
-          )}
-
           {/* KARTA STATUSU BAZY I SZYBKI ZAPIS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
             {/* Status bazy produkcyjnej */}
             <div className="col-span-2 bg-[#F7F9F8] p-4 rounded-2xl border border-[#E2E8E5] flex flex-col justify-between">
               <div>
@@ -850,9 +674,13 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                   {dbStatus?.dbPath ? dbStatus.dbPath.split('/').slice(-2).join('/') : 'data/tplh_forecast.db'}
                 </div>
                 <div className="text-[11px] text-stone-500 mt-1 flex items-center gap-3">
-                  <span>Rozmiar: <strong className="text-stone-800">{formatFileSize(dbStatus?.sizeBytes || 0)}</strong></span>
+                  <span>
+                    Rozmiar: <strong className="text-stone-800">{formatFileSize(dbStatus?.sizeBytes || 0)}</strong>
+                  </span>
                   <span>•</span>
-                  <span>Modyfikacja: <strong className="text-stone-800">{dbStatus?.lastModified || 'Brak danych'}</strong></span>
+                  <span>
+                    Modyfikacja: <strong className="text-stone-800">{dbStatus?.lastModified || 'Brak danych'}</strong>
+                  </span>
                 </div>
               </div>
 
@@ -861,9 +689,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                   <ShieldCheck className="w-3.5 h-3.5 text-[#006241]" />
                   Rotacja: zachowywane ostatnich <strong>15 kopii</strong>
                 </span>
-                <span className="font-bold text-[#1E3932]">
-                  Liczba kopii: {backups.length}
-                </span>
+                <span className="font-bold text-[#1E3932]">Liczba kopii: {backups.length}</span>
               </div>
             </div>
 
@@ -891,15 +717,10 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                 disabled={isCreating}
                 className="mt-3 w-full py-2 px-3 rounded-xl bg-[#006241] hover:bg-[#004f34] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {isCreating ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Database className="w-3.5 h-3.5" />
-                )}
+                {isCreating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
                 <span>{isCreating ? 'Tworzenie kopii...' : 'Utwórz Kopię Teraz'}</span>
               </button>
             </div>
-
           </div>
 
           {/* TABELA ISTNIEJĄCYCH KOPII ZAPASOWYCH */}
@@ -975,7 +796,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                         {/* Akcja */}
                         <td className="px-4 py-3 text-right">
                           <button
-                            onClick={() => setConfirmRestoreFile(b.filename)}
+                            onClick={() => handleOpenRestorePreview(b)}
                             className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 hover:border-emerald-500 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 ml-auto cursor-pointer"
                           >
                             <RotateCcw className="w-3 h-3 text-[#006241]" />
@@ -988,16 +809,17 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                 </table>
               </div>
             )}
-
           </div>
-
         </div>
 
         {/* STOPKA OKNA */}
         <div className="px-6 py-4 border-t border-[#E2E8E5] bg-[#F7F9F8] flex items-center justify-between">
           <div className="text-[11px] text-stone-500 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#006241]" />
-            <span>Kopie są zapisywane lokalnie w katalogu: <code className="font-mono font-bold text-stone-700">backups/db_backups/</code></span>
+            <span>
+              Kopie są zapisywane lokalnie w katalogu:{' '}
+              <code className="font-mono font-bold text-stone-700">backups/db_backups/</code>
+            </span>
           </div>
           <button
             onClick={onClose}
@@ -1006,7 +828,6 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
             Zamknij
           </button>
         </div>
-
       </div>
     </div>
   );

@@ -7,6 +7,9 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+## [v2.9.10] — 2026-11-06
+- **Ochrona Grafiku przed Kolizjami (Feature F19)**: Integracja z Trzypoziomową Tarczą Kolizyjną (`CloudSnapshotService`) – zabezpieczenie ułożonego grafiku przed przypadkowym cofnięciem przez innego managera oraz obsługa autorytatywnego odświeżania przez `CloudRestoreNoticeModal`.
+
 ## [v2.9.9] — 2026-11-05
 - Bieżąca synchronizacja i optymalizacje modułu.
 

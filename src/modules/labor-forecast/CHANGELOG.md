@@ -6,6 +6,9 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+## [v2.9.10] — 2026-11-06
+- **Integracja Pre-Action Cloud Snapshot**: Automatyczne tworzenie migawki bezpieczeństwa w chmurze przed zatwierdzeniem importu raportu Dziennego KPI MAPAL w `ImportModal.tsx`.
+
 ## [v2.9.9] — 2026-11-05
 - Bieżąca synchronizacja i optymalizacje modułu.
 

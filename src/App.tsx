@@ -6,6 +6,7 @@ import { OnboardingWizardView } from './components/OnboardingWizardView';
 import { DashboardView } from './components/DashboardView';
 import { ModulePlaceholderView } from './components/ModulePlaceholderView';
 import { DatabaseBackupModal } from './components/DatabaseBackupModal';
+import { CloudRestoreNoticeModal } from './components/CloudRestoreNoticeModal';
 import { AppUpdateModal } from './components/AppUpdateModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BugReporterModal } from './components/BugReporterModal';
@@ -17,6 +18,7 @@ import { useStore } from './context/StoreContext';
 import { useAuth } from './context/AuthContext';
 import { StoreService } from './services/storeService';
 import { InboundSyncConsumer } from './services/sync/inboundSyncConsumer';
+import { CloudSnapshotService } from './services/sync/cloudSnapshotService';
 import { FleetMasterDashboard } from './components/admin/FleetMasterDashboard';
 import { StoreClientView } from './components/StoreClientView';
 import { ActivationModal } from './components/ActivationModal';
@@ -146,6 +148,7 @@ export const App: React.FC = () => {
     const currentStore = StoreService.getCurrentStore();
     const storeId = currentStore?.id || currentStore?.unitCode || '108120';
     InboundSyncConsumer.init(storeId);
+    CloudSnapshotService.initAutonomousScheduler();
 
     const handleStoreChanged = (e: any) => {
       const switchedStore = e?.detail?.currentStore || e?.detail;
@@ -866,6 +869,9 @@ export const App: React.FC = () => {
           setIsBackupModalOpen(false);
         }}
       />
+
+      {/* Komunikat o przywróceniu bazy z chmury przez inną stację roboczą */}
+      <CloudRestoreNoticeModal />
 
       {/* Okno Modalne Centrum Aktualizacji i Wersji */}
       <AppUpdateModal

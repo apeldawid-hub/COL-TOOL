@@ -859,30 +859,56 @@ export class CloudMigrationService {
       return code === 'L4';
     });
 
-    // 4. Package Schedule Vault
-    const schedulePayload: ScheduleVaultPayload = {
-      weekKey: `schedule_master_${storeId}`,
-      shifts: regularShifts,
-      versions: tables.manager_schedule_versions || [],
-      trainingShifts: tables.training_shifts || [],
-      fichajesLogs: tables.labor_actuals_log || [],
-    };
+    // 4. Package Schedule Vault (with automatic multi-part chunking for large datasets)
+    const SHIFT_CHUNK_SIZE = 400;
+    const FICHAJES_CHUNK_SIZE = 400;
 
-    const scheduleRes = await VaultService.packageScheduleVault(
-      storeId,
-      unitCode,
-      `schedule_master_${storeId}`,
-      `schedules_${storeId}`,
-      schedulePayload,
-      operatorUid
-    );
-    scheduleVaultDocs.push(scheduleRes.doc);
-    allDocuments.push({
-      vaultType: 'vault_schedules',
-      collection: 'vault_schedules',
-      docId: scheduleRes.doc.docId,
-      doc: scheduleRes.doc,
-    });
+    const allRegularShifts = regularShifts;
+    const allVersions = tables.manager_schedule_versions || [];
+    const allTrainingShifts = tables.training_shifts || [];
+    const allFichajes = tables.labor_actuals_log || [];
+
+    const numShiftChunks = Math.max(1, Math.ceil(allRegularShifts.length / SHIFT_CHUNK_SIZE));
+    const numFichajesChunks = Math.max(1, Math.ceil(allFichajes.length / FICHAJES_CHUNK_SIZE));
+    const totalParts = Math.max(numShiftChunks, numFichajesChunks);
+
+    let totalScheduleRecords = 0;
+    let lastScheduleChecksum = '';
+
+    for (let partIdx = 0; partIdx < totalParts; partIdx++) {
+      const partNum = partIdx + 1;
+      const docId = totalParts === 1 ? `schedules_${storeId}` : `schedules_${storeId}_part${partNum}`;
+      const weekKey = totalParts === 1 ? `schedule_master_${storeId}` : `schedule_master_${storeId}_part${partNum}`;
+
+      const chunkShifts = allRegularShifts.slice(partIdx * SHIFT_CHUNK_SIZE, (partIdx + 1) * SHIFT_CHUNK_SIZE);
+      const chunkFichajes = allFichajes.slice(partIdx * FICHAJES_CHUNK_SIZE, (partIdx + 1) * FICHAJES_CHUNK_SIZE);
+
+      const schedulePayload: ScheduleVaultPayload = {
+        weekKey,
+        shifts: chunkShifts,
+        versions: partIdx === 0 ? allVersions : [],
+        trainingShifts: partIdx === 0 ? allTrainingShifts : [],
+        fichajesLogs: chunkFichajes,
+      };
+
+      const scheduleRes = await VaultService.packageScheduleVault(
+        storeId,
+        unitCode,
+        weekKey,
+        docId,
+        schedulePayload,
+        operatorUid
+      );
+      totalScheduleRecords += scheduleRes.metrics.recordCount;
+      lastScheduleChecksum = scheduleRes.metrics.checksum;
+      scheduleVaultDocs.push(scheduleRes.doc);
+      allDocuments.push({
+        vaultType: 'vault_schedules',
+        collection: 'vault_schedules',
+        docId: scheduleRes.doc.docId,
+        doc: scheduleRes.doc,
+      });
+    }
 
     // 5. Package Health & GDPR Art. 9 Vault
     const sanitaryClearances = (tables.training_partners || [])
@@ -935,8 +961,8 @@ export class CloudMigrationService {
         financialsLastChecksum: financialRes.metrics.checksum,
         personnelRecordsCount: personnelRes.metrics.recordCount,
         personnelLastChecksum: personnelRes.metrics.checksum,
-        schedulesRecordsCount: scheduleRes.metrics.recordCount,
-        schedulesLastChecksum: scheduleRes.metrics.checksum,
+        schedulesRecordsCount: totalScheduleRecords,
+        schedulesLastChecksum: lastScheduleChecksum,
         healthGdprRecordsCount: healthRes.metrics.recordCount,
         healthGdprLastChecksum: healthRes.metrics.checksum,
       },

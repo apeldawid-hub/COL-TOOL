@@ -516,6 +516,15 @@ service cloud.firestore {
         allow delete: if isStoreManager(storeId);
       }
 
+      // 7. CLOUD SNAPSHOTS (/stores/{storeId}/snapshots/{snapshotId}) - Feature F19
+      match /snapshots/{snapshotId} {
+        allow read: if isStoreStaff(storeId);
+        allow create, update: if isStoreStaff(storeId) &&
+                                 request.resource.data.storeId == storeId &&
+                                 request.resource.data.snapshotId == snapshotId;
+        allow delete: if isStoreManager(storeId);
+      }
+
       // -----------------------------------------------------------------------------------
       // BACKWARDS-COMPATIBLE OPERATIONAL COLLECTIONS
       // -----------------------------------------------------------------------------------

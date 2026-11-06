@@ -152,6 +152,13 @@ export interface IElectronAPI {
   realtimePublishEvent?: (input: any) => Promise<any>;
   realtimePollOnce?: (storeId: string) => Promise<any>;
   realtimeApplyInboundEvent?: (event: any) => Promise<any>;
+  // Feature F19: Cloud Snapshots & 3-Tier Collision Guard
+  createCloudSnapshot?: (options: any) => Promise<any>;
+  listCloudSnapshots?: (storeId: string) => Promise<any>;
+  checkSnapshotCollisions?: (storeId: string, snapshotCreatedAt: string) => Promise<any>;
+  restoreCloudSnapshotSelective?: (options: any) => Promise<any>;
+  onStoreRestored?: (callback: (event: any, data: any) => void) => void;
+  removeStoreRestoredListener?: (callback: (event: any, data: any) => void) => void;
 }
 
 const api: IElectronAPI = {
@@ -308,6 +315,17 @@ const api: IElectronAPI = {
   realtimePublishEvent: (input: any) => ipcRenderer.invoke('realtime:publish-event', input),
   realtimePollOnce: (storeId: string) => ipcRenderer.invoke('realtime:poll-once', storeId),
   realtimeApplyInboundEvent: (event: any) => ipcRenderer.invoke('realtime:apply-inbound-event', event),
+  // Feature F19: Cloud Snapshots & 3-Tier Collision Guard
+  createCloudSnapshot: (options: any) => ipcRenderer.invoke('snapshot:create', options),
+  listCloudSnapshots: (storeId: string) => ipcRenderer.invoke('snapshot:list', storeId),
+  checkSnapshotCollisions: (storeId: string, snapshotCreatedAt: string) => ipcRenderer.invoke('snapshot:check-collisions', storeId, snapshotCreatedAt),
+  restoreCloudSnapshotSelective: (options: any) => ipcRenderer.invoke('snapshot:restore-selective', options),
+  onStoreRestored: (callback: any) => {
+    ipcRenderer.on('store:restored-notification', callback);
+  },
+  removeStoreRestoredListener: (callback: any) => {
+    ipcRenderer.removeListener('store:restored-notification', callback);
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

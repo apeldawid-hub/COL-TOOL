@@ -409,6 +409,110 @@ export class BackupManager {
   }
 
   /**
+   * TARCZA FILAR 3: Selektywne przywracanie wybranych domen z kopii zapasowej
+   */
+  public async restoreBackupSelective(
+    filenameOrSnapshotId: string,
+    domains: string[],
+    forceRestore: boolean = false
+  ): Promise<{ success: boolean; message: string; restoredDomains: string[] }> {
+    this.ensureDirExists();
+    const dbManager = DatabaseManager.getInstance();
+    const currentStoreId = dbManager.getCurrentStoreId() || 'default';
+    const db = dbManager.getDb();
+
+    // 1. Odszukaj plik backupu (może być filename lub zawierać snapshotId)
+    let backupFile = filenameOrSnapshotId;
+    if (!fs.existsSync(path.join(this.backupDir, backupFile))) {
+      const files = fs.readdirSync(this.backupDir);
+      const match = files.find(f => f.includes(filenameOrSnapshotId));
+      if (match) {
+        backupFile = match;
+      } else {
+        const sorted = this.listBackups(currentStoreId);
+        if (sorted.length > 0) backupFile = sorted[0].filename;
+      }
+    }
+
+    const backupPath = path.join(this.backupDir, backupFile);
+    if (!fs.existsSync(backupPath)) {
+      throw new Error(`Kopia zapasowa [${backupFile}] nie została odnaleziona na dysku.`);
+    }
+
+    // 2. Jeśli wybrano wszystkie domeny, wykonaj pełne przywrócenie
+    const allDomains = ['schedules', 'personnel', 'financials', 'trainings'];
+    const isAll = !domains || domains.length === 0 || allDomains.every(d => domains.includes(d));
+    if (isAll) {
+      const fullRes = await this.restoreBackup(backupFile, forceRestore);
+      return { success: fullRes.success, message: fullRes.message, restoredDomains: allDomains };
+    }
+
+    // 3. Pre-Restore Safety Snapshot bieżącego stanu
+    this.createBackup('pre_restore_safety', currentStoreId);
+
+    // 4. Załaduj bazę źródłową do inspekcji
+    if (!this.SQL) {
+      this.SQL = await initSqlJs();
+    }
+    const nodeBuf = fs.readFileSync(backupPath);
+    const sourceDb = new this.SQL.Database(nodeBuf);
+
+    const domainTablesMap: Record<string, string[]> = {
+      schedules: ['manager_schedule_shifts', 'manager_monthly_roster', 'manager_schedule_versions'],
+      personnel: ['manager_employees', 'training_partners'],
+      financials: ['aop_plans', 'labor_actuals_log', 'weekly_actual_trx'],
+      trainings: ['training_shifts', 'training_skill_checks'],
+    };
+
+    const targetTables: string[] = [];
+    for (const d of domains) {
+      if (domainTablesMap[d]) {
+        targetTables.push(...domainTablesMap[d]);
+      }
+    }
+
+    try {
+      db.run('BEGIN TRANSACTION;');
+
+      for (const table of targetTables) {
+        try {
+          const res = sourceDb.exec(`SELECT * FROM ${table};`);
+          if (res.length > 0) {
+            const cols = res[0].columns;
+            const values = res[0].values;
+            db.run(`DELETE FROM ${table};`);
+            if (values.length > 0) {
+              const placeholders = cols.map(() => '?').join(', ');
+              const colNames = cols.join(', ');
+              const stmt = db.prepare(`INSERT INTO ${table} (${colNames}) VALUES (${placeholders});`);
+              for (const row of values) {
+                stmt.run(row);
+              }
+              stmt.free();
+            }
+          }
+        } catch (tableErr) {
+          console.warn(`[BackupManager] Pominięto tabelę ${table} przy selektywnym restore:`, tableErr);
+        }
+      }
+
+      db.run('COMMIT;');
+      dbManager.persist();
+
+      return {
+        success: true,
+        message: `Pomyślnie przywrócono wybrane domeny (${domains.join(', ')}) z kopii ${backupFile}.`,
+        restoredDomains: domains,
+      };
+    } catch (err: any) {
+      try { db.run('ROLLBACK;'); } catch (_) {}
+      throw err;
+    } finally {
+      try { sourceDb.close(); } catch (_) {}
+    }
+  }
+
+  /**
    * Przywraca bazę danych bezpośrednio z bufora binarnego (np. wgrany w Onboardingu)
    */
   public async restoreFromBuffer(buffer: ArrayBuffer | Buffer, forceRestore: boolean = false): Promise<{ success: boolean; message: string; inspection?: RestoreInspectionResult }> {
