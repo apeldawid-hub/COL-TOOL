@@ -207,6 +207,18 @@ async function publishToGitHub() {
     release = existing;
   }
 
+  // Jeśli w wydaniu istnieją już stare/niekompletne pliki o tej samej nazwie, usuń je przed ponownym uploadem
+  if (release.assets && release.assets.length > 0) {
+    for (const asset of release.assets) {
+      if (asset.name === zipFileName || asset.name === 'latest-patch.json') {
+        console.log(`🗑️ [Hot-Patch] Usuwanie poprzedniego assetu: ${asset.name} (id: ${asset.id})...`);
+        try {
+          await githubRequest('DELETE', `/repos/apeldawid-hub/COL-TOOL/releases/assets/${asset.id}`);
+        } catch (_) {}
+      }
+    }
+  }
+
   console.log(`📤 [Hot-Patch] Wysyłanie ${zipFileName} (${sizeMB} MB)...`);
   await uploadAsset(release.upload_url, zipFileName, fileBuffer, 'application/zip');
 

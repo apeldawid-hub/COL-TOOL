@@ -1,6 +1,6 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-06T23:09:05.167Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-06T23:09:51.122Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
