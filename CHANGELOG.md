@@ -5,6 +5,27 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.9.11] — 2026-11-07: Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji
+*Autor: Dawid Apel & Antigravity Agent Squad*
+
+### 🌟 Główne Atuty Wydania:
+- **Natywne Logowanie Touch ID na macOS: Błyskawiczny dostęp do platformy dla Store Managera za pomocą czytnika linii papilarnych (Apple Secure Enclave).**
+- **Biometryczne Odblokowanie Stacji (SessionLockOverlay): Natychmiastowe zdjęcie blokady po 15 min bezczynności dotknięciem palca bez wpisywania PIN-u 1812.**
+- **Niezawodna Detekcja i Fallback: Automatyczne wykrywanie obecności sprzętowego czytnika i bezkolizyjny fallback na standardowe logowanie na innych systemach.**
+- **Pełne Bezpieczeństwo i Rejestr Audytu: Każde uwierzytelnienie Touch ID zapisywane w audycie bezpieczeństwa (Zero-Leak).**
+
+### ✨ Nowe Funkcje (Features):
+- Natywne wsparcie Touch ID w procesie głównym Electrona (systemPreferences) oraz mostku preload IPC.
+- Dedykowany przycisk logowania odciskiem palca w LoginView oraz obsługa w AuthService i AuthContext.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- Biometryczne odblokowanie stacji roboczej na ekranie blokady SessionLockOverlay.
+
+### 🛡️ Tarcza Kodeksu Pracy & Baza SQLite:
+- Zgodność z audytem bezpieczeństwa i zero regresji na systemach Windows/Linux.
+
+---
+
 ## [v2.9.10] — 2026-11-06: Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19)
 *Autor: Dawid Apel & Antigravity Agent Squad*
 

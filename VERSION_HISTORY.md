@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.11](#v2.9.11--2026-11-07)** | 2026-11-07 | Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji | `patch` | 🚀 Opublikowana |
 | **[v2.9.10](#v2.9.10--2026-11-06)** | 2026-11-06 | Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19) | `patch` | 🚀 Opublikowana |
 | **[v2.9.9](#v2.9.9--2026-11-05)** | 2026-11-05 | Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18) | `patch` | 🚀 Opublikowana |
 | **[v2.9.8](#v2.9.8--2026-11-05)** | 2026-11-05 | Interaktywny Asystent Korekt AI: Smart Swap (Wymiana Parzysta) & AI Row Re-roll w Grafiku Managerskim (Moduł 2) | `patch` | 🚀 Opublikowana |
@@ -40,6 +41,28 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.11] — 2026-11-07
+**Tytuł:** Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- Natywne Logowanie Touch ID na macOS: Błyskawiczny dostęp do platformy dla Store Managera za pomocą czytnika linii papilarnych (Apple Secure Enclave).
+- Biometryczne Odblokowanie Stacji (SessionLockOverlay): Natychmiastowe zdjęcie blokady po 15 min bezczynności dotknięciem palca bez wpisywania PIN-u 1812.
+- Niezawodna Detekcja i Fallback: Automatyczne wykrywanie obecności sprzętowego czytnika i bezkolizyjny fallback na standardowe logowanie na innych systemach.
+- Pełne Bezpieczeństwo i Rejestr Audytu: Każde uwierzytelnienie Touch ID zapisywane w audycie bezpieczeństwa (Zero-Leak).
+
+#### ✨ Nowe Funkcje:
+- Natywne wsparcie Touch ID w procesie głównym Electrona (systemPreferences) oraz mostku preload IPC.
+- Dedykowany przycisk logowania odciskiem palca w LoginView oraz obsługa w AuthService i AuthContext.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Biometryczne odblokowanie stacji roboczej na ekranie blokady SessionLockOverlay.
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Zgodność z audytem bezpieczeństwa i zero regresji na systemach Windows/Linux.
+
+---
 
 ### [v2.9.10] — 2026-11-06
 **Tytuł:** Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19)  

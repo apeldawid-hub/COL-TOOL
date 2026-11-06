@@ -376,6 +376,86 @@ export class AuthService {
   }
 
   /**
+   * Sprawdza, czy na bieżącej maszynie dostępna jest biometria Touch ID (macOS)
+   */
+  public static async isTouchIdAvailable(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    const api = (window as any).api || (window as any).electronAPI;
+    if (api && typeof api.canPromptTouchID === 'function') {
+      try {
+        return await api.canPromptTouchID();
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Wywołuje systemowe okno potwierdzenia odciskiem palca Touch ID
+   */
+  public static async promptTouchId(reason?: string): Promise<{ success: boolean; error?: string }> {
+    if (typeof window === 'undefined') {
+      return { success: false, error: 'Środowisko niedostępne.' };
+    }
+    const api = (window as any).api || (window as any).electronAPI;
+    if (api && typeof api.promptTouchID === 'function') {
+      try {
+        return await api.promptTouchID(reason);
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Błąd autoryzacji Touch ID.' };
+      }
+    }
+    return { success: false, error: 'Touch ID nie jest obsługiwane na tym urządzeniu.' };
+  }
+
+  /**
+   * Pełny proces logowania biometrycznego Touch ID (Store Manager)
+   */
+  public static async loginWithTouchId(storeUnitCode: string = ''): Promise<{
+    success: boolean;
+    session?: AuthUserSession;
+    message?: string;
+  }> {
+    const isAvail = await this.isTouchIdAvailable();
+    if (!isAvail) {
+      return {
+        success: false,
+        message: 'Logowanie biometryczne Touch ID nie jest dostępne na tym urządzeniu.',
+      };
+    }
+
+    const authRes = await this.promptTouchId(
+      'Potwierdź tożsamość odciskiem palca, aby zalogować się do Starbucks Operations Suite'
+    );
+
+    if (!authRes.success) {
+      return {
+        success: false,
+        message: authRes.error || 'Autoryzacja odciskiem palca została anulowana lub nie powiodła się.',
+      };
+    }
+
+    // Uwierzytelnienie i załadowanie sesji Store Managera
+    const session = this.quickLoginStoreManager(storeUnitCode);
+
+    AdminService.addAuditLog({
+      actorName: session.fullName,
+      actorRole: session.role,
+      actionType: 'LOGIN_2FA',
+      targetResource: 'session:touch-id',
+      details: `Pomyślne uwierzytelnienie biometryczne Touch ID (Apple Secure Enclave) na zapleczu ${storeUnitCode || ''}`,
+      deviceName: this.getDeviceName(),
+    });
+
+    return {
+      success: true,
+      session,
+      message: 'Pomyślnie zweryfikowano tożsamość odciskiem palca!',
+    };
+  }
+
+  /**
    * Żądanie wysłania 6-cyfrowego kodu 2FA na adres e-mail (Feature F8)
    * Enforces:
    * - Strict corporate email domain validation

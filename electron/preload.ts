@@ -134,6 +134,9 @@ export interface IElectronAPI {
   cryptoSafeStorageEncrypt?: (plaintext: string) => Promise<{ success: boolean; data?: string; error?: string }>;
   cryptoSafeStorageDecrypt?: (encryptedBase64: string) => Promise<{ success: boolean; data?: string; error?: string }>;
   cryptoZeroizeKeys?: () => Promise<{ success: boolean; zeroizedCount: number }>;
+  // Biometria Touch ID (macOS)
+  canPromptTouchID?: () => Promise<boolean>;
+  promptTouchID?: (reason?: string) => Promise<{ success: boolean; error?: string }>;
   // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification
   executeStoreMigration?: (options: any) => Promise<any>;
   verifyStoreParity?: (storeId: string, options?: any) => Promise<any>;
@@ -300,6 +303,9 @@ const api: IElectronAPI = {
   // Milestone 4: Feature F11 — Master Credential & Sliding-Window Rate Limiter
   verifyMasterCredential: (credential: string) => ipcRenderer.invoke('crypto:verify-master-credential', credential),
   getMasterCredentialStatus: () => ipcRenderer.invoke('crypto:get-master-credential-status'),
+  // Biometria Touch ID (macOS)
+  canPromptTouchID: () => ipcRenderer.invoke('auth:touch-id-available'),
+  promptTouchID: (reason?: string) => ipcRenderer.invoke('auth:prompt-touch-id', reason),
   // Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification
   executeStoreMigration: (options) => ipcRenderer.invoke('migration:execute-store-migration', options),
   verifyStoreParity: (storeId, options) => ipcRenderer.invoke('migration:verify-store-parity', storeId, options),

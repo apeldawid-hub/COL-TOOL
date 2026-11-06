@@ -24,6 +24,41 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.11',
+    date: '2026-11-07',
+    title: 'Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Natywne Logowanie Touch ID na macOS: Błyskawiczny dostęp do platformy dla Store Managera za pomocą czytnika linii papilarnych (Apple Secure Enclave).',
+      'Biometryczne Odblokowanie Stacji (SessionLockOverlay): Natychmiastowe zdjęcie blokady po 15 min bezczynności dotknięciem palca bez wpisywania PIN-u 1812.',
+      'Niezawodna Detekcja i Fallback: Automatyczne wykrywanie obecności sprzętowego czytnika i bezkolizyjny fallback na standardowe logowanie na innych systemach.',
+      'Pełne Bezpieczeństwo i Rejestr Audytu: Każde uwierzytelnienie Touch ID zapisywane w audycie bezpieczeństwa (Zero-Leak).'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Natywne wsparcie Touch ID w procesie głównym Electrona (systemPreferences) oraz mostku preload IPC.',
+        module: 'system'
+      },
+      {
+        type: 'feature',
+        description: 'Dedykowany przycisk logowania odciskiem palca w LoginView oraz obsługa w AuthService i AuthContext.',
+        module: 'system'
+      },
+      {
+        type: 'enhancement',
+        description: 'Biometryczne odblokowanie stacji roboczej na ekranie blokady SessionLockOverlay.',
+        module: 'system'
+      },
+      {
+        type: 'compliance',
+        description: 'Zgodność z audytem bezpieczeństwa i zero regresji na systemach Windows/Linux.',
+        module: 'system'
+      }
+    ]
+  },
+  {
     version: '2.9.10',
     date: '2026-11-06',
     title: 'Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19)',

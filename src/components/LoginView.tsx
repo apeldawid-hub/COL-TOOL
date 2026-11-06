@@ -16,7 +16,8 @@ import {
   UserPlus, 
   Sparkles,
   Lock,
-  RotateCcw
+  RotateCcw,
+  Fingerprint
 } from 'lucide-react';
 import { APP_VERSION, APP_SHORT_NAME } from '../version';
 import { useStore } from '../context/StoreContext';
@@ -34,7 +35,7 @@ type AuthTab = 'store_manager' | 'partner_2fa' | 'register_partner';
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const { currentStore } = useStore();
-  const { loginWith2Fa } = useAuth();
+  const { loginWith2Fa, isTouchIdAvailable, loginWithTouchId } = useAuth();
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<AuthTab>('store_manager');
 
@@ -87,6 +88,27 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     }, 1000);
     return () => clearInterval(interval);
   }, [isOtpSent]);
+
+  // Obsługa logowania biometrycznego Touch ID (macOS)
+  const handleTouchIdLogin = async () => {
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const res = await loginWithTouchId(currentStore.unitCode);
+      if (res.success && res.session) {
+        setSuccessMessage('Pomyślna autoryzacja biometryczna Touch ID! Logowanie...');
+        setTimeout(() => {
+          onLogin(`${res.session!.fullName} (SM)`, res.session);
+        }, 200);
+      } else {
+        setErrorMessage(res.message || 'Nie rozpoznano odcisku palca.');
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Błąd autoryzacji biometrycznej.');
+      setIsSubmitting(false);
+    }
+  };
 
   // Obsługa natychmiastowego logowania Store Managera (Dawid Apel)
   const handleStoreManagerLogin = () => {
@@ -419,13 +441,48 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 </span>
               </div>
 
+              {isTouchIdAvailable && (
+                <div className="space-y-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleTouchIdLogin}
+                    disabled={isSubmitting}
+                    className="w-full bg-[#0D201A] hover:bg-[#153028] active:scale-[0.99] text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg border border-emerald-500/40 hover:border-emerald-400 transition-all flex items-center justify-center space-x-3 group cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                      <Fingerprint className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <span className="block text-sm font-bold text-white tracking-wide">
+                        Zaloguj odciskiem palca
+                      </span>
+                      <span className="block text-[10px] text-emerald-400 font-medium">
+                        Natywne Apple Touch ID • macOS
+                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-emerald-400 transition-transform group-hover:translate-x-1" />
+                  </button>
+
+                  <div className="relative flex items-center justify-center">
+                    <div className="border-t border-stone-200 w-full" />
+                    <span className="bg-white px-3 text-[10px] font-bold text-stone-400 uppercase tracking-widest absolute">
+                      lub
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleStoreManagerLogin}
                 disabled={isSubmitting}
-                className="w-full bg-[#006241] hover:bg-[#00754A] active:scale-[0.99] text-white font-bold py-3.5 px-6 rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 group cursor-pointer"
+                className={`w-full font-bold py-3.5 px-6 rounded-2xl transition-all flex items-center justify-center space-x-2 group cursor-pointer ${
+                  isTouchIdAvailable
+                    ? 'bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300'
+                    : 'bg-[#006241] hover:bg-[#00754A] active:scale-[0.99] text-white shadow-md hover:shadow-lg'
+                }`}
               >
-                <span>{isSubmitting ? 'Uwierzytelnianie...' : 'Wejdź jako Store Manager'}</span>
+                <span>{isSubmitting ? 'Uwierzytelnianie...' : isTouchIdAvailable ? 'Wejdź bez biometrii (Store Manager)' : 'Wejdź jako Store Manager'}</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
             </div>

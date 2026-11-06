@@ -38,6 +38,11 @@ export interface AuthContextType {
   quickLoginSM: (unitCode?: string) => AuthUserSession;
   logout: () => void;
 
+  // Biometria Touch ID (macOS)
+  isTouchIdAvailable: boolean;
+  loginWithTouchId: (unitCode?: string) => Promise<{ success: boolean; session?: AuthUserSession; message?: string }>;
+  unlockWithTouchId: () => Promise<boolean>;
+
   // Inactivity Auto-Lock & Key Zeroization
   isLocked: boolean;
   lockSession: () => void;
@@ -79,6 +84,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   });
   const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [isTouchIdAvailable, setIsTouchIdAvailable] = useState<boolean>(false);
+
+  useEffect(() => {
+    AuthService.isTouchIdAvailable().then(avail => {
+      setIsTouchIdAvailable(avail);
+    }).catch(() => {
+      setIsTouchIdAvailable(false);
+    });
+  }, []);
 
   // Manual override for admin/development testing
   const setAppModeManual = useCallback((mode: AppRuntimeMode, stores: string[] = []) => {
@@ -313,6 +327,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return false;
   }, [currentSession]);
 
+  const loginWithTouchId = useCallback(async (unitCode?: string) => {
+    const res = await AuthService.loginWithTouchId(unitCode);
+    if (res.success && res.session) {
+      setCurrentSession(res.session);
+    }
+    return res;
+  }, []);
+
+  const unlockWithTouchId = useCallback(async () => {
+    const res = await AuthService.promptTouchId(
+      'Potwierdź tożsamość odciskiem palca, aby odblokować stację roboczą'
+    );
+    if (res.success) {
+      setIsLocked(false);
+      AdminService.addAuditLog({
+        actorName: currentSession?.fullName || 'Store Manager',
+        actorRole: currentSession?.role || 'STORE_MANAGER',
+        actionType: 'LOGIN_2FA',
+        targetResource: 'session:unlock-touch-id',
+        details: 'Pomyślne odblokowanie stacji roboczej biometrią Touch ID',
+        deviceName: AuthService.getDeviceName(),
+      });
+      return true;
+    }
+    return false;
+  }, [currentSession]);
+
   const isFleetMaster = appMode === 'FLEET_MASTER';
   const isStoreClient = appMode === 'STORE_CLIENT';
   const isAuthenticated = Boolean(currentSession);
@@ -337,6 +378,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loginWith2Fa,
         quickLoginSM,
         logout,
+        isTouchIdAvailable,
+        loginWithTouchId,
+        unlockWithTouchId,
         isLocked,
         lockSession,
         unlockSession,

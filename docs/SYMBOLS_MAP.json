@@ -86,7 +86,7 @@
   },
   "AuthProvider": {
     "file": "src/context/AuthContext.tsx",
-    "line": 49,
+    "line": 54,
     "kind": "const"
   },
   "AuthService": {
@@ -1836,7 +1836,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 990,
+    "line": 1025,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1851,7 +1851,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 975,
+    "line": 1010,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1866,7 +1866,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 982,
+    "line": 1017,
     "kind": "function"
   },
   "isManagerInTraining": {
@@ -1941,7 +1941,7 @@
   },
   "useAuth": {
     "file": "src/context/AuthContext.tsx",
-    "line": 350,
+    "line": 394,
     "kind": "const"
   },
   "useStore": {

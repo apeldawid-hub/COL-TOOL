@@ -12,7 +12,7 @@
  */
 
 import React, { useState } from 'react';
-import { Lock, ShieldAlert, KeyRound, ArrowRight, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, ShieldAlert, KeyRound, ArrowRight, LogOut, CheckCircle2, AlertCircle, Fingerprint } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
 
@@ -21,13 +21,31 @@ interface SessionLockOverlayProps {
 }
 
 export const SessionLockOverlay: React.FC<SessionLockOverlayProps> = ({ onUnlockSuccess }) => {
-  const { isLocked, unlockSession, logout, currentSession } = useAuth();
+  const { isLocked, unlockSession, logout, currentSession, isTouchIdAvailable, unlockWithTouchId } = useAuth();
   const { currentStore } = useStore();
   const [pinCode, setPinCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isLocked) return null;
+
+  const handleTouchIdUnlock = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const ok = await unlockWithTouchId();
+      if (ok) {
+        setPinCode('');
+        if (onUnlockSuccess) onUnlockSuccess();
+      } else {
+        setError('Autoryzacja odciskiem palca została anulowana lub nie powiodła się.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Błąd autoryzacji biometrycznej.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,8 +105,29 @@ export const SessionLockOverlay: React.FC<SessionLockOverlayProps> = ({ onUnlock
           <span className="text-zinc-200 font-semibold">{currentSession?.fullName || 'Store Manager'}</span>
         </div>
 
+        {/* Touch ID Biometric Unlock (macOS) */}
+        {isTouchIdAvailable && (
+          <div className="w-full mt-5">
+            <button
+              type="button"
+              onClick={handleTouchIdUnlock}
+              disabled={isSubmitting}
+              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-950/80 to-[#07130F] hover:from-emerald-900/60 hover:to-[#0c1e18] border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 font-semibold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer group"
+            >
+              <Fingerprint className="w-4 h-4 text-emerald-400 animate-pulse group-hover:scale-110 transition-transform" />
+              <span>Odblokuj odciskiem palca (Touch ID)</span>
+            </button>
+            <div className="relative flex items-center justify-center my-3.5">
+              <div className="border-t border-emerald-900/60 w-full" />
+              <span className="bg-[#0D201A] px-2.5 text-[10px] font-bold text-emerald-600 uppercase tracking-widest absolute">
+                lub kodem PIN
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Unlock Form */}
-        <form onSubmit={handleUnlock} className="w-full mt-6 space-y-4">
+        <form onSubmit={handleUnlock} className={`w-full ${isTouchIdAvailable ? 'mt-2' : 'mt-6'} space-y-4`}>
           <div>
             <div className="relative">
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />

@@ -1,11 +1,11 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-06T22:42:23.840Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-06T23:09:05.167Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
 ## 📡 1. Kontrakty Mostu IPC (`window.api.*` — `IElectronAPI`)
-Łącznie wykrytych metod IPC w `electron/preload.ts`: **141**.
+Łącznie wykrytych metod IPC w `electron/preload.ts`: **143**.
 
 | Metoda IPC | Opcjonalna | Podpis Typu | Kategoria / Uwagi |
 | :--- | :---: | :--- | :--- |
@@ -130,6 +130,8 @@
 | `window.api.cryptoSafeStorageEncrypt` | Tak | `(plaintext: string) => Promise<{ success: boolean; data?: string; error?: string }>` | — |
 | `window.api.cryptoSafeStorageDecrypt` | Tak | `(encryptedBase64: string) => Promise<{ success: boolean; data?: string; error?: string }>` | — |
 | `window.api.cryptoZeroizeKeys` | Tak | `() => Promise<{ success: boolean; zeroizedCount: number }>` | — |
+| `window.api.canPromptTouchID` | Tak | `() => Promise<boolean>` | Biometria Touch ID (macOS) |
+| `window.api.promptTouchID` | Tak | `(reason?: string) => Promise<{ success: boolean; error?: string }>` | — |
 | `window.api.executeStoreMigration` | Tak | `(options: any) => Promise<any>` | Feature F16 & F17: Zero-Data-Loss Local-to-Cloud Migration & Parity Verification |
 | `window.api.verifyStoreParity` | Tak | `(storeId: string, options?: any) => Promise<any>` | — |
 | `window.api.extractStoreTables` | Tak | `(storeId: string) => Promise<any>` | — |

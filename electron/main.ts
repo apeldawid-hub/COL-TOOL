@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, systemPreferences } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -2019,6 +2019,35 @@ function setupIpcHandlers() {
 
   ipcMain.handle('crypto:get-master-credential-status', async () => {
     return MasterCredentialManager.getInstance().getStatus();
+  });
+
+  // =========================================================================
+  // Biometric Touch ID (macOS) IPC Handlers
+  // =========================================================================
+  ipcMain.handle('auth:touch-id-available', async () => {
+    if (process.platform !== 'darwin') return false;
+    try {
+      return typeof systemPreferences?.canPromptTouchID === 'function' ? systemPreferences.canPromptTouchID() : false;
+    } catch (err) {
+      console.warn('[TouchID] Błąd sprawdzania dostępności:', err);
+      return false;
+    }
+  });
+
+  ipcMain.handle('auth:prompt-touch-id', async (_event, reason?: string) => {
+    if (process.platform !== 'darwin') {
+      return { success: false, error: 'Touch ID jest dostępne wyłącznie na systemie macOS.' };
+    }
+    try {
+      if (typeof systemPreferences?.canPromptTouchID !== 'function' || !systemPreferences.canPromptTouchID()) {
+        return { success: false, error: 'Urządzenie nie obsługuje Touch ID lub funkcja jest wyłączona w ustawieniach systemu.' };
+      }
+      const promptReason = reason || 'Potwierdź tożsamość odciskiem palca, aby uzyskać dostęp do Starbucks Operations Suite';
+      await systemPreferences.promptTouchID(promptReason);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Błąd autoryzacji biometrycznej Touch ID.' };
+    }
   });
 
   // =========================================================================
