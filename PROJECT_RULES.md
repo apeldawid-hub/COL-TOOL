@@ -60,3 +60,12 @@ Niniejszy dokument definiuje nienaruszalne zasady współpracy, podział ról or
 3. **Ochrona Danych Użytkownika:**
    - Baza danych SQLite użytkownika (`~/Library/Application Support/Starbucks Operations Suite/`) jest nienaruszalna. Aktualizacje programu nigdy nie mogą usunąć danych kawiarni.
    - Żadne dane operacyjne, nazwiska pracowników ani hasła nie mogą trafić do repozytorium Git.
+
+---
+
+## 🛡️ 5. Tarcza Jakości AI (Anti-Slop Quality Gate)
+Wdrożona na bazie repozytoriów `FeedHive/ai-slop-detector`, `scanaislop/aislop`, `yetone/kill-ai-slop` oraz `miqdadbadjuber/anti-slop`:
+1. **Zero-Yapping & High Signal-to-Noise (FeedHive):** Zakaz używania frazesów LLM (`delve`, `tapestry`, `beacon`, `testament`, puste wstępy, emojioza) w raportach i logach.
+2. **Czystość Kodu i Typów (scanaislop):** Bezwzględny zakaz połykania wyjątków w TypeScript/JS, zakaz pustych funkcji stub, zakaz pozostawiania `console.log()` w kodzie produkcyjnym.
+3. **Ergonomia Interfejsu Starbucks Suite (kill-ai-slop):** Zakaz szablonowych gradientów indygo/fiolet, zachowanie pełnej dostępności klawiatury i precyzyjnej hierarchii gęstych danych w tabelach grafiku i TPLH.
+4. **Deterministyczna Walidacja:** Model językowy nigdy nie liczy godzin ani stawek — obliczenia wykonuje wyłącznie silnik TypeScript/SQLite, a AI służy wyłącznie jako audytor anomalii.
