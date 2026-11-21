@@ -10,6 +10,21 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+
+## [v2.9.16] — 2026-11-21
+- Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.15] — 2026-11-21
+- **Standardowy Profil Tygodnia (Godziny & 2 MGR) oraz Wykluczenie Non-Coverage (NC / T)**:
+  - Tabela `manager_weekly_requirements` w SQLite ze stałym profilem tygodniowym kawiarni (8 dni: Pn–So, Nd wolna, Nd handlowa).
+  - Domyślny profil sieci Starbucks: 2 MGR na sali (otwarcie + zamknięcie), Pn–So 07:00–22:30 (16h), Nd 08:00–21:00 (14h/16h).
+  - Modal `WeeklyRequirementsModal` i przycisk *„Profil Tygodnia (2 MGR)”* w nagłówku oraz Speed-Dialu grafiku.
+  - Opcja masowej propagacji w `DayRequirementsModal`: *„Zastosuj te godziny dla wszystkich dni [Dzień] w tym miesiącu”*.
+  - **Bezwzględne wykluczenie Non-Coverage (`NC`, `T`, `TAM`, `TPM`, `BT`, `PRE`, `MEE`, `RET`) z obsady sali**:
+    - `totalManagersWorking` zlicza wyłącznie zmiany operacyjne (Coverage). Menedżer na `NC` lub szkoleniu `T` nie zalicza wymogu 2 osób prowadzących.
+    - Dedykowana fioletowa odznaka `+X NC` w wierszu *„Obsada (Dziennie)”* dla pełnej czytelności podziału Floor vs Non-Coverage.
+  - Zasilenie silnika `AutoSchedulerEngine` (solver AI automatycznie czerpie wymogi ze standardowego profilu tygodnia).
+
 ## [v2.9.14] — 2026-11-21
 - **Niestandardowe Wymogi Obecności Menedżerów per Dzień (Wigilia, Sylwester, Skrócone Dyżury)**:
   - Wdrożenie okna dialogowego `DayRequirementsModal` otwieranego bezpośrednio z nagłówka dnia na siatce grafiku.
@@ -18,7 +33,6 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
   - Tabela `manager_day_requirements` w SQLite wraz z obsługą IPC (`saveManagerDayRequirement`, `deleteManagerDayRequirement`).
   - Eliminacja fałszywych alarmów w wierszu obsady i podsumowaniach luki kadrowej dla dni o wymogu 1 MGR lub 0 MGR.
   - Wyróżniony 1-klik w `ShiftPickerPopover` do natychmiastowego dopasowania zmiany menedżera do wyliczonych godzin obecności dnia.
-  - Zasilenie silnika `AutoSchedulerEngine` (solver AI planuje dokładnie 1 menedżera na wyliczone godziny).
 
 ## [v2.9.13] — 2026-11-21
 - Bieżąca synchronizacja i optymalizacje modułu.

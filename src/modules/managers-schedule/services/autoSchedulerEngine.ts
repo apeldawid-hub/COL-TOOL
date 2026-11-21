@@ -57,6 +57,8 @@ export interface AutoScheduleOptions {
   iterationsCount?: number;
   /** Niestandardowe wymogi obecności menedżera per dzień (np. 1 MGR w Wigilię, 0 MGR w Boże Narodzenie) */
   dayRequirements?: Record<number, import('../../../types').ManagerDayRequirement>;
+  /** Standardowy profil tygodniowy kawiarni (domyślnie 2 MGR) */
+  weeklyRequirements?: import('../../../types').ManagerWeeklyRequirement[];
 }
 
 export interface AutoScheduleProgress {
@@ -453,7 +455,25 @@ export class AutoSchedulerEngine {
         }
       });
 
-      const req = options.dayRequirements?.[day];
+      let req = options.dayRequirements?.[day];
+      if (!req && options.weeklyRequirements && options.weeklyRequirements.length > 0) {
+        const weeklyKey = isTradingSunday[day] ? 7 : dayOfWeek[day];
+        const w = options.weeklyRequirements.find(item => item.day_of_week === weeklyKey);
+        if (w) {
+          req = {
+            year,
+            month,
+            day,
+            date: '',
+            is_open: Boolean(w.is_open),
+            manager_count: w.manager_count,
+            start_time: w.start_time,
+            end_time: w.end_time,
+            required_hours: w.required_hours,
+            notes: w.notes
+          };
+        }
+      }
       let neededOpening = !hasOpening;
       let neededClosing = !hasClosing;
 
@@ -494,7 +514,25 @@ export class AutoSchedulerEngine {
 
     let baseHoursNeeded = 0;
     daySlotTemplates.forEach(d => {
-      const r = options.dayRequirements?.[d.day];
+      let r = options.dayRequirements?.[d.day];
+      if (!r && options.weeklyRequirements && options.weeklyRequirements.length > 0) {
+        const weeklyKey = isTradingSunday[d.day] ? 7 : d.dayOfWeek;
+        const w = options.weeklyRequirements.find(item => item.day_of_week === weeklyKey);
+        if (w) {
+          r = {
+            year,
+            month,
+            day: d.day,
+            date: '',
+            is_open: Boolean(w.is_open),
+            manager_count: w.manager_count,
+            start_time: w.start_time,
+            end_time: w.end_time,
+            required_hours: w.required_hours,
+            notes: w.notes
+          };
+        }
+      }
       if (r && r.is_open && r.manager_count === 1) {
         if (d.neededOpening) baseHoursNeeded += (r.required_hours || 8.0);
       } else {

@@ -1269,6 +1269,18 @@ export class DatabaseManager {
         UNIQUE(year, month, day)
       );
 
+      CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
+        day_of_week INTEGER PRIMARY KEY, -- 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 0=Nd, 7=Nd Handlowa
+        day_name TEXT NOT NULL,
+        is_open INTEGER DEFAULT 1,
+        manager_count INTEGER DEFAULT 2,
+        start_time TEXT DEFAULT '07:00',
+        end_time TEXT DEFAULT '22:30',
+        required_hours REAL DEFAULT 16.0,
+        notes TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS manager_monthly_roster (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         year INTEGER NOT NULL,
@@ -1539,7 +1551,55 @@ export class DatabaseManager {
     // 2. Inicjalizacja oficjalnych norm Kodeksu Pracy dla lat 2016–2036 (-10 i +10 lat)
     this.seedMonthlyNorms();
 
+    // 3. Inicjalizacja standardowego profilu tygodniowego kawiarni (standardowo 2 MGR)
+    this.seedWeeklyRequirements();
+
     this.persist();
+  }
+
+  private seedWeeklyRequirements(): void {
+    if (!this.db) return;
+    try {
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
+          day_of_week INTEGER PRIMARY KEY,
+          day_name TEXT NOT NULL,
+          is_open INTEGER DEFAULT 1,
+          manager_count INTEGER DEFAULT 2,
+          start_time TEXT DEFAULT '07:00',
+          end_time TEXT DEFAULT '22:30',
+          required_hours REAL DEFAULT 16.0,
+          notes TEXT,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      const res = this.db.exec("SELECT COUNT(*) FROM manager_weekly_requirements");
+      const count = res.length > 0 && res[0].values.length > 0 ? Number(res[0].values[0][0]) : 0;
+      if (count === 0) {
+        const defaults = [
+          [1, 'Poniedziałek', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2, 'Wtorek', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [3, 'Środa', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [4, 'Czwartek', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [5, 'Piątek', 1, 2, '07:00', '22:30', 16.0, 'Standard Piątek (2 MGR)'],
+          [6, 'Sobota', 1, 2, '07:00', '22:30', 16.0, 'Standard Sobota (2 MGR)'],
+          [0, 'Niedziela', 1, 2, '08:00', '21:00', 14.0, 'Niedziela Wolna od Handlu (2 MGR)'],
+          [7, 'Niedziela Handlowa', 1, 2, '08:00', '21:00', 16.0, 'Niedziela Handlowa (2 MGR)']
+        ];
+        const stmt = this.db.prepare(`
+          INSERT INTO manager_weekly_requirements (day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const row of defaults) {
+          stmt.run(row);
+        }
+        stmt.free();
+        console.log(`✅ Zaseedowano standardowy profil tygodniowy (2 MGR) dla kawiarni.`);
+      }
+    } catch (e) {
+      console.error('Błąd seedowania manager_weekly_requirements:', e);
+    }
   }
 
   public seedDemoManagerTeamAndShifts(): void {
@@ -1974,6 +2034,7 @@ export class DatabaseManager {
       'manager_monthly_norms',
       'manager_monthly_roster',
       'manager_day_requirements',
+      'manager_weekly_requirements',
       'training_partners',
       'training_shifts',
       'training_skill_checks'
@@ -2214,6 +2275,7 @@ export class DatabaseManager {
       { tableName: 'manager_monthly_roster', label: 'Autonomiczne Składy Miesięczne' },
       { tableName: 'manager_monthly_norms', label: 'Normy Kodeksu Pracy' },
       { tableName: 'manager_day_requirements', label: 'Wymogi Dziennej Obsady Menedżerów' },
+      { tableName: 'manager_weekly_requirements', label: 'Wymogi Tygodniowe Dni (Standardowy Profil)' },
       { tableName: 'training_partners', label: 'Szkolenia: Baza Partnerów' },
       { tableName: 'training_shifts', label: 'Szkolenia: Zmiany First 30' },
       { tableName: 'training_skill_checks', label: 'Szkolenia: Arkusze Egzaminów' },

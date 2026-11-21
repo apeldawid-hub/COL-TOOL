@@ -13,6 +13,8 @@ interface DayRequirementsModalProps {
   holidayName?: string;
   initialRequirement?: ManagerDayRequirement;
   onSave: (req: ManagerDayRequirement) => Promise<void> | void;
+  onApplyToAllWeekday?: (dayOfWeek: number, req: Partial<ManagerDayRequirement>) => Promise<void> | void;
+  onOpenWeeklyRequirements?: () => void;
   onReset: (year: number, month: number, day: number) => Promise<void> | void;
   onClose: () => void;
   isReadOnly?: boolean;
@@ -28,6 +30,8 @@ export const DayRequirementsModal: React.FC<DayRequirementsModalProps> = ({
   holidayName,
   initialRequirement,
   onSave,
+  onApplyToAllWeekday,
+  onOpenWeeklyRequirements,
   onReset,
   onClose,
   isReadOnly = false
@@ -37,6 +41,7 @@ export const DayRequirementsModal: React.FC<DayRequirementsModalProps> = ({
   const [startTime, setStartTime] = useState<string>(initialRequirement?.start_time || '07:00');
   const [endTime, setEndTime] = useState<string>(initialRequirement?.end_time || '16:00');
   const [notes, setNotes] = useState<string>(initialRequirement?.notes || (holidayName || ''));
+  const [applyToAllWeekday, setApplyToAllWeekday] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Wyliczanie długości dyżuru menedżera
@@ -79,7 +84,12 @@ export const DayRequirementsModal: React.FC<DayRequirementsModalProps> = ({
         required_hours: isOpenDay ? computedHours : 0,
         notes: notes.trim() || undefined
       };
-      await onSave(req);
+      if (applyToAllWeekday && onApplyToAllWeekday) {
+        const dow = new Date(year, month - 1, day).getDay();
+        await onApplyToAllWeekday(dow, req);
+      } else {
+        await onSave(req);
+      }
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -339,6 +349,32 @@ export const DayRequirementsModal: React.FC<DayRequirementsModalProps> = ({
               placeholder="np. Wigilia, Sylwester, Skrócony dyżur..."
               className="w-full px-3 py-2 text-xs border border-stone-300 rounded-xl focus:ring-2 focus:ring-[#006241] focus:border-[#006241] text-stone-800"
             />
+          </div>
+
+          {/* OPCJA MASOWEGO ZASTOSOWANIA DO WSZYSTKICH DNI TEGO TYPU W MIESIĄCU */}
+          <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-stone-700">
+              <input
+                type="checkbox"
+                checked={applyToAllWeekday}
+                onChange={(e) => setApplyToAllWeekday(e.target.checked)}
+                disabled={isReadOnly}
+                className="rounded text-[#006241] focus:ring-[#006241]"
+              />
+              <span>Zastosuj te godziny dla wszystkich dni <strong>{dayName}</strong> w tym miesiącu ({monthName})</span>
+            </label>
+            {onOpenWeeklyRequirements && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenWeeklyRequirements();
+                }}
+                className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 underline shrink-0 cursor-pointer"
+              >
+                🕒 Stały wzorzec tygodnia
+              </button>
+            )}
           </div>
 
           {/* STOPKA PRZYCISKÓW */}

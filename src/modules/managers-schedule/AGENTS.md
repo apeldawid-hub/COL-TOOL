@@ -45,7 +45,8 @@ src/modules/managers-schedule/
 │   ├── ScheduleVersionModal.tsx    # Historia wersji grafiku i publikacja (reguła 7 dni przed startem)
 │   ├── ShiftConfigModal.tsx        # Modal konfiguracji katalogu zmian Starbucks i reguł niedzielnych
 │   ├── ShiftPickerPopover.tsx      # Szybki selektor zmian z blokadą zmian niedzielnych w dni powszednie
-│   └── TorView.tsx                 # Trzymiesięczny Okres Rozliczeniowy (TOR) z podsumowaniem kwartalnym Q1-Q4
+│   ├── TorView.tsx                 # Trzymiesięczny Okres Rozliczeniowy (TOR) z podsumowaniem kwartalnym Q1-Q4
+│   └── WeeklyRequirementsModal.tsx # Modal konfiguracji standardowego profilu tygodnia (domyślnie 2 MGR, godziny obecności)
 ├── services/
 │   ├── autoSchedulerEngine.ts      # Silnik optymalizacyjny AutoScheduling (solver AI, KP, dyspozycje, 2k rund)
 │   ├── interStoreSupportEngine.ts  # Silnik kalkulacji wsparć międzykawiarnianych i podmian obsadowych
@@ -227,6 +228,25 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
 - `manager_schedule_versions`: rejestr wersji grafiku i publikacji (id, year, month, version_num, version_type, title, description, shifts_json, events_json, is_published, created_at).
 - `manager_monthly_norms`: oficjalne normy miesięczne na -10 i +10 lat (lata 2016–2036, 252 miesiące) z możliwością manualnego override (`year, month, working_days, off_days, full_time_hours, is_custom, notes, updated_at`).
 - `manager_day_requirements`: niestandardowe wymogi obecności menedżera per dzień (`year, month, day, date, is_open, manager_count, start_time, end_time, required_hours, notes`) — np. Wigilia 1 MGR 07:00-16:00 (9.0h), Boże Narodzenie 0 MGR (0h).
+- `manager_weekly_requirements`: stały wzorzec tygodniowy godzin i obsady (`day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes`) — standardowo 2 MGR (otwarcie + zamknięcie), godziny obecności menedżerów.
+
+---
+
+### Algorytm 9: Standardowy Profil Tygodnia (Godziny Obecności & Standard 2 MGR) oraz Wykluczenie Non-Coverage (NC / T)
+1. **Domyślny Wzorzec 2 MGR dla Kawiarni**:
+   - Tabela `manager_weekly_requirements` przechowuje stałe godziny i obsadę dla 8 wariantów dni tygodnia (Pn–So 1..6, Nd wolna 0, Nd handlowa 7).
+   - Domyślny profil sieci Starbucks:
+     - Pn–So: 07:00–22:30 (16.0h), 2 MGR (otwarcie + zamknięcie).
+     - Niedziela wolna od handlu: 08:00–21:00 (14.0h), 2 MGR.
+     - Niedziela Handlowa: 08:00–21:00 (16.0h), 2 MGR.
+   - Każdy dzień w kalendarzu automatycznie dziedziczy ten wzorzec jako bazę. Ręczny wyjątek w `manager_day_requirements` (np. Wigilia 24.12) ma pierwszeństwo nad wzorcem tygodnia.
+2. **Bezwzględne Wykluczenie Non-Coverage (NC, Administracja, Szkolenia T) ze Zmian Prowadzących**:
+   - Zmiany `NC` (Store Manager Admin), `T`, `TAM`, `TPM`, `BT`, `PRE`, `MEE`, `RET` liczą się do etatu pracownika, ale **nie stanowią osoby prowadzącej zmianę na sali (Coverage)**.
+   - Wskaźnik obsady sali (`totalManagersWorking`) zlicza wyłącznie zmiany operacyjne na miejscu (`AM`, `PM`, `AMN`, `PMN`, `MIB`, `AMB`, `PMB`, `MID`, `MI4`).
+   - Menedżer na `NC` lub szkoleniu `T` nie zalicza wymogu 2 MGR — sala wciąż wymaga 2 menedżerów na zmianach otwarcia/zamknięcia.
+   - Wiersz „Obsada (Dziennie)” prezentuje odrębną fioletową odznakę `+X NC` dla pełnej przejrzystości podziału Floor vs Non-Coverage.
+3. **Masowe Zastosowanie z Poziomu Dnia (`db:apply-day-requirement-to-weekday`)**:
+   - W oknie `DayRequirementsModal` użytkownik może zaznaczyć opcję *„Zastosuj te godziny dla wszystkich dni [Dzień] w tym miesiącu”*, co automatycznie propaguje skonfigurowane godziny na cały miesiąc.
 - Indeksy: `idx_mgr_roster_ym`, `idx_mgr_roster_emp`, `idx_mgr_shifts_ym`, `idx_mgr_shifts_emp`, `idx_mgr_events_ym`, `idx_mgr_versions_ym`, `idx_mgr_day_req_ym`.
 
 ---

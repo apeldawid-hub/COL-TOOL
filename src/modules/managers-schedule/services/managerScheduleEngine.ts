@@ -734,7 +734,8 @@ export class ManagerScheduleEngine {
     },
     rcpLogs?: Record<number, Record<number, { hours: number; unitCode?: string; unitName?: string }>>,
     hasCompleteRcpLogs?: boolean,
-    dayRequirements?: ManagerDayRequirement[] | Record<number, ManagerDayRequirement>
+    dayRequirements?: ManagerDayRequirement[] | Record<number, ManagerDayRequirement>,
+    weeklyRequirements?: import('../../../types').ManagerWeeklyRequirement[]
   ): ManagerScheduleMonthData {
     const monthName = POLISH_MONTH_NAMES[month - 1] || `Miesiąc ${month}`;
     const calculatedNorms = this.calculateMonthNorms(year, month);
@@ -779,6 +780,14 @@ export class ManagerScheduleEngine {
       }
     } else if (dayRequirements) {
       Object.assign(dayRequirementsMap, dayRequirements);
+    }
+
+    // Mapa standardowych wymogów tygodniowych kawiarni (dni tygodnia 0..7)
+    const weeklyRequirementsMap = new Map<number, import('../../../types').ManagerWeeklyRequirement>();
+    if (weeklyRequirements && Array.isArray(weeklyRequirements)) {
+      for (const w of weeklyRequirements) {
+        weeklyRequirementsMap.set(w.day_of_week, w);
+      }
     }
 
     const allMonthViolations: LaborLawViolation[] = [];
@@ -878,6 +887,8 @@ export class ManagerScheduleEngine {
 
     // Zmiany wsparcia na INNYCH kawiarniach (SUP, SAM, SPM) — liczą się do czasu pracy menedżera, ale NIE do obsady lokalnej
     const externalSupportCodes = new Set(['SUP', 'SAM', 'SPM']);
+    // Zmiany Non-Coverage (NC, administracja SM, szkolenia T, BT, PRE, MEE) — liczą się do etatu, ale NIE PROWADZĄ ZMIANY NA SALI
+    const nonCoverageCodes = new Set(['NC', 'T', 'TAM', 'TPM', 'BT', 'PRE', 'MEE', 'RET']);
     const openingShiftCodes = new Set(['AM', 'AMN', 'AMB']); // otwarcia kawiarni (SAM to wsparcie innej kawiarni)
     const closingShiftCodes = new Set(['PM', 'PMN', 'PMB']); // zamknięcia kawiarni (SPM to wsparcie innej kawiarni)
     const nonWorkingCodes = new Set(['OFF', 'L4', 'M', 'Z', 'FULL']);
@@ -912,15 +923,22 @@ export class ManagerScheduleEngine {
       const openingManagers: string[] = [];
       const closingManagers: string[] = [];
       const externalSupportManagers: string[] = [];
+      const ncManagers: string[] = [];
 
       for (const row of rows) {
         const shift = row.shifts[day];
         if (!shift) continue;
         const code = shift.shift_code;
+        const shiftDef = shiftDefMap.get(code);
+        const isNonCoverage = nonCoverageCodes.has(code) || shiftDef?.category === 'nc' || shiftDef?.is_nc === 1;
 
-        // Menedżer liczy się do obsady kawiarni tylko gdy pracuje na miejscu (nie jest to nieobecność H/L4 ani wsparcie na zewnątrz SUP/SAM/SPM)
-        if (!nonWorkingCodes.has(code) && code !== 'H' && !externalSupportCodes.has(code)) {
+        // Menedżer liczy się jako osoba PROWADZĄCA ZMIANĘ (Coverage) tylko gdy pracuje na sali i NIE JEST to zmiana NC ani szkoleniowa T
+        if (!nonWorkingCodes.has(code) && code !== 'H' && !externalSupportCodes.has(code) && !isNonCoverage) {
           totalManagersWorking++;
+        }
+
+        if (isNonCoverage && code !== 'OFF' && code !== 'H' && code !== 'L4') {
+          ncManagers.push(`${row.employee.name.split(' ')[0]} (${code})`);
         }
 
         if (externalSupportCodes.has(code)) {
@@ -937,20 +955,43 @@ export class ManagerScheduleEngine {
 
       const dayViolationsCount = rows.reduce((sum, r) => sum + (r.violationsByDay[day]?.length || 0), 0);
 
-      const req = dayRequirementsMap[day];
+      // 1. Sprawdź czy jest explicite wpisany wyjątek dla tego dnia (np. Wigilia 24.12)
+      let req = dayRequirementsMap[day];
+
+      // 2. Jeśli brak ręcznego wyjątku dla tego dnia, sprawdź standardowy profil tygodniowy kawiarni
+      if (!req && weeklyRequirementsMap.size > 0) {
+        const weeklyKey = isTradingSunday ? 7 : dayOfWeek;
+        const wReq = weeklyRequirementsMap.get(weeklyKey);
+        if (wReq) {
+          req = {
+            year,
+            month,
+            day,
+            date: dateStr,
+            is_open: wReq.is_open,
+            manager_count: wReq.manager_count,
+            start_time: wReq.start_time,
+            end_time: wReq.end_time,
+            required_hours: wReq.required_hours,
+            notes: wReq.notes || (isTradingSunday ? 'Niedziela Handlowa' : undefined)
+          };
+        }
+      }
+
       let isCoverageMet = false;
       if (req) {
         if (!req.is_open || req.manager_count === 0) {
           // Kawiarnia zamknięta - brak wymaganej obecności menedżerów
-          isCoverageMet = true;
+          isCoverageMet = totalManagersWorking === 0;
         } else if (req.manager_count === 1) {
-          // Wymagany dokładnie 1 menedżer na sali (np. Wigilia 07:00-16:00, 9h)
+          // Wymagany dokładnie 1 menedżer PROWADZĄCY ZMIANĘ na sali (NC/T wykluczone!)
           isCoverageMet = totalManagersWorking >= 1;
         } else {
-          // Standardowe 2 zmiany
+          // Standardowe 2 osoby prowadzące (otwarcie + zamknięcie)
           isCoverageMet = openingManagers.length > 0 && closingManagers.length > 0;
         }
       } else {
+        // Standard domyślny: 2 osoby prowadzące (otwarcie i zamknięcie)
         isCoverageMet = openingManagers.length > 0 && closingManagers.length > 0;
       }
 
@@ -971,6 +1012,7 @@ export class ManagerScheduleEngine {
         openingManagers,
         closingManagers,
         externalSupportManagers,
+        ncManagers,
         eventText: eventsMap[day] || undefined,
         violationsCount: dayViolationsCount,
         requirement: req,
@@ -1039,6 +1081,7 @@ export class ManagerScheduleEngine {
       daySummaries,
       events: eventsMap,
       dayRequirements: dayRequirementsMap,
+      weeklyRequirements,
       totalTeamHours,
       averageCoveragePercent,
       violations: allMonthViolations,

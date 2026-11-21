@@ -451,6 +451,17 @@ export interface ManagerDayRequirement {
   notes?: string;              // etykieta, np. 'Wigilia'
 }
 
+export interface ManagerWeeklyRequirement {
+  day_of_week: number;         // 0=Niedziela, 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 7=Niedziela Handlowa
+  day_name: string;            // np. 'Poniedziałek', 'Niedziela Handlowa'
+  is_open: boolean;            // czy kawiarnia wymaga obecności menedżera
+  manager_count: number;       // standardowo 2 menedżerów (lub 1, lub 0)
+  start_time: string;          // np. '07:00'
+  end_time: string;            // np. '22:30'
+  required_hours: number;      // wyliczone godziny dyżuru
+  notes?: string;
+}
+
 export interface DayCoverageSummary {
   day: number;
   dayName: string; // 'Wt', 'Śr', etc.
@@ -468,6 +479,7 @@ export interface DayCoverageSummary {
   openingManagers: string[];
   closingManagers: string[];
   externalSupportManagers?: string[]; // Menedżerowie na wsparciach (SUP, SAM, SPM na innych kawiarniach)
+  ncManagers?: string[];              // Menedżerowie na zmianach Non-Coverage (NC, administracja, szkolenia T — nie prowadzą sali)
   eventText?: string;
   violationsCount: number;
   requirement?: ManagerDayRequirement; // Niestandardowy wymóg obecności menedżera (np. Wigilia 1 MGR 07:00-16:00)
@@ -506,6 +518,7 @@ export interface ManagerScheduleMonthData {
   daySummaries: DayCoverageSummary[];
   events: Record<number, string>;
   dayRequirements?: Record<number, ManagerDayRequirement>; // Wymogi obecności menedżera per dzień (np. 1 MGR 07:00-16:00 w Wigilię)
+  weeklyRequirements?: ManagerWeeklyRequirement[]; // Standardowy profil tygodniowy kawiarni (np. standardowo 2 MGR)
   totalTeamHours: number;
   averageCoveragePercent: number;
   violations: LaborLawViolation[];

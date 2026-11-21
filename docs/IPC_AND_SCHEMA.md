@@ -1,11 +1,11 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-21T20:48:26.499Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-21T21:28:18.893Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
 ## 📡 1. Kontrakty Mostu IPC (`window.api.*` — `IElectronAPI`)
-Łącznie wykrytych metod IPC w `electron/preload.ts`: **146**.
+Łącznie wykrytych metod IPC w `electron/preload.ts`: **149**.
 
 | Metoda IPC | Opcjonalna | Podpis Typu | Kategoria / Uwagi |
 | :--- | :---: | :--- | :--- |
@@ -69,6 +69,9 @@
 | `window.api.saveManagerEvent` | Nie | `(event: any) => Promise<boolean>` | — |
 | `window.api.saveManagerDayRequirement` | Nie | `(req: any) => Promise<boolean>` | — |
 | `window.api.deleteManagerDayRequirement` | Nie | `(year: number, month: number, day: number) => Promise<boolean>` | — |
+| `window.api.getManagerWeeklyRequirements` | Nie | `() => Promise<any[]>` | — |
+| `window.api.saveManagerWeeklyRequirements` | Nie | `(requirements: any[]) => Promise<boolean>` | — |
+| `window.api.applyDayRequirementToWeekday` | Nie | `(payload: { year: number; month: number; dayOfWeek: number; requirement: any }) => Promise<boolean>` | — |
 | `window.api.manageEmployees` | Nie | `(payload: any) => Promise<boolean>` | — |
 | `window.api.saveManagerEmployees` | Tak | `(payload: any) => Promise<boolean>` | — |
 | `window.api.copyRosterFromPreviousMonth` | Nie | `(year: number, month: number) => Promise<any[]>` | — |
@@ -159,7 +162,7 @@
 ---
 
 ## 🗄️ 2. Schemat Tabel Bazy SQLite (`store_${safeId}.db`)
-Łącznie wykrytych tabel w `electron/database/db.ts`: **20**.
+Łącznie wykrytych tabel w `electron/database/db.ts`: **22**.
 
 ### Tabela: `app_settings`
 ```sql
@@ -393,6 +396,21 @@ CREATE TABLE IF NOT EXISTS manager_day_requirements (
 );
 ```
 
+### Tabela: `manager_weekly_requirements`
+```sql
+CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
+  day_of_week INTEGER PRIMARY KEY, -- 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 0=Nd, 7=Nd Handlowa,
+  day_name TEXT NOT NULL,
+  is_open INTEGER DEFAULT 1,
+  manager_count INTEGER DEFAULT 2,
+  start_time TEXT DEFAULT '07:00',
+  end_time TEXT DEFAULT '22:30',
+  required_hours REAL DEFAULT 16.0,
+  notes TEXT,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+```
+
 ### Tabela: `manager_monthly_roster`
 ```sql
 CREATE TABLE IF NOT EXISTS manager_monthly_roster (
@@ -488,6 +506,21 @@ CREATE TABLE IF NOT EXISTS daily_kpi_actuals_log (
   tplh REAL NOT NULL,
   delivery_trx INTEGER DEFAULT 0,
   imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Tabela: `manager_weekly_requirements`
+```sql
+CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
+  day_of_week INTEGER PRIMARY KEY,
+  day_name TEXT NOT NULL,
+  is_open INTEGER DEFAULT 1,
+  manager_count INTEGER DEFAULT 2,
+  start_time TEXT DEFAULT '07:00',
+  end_time TEXT DEFAULT '22:30',
+  required_hours REAL DEFAULT 16.0,
+  notes TEXT,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 ```
 

@@ -21,6 +21,7 @@ import { AutoScheduleModal } from './AutoScheduleModal';
 import { AutoScheduleWidget } from './AutoScheduleWidget';
 import { InterStoreSupportModal } from './InterStoreSupportModal';
 import { ManagerTeamModal } from './ManagerTeamModal';
+import { WeeklyRequirementsModal } from './WeeklyRequirementsModal';
 import { AutoScheduleResult } from '../services/autoSchedulerEngine';
 import { DEFAULT_SHIFT_DEFINITIONS } from '../constants/defaultShifts';
 import { SystemClock } from '../../../services/systemClock';
@@ -90,6 +91,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   const [showAutoScheduleModal, setShowAutoScheduleModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
+  const [showWeeklyRequirementsModal, setShowWeeklyRequirementsModal] = useState(false);
   const [autoScheduleProposal, setAutoScheduleProposal] = useState<AutoScheduleResult | null>(null);
 
   // Załadowanie danych z bazy SQLite
@@ -108,6 +110,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
         const events: { day: number; event_text: string }[] = res.events || [];
         const normRecord: MonthlyNormRecord | null = res.monthlyNorm || null;
         const dayRequirements = res.dayRequirements || [];
+        const weeklyRequirements = res.weeklyRequirements || [];
 
         setMonthlyNormRecord(normRecord);
         setBoundaryShifts(res.boundaryShifts);
@@ -123,7 +126,8 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
           res.boundaryShifts,
           res.rcpLogs,
           res.hasCompleteRcpLogs,
-          dayRequirements
+          dayRequirements,
+          weeklyRequirements
         );
 
         setScheduleData(calculated);
@@ -384,6 +388,35 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
     }
   };
 
+  // Zapis stałego wzorca tygodnia kawiarni (standardowo 2 MGR)
+  const handleSaveWeeklyRequirements = async (reqs: import('../../../types').ManagerWeeklyRequirement[]) => {
+    try {
+      if ((window as any).api?.saveManagerWeeklyRequirements) {
+        await (window as any).api.saveManagerWeeklyRequirements(reqs);
+        await loadScheduleData();
+      }
+    } catch (err) {
+      console.error('Błąd zapisu profilu tygodniowego:', err);
+    }
+  };
+
+  // Masowe zastosowanie wymogu do wszystkich dni danego typu w miesiącu
+  const handleApplyDayRequirementToWeekday = async (payload: {
+    year: number;
+    month: number;
+    dayOfWeek: number;
+    requirement: any;
+  }) => {
+    try {
+      if ((window as any).api?.applyDayRequirementToWeekday) {
+        await (window as any).api.applyDayRequirementToWeekday(payload);
+        await loadScheduleData();
+      }
+    } catch (err) {
+      console.error('Błąd masowego zapisu wymogu dnia:', err);
+    }
+  };
+
   // Weryfikacja braków obsady (z uwzględnieniem dni o wymogu 1 MGR lub 0 MGR)
   const coverageGapsCount = scheduleData?.daySummaries.filter(
     d => d.isCoverageMet !== undefined ? !d.isCoverageMet : (!d.hasOpeningCoverage || !d.hasClosingCoverage)
@@ -485,6 +518,19 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Profil Tygodnia (2 MGR) */}
+                <div className="flex items-center gap-1.5 pl-2 border-l border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowWeeklyRequirementsModal(true)}
+                    className="px-2.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#006241] font-bold text-[11px] border border-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    title="Skonfiguruj stały profil tygodniowy (godziny obecności i domyślnie 2 MGR) dla każdego dnia tygodnia"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Profil Tygodnia (2 MGR)</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -559,6 +605,8 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
               onUpdateEvent={handleUpdateEvent}
               onSaveDayRequirement={handleSaveDayRequirement}
               onResetDayRequirement={handleResetDayRequirement}
+              onApplyDayRequirementToWeekday={handleApplyDayRequirementToWeekday}
+              onOpenWeeklyModal={() => setShowWeeklyRequirementsModal(true)}
               onOpenComplianceModal={() => setShowComplianceModal(true)}
               onOpenConflictModal={() => setShowRcpConflictModal(true)}
               onOpenTeamModal={() => setShowTeamModal(true)}
@@ -756,6 +804,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
           onOpenSupportModal={() => setShowSupportModal(true)}
           onOpenVersionModal={() => setShowVersionModal(true)}
           onOpenTeamModal={() => setShowTeamModal(true)}
+          onOpenWeeklyRequirementsModal={() => setShowWeeklyRequirementsModal(true)}
           onExportExcel={handleExportExcel}
           onToggleTorView={() => setActiveTab(prev => (prev === 'schedule' ? 'tor' : 'schedule'))}
           isTorActive={activeTab === 'tor'}
@@ -804,6 +853,17 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
           onSave={handleSaveTeam}
           onCopyPreviousMonth={handleCopyPreviousMonthRoster}
           onClose={() => setShowTeamModal(false)}
+        />
+      )}
+
+      {/* MODAL STAŁEGO WZORCA TYGODNIA (2 MGR) */}
+      {showWeeklyRequirementsModal && scheduleData && (
+        <WeeklyRequirementsModal
+          isOpen={showWeeklyRequirementsModal}
+          initialRequirements={scheduleData.weeklyRequirements}
+          isReadOnly={isClosed}
+          onSave={handleSaveWeeklyRequirements}
+          onClose={() => setShowWeeklyRequirementsModal(false)}
         />
       )}
     </div>

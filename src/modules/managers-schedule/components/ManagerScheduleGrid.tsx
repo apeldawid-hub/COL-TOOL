@@ -30,6 +30,8 @@ interface ManagerScheduleGridProps {
   onUpdateEvent: (day: number, text: string) => Promise<void>;
   onSaveDayRequirement?: (req: ManagerDayRequirement) => Promise<void>;
   onResetDayRequirement?: (year: number, month: number, day: number) => Promise<void>;
+  onApplyDayRequirementToWeekday?: (payload: { year: number; month: number; dayOfWeek: number; requirement: any }) => Promise<void>;
+  onOpenWeeklyModal?: () => void;
   onOpenComplianceModal?: () => void;
   onOpenConflictModal?: () => void;
   boundaryShifts?: {
@@ -48,6 +50,8 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
   onUpdateEvent,
   onSaveDayRequirement,
   onResetDayRequirement,
+  onApplyDayRequirementToWeekday,
+  onOpenWeeklyModal,
   onOpenComplianceModal,
   onOpenConflictModal,
   boundaryShifts,
@@ -1506,8 +1510,8 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                         : isSingleManagerDay
                         ? `Dzień ${d.day} (Wymóg: 1 MGR, ${req?.start_time}–${req?.end_time}, ${req?.required_hours}h): ${
                             isSingleOk ? 'OBSADZONY' : 'BRAK OBSADY!'
-                          }. Menedżerowie na sali: ${d.openingManagers.concat(d.closingManagers).join(', ') || d.totalManagersWorking + ' os.'}`
-                        : `Dzień ${d.day}: ${d.totalManagersWorking} menedżerów pracujących w kawiarni.${extSupportCount > 0 ? ` Wsparcie na innych kawiarniach (${extSupportCount}): ${d.externalSupportManagers?.join(', ')}.` : ''} Otwarcia: ${d.openingManagers.join(', ') || 'BRAK'}. Zamknięcia: ${d.closingManagers.join(', ') || 'BRAK'}`
+                          }. Menedżerowie prowadzący: ${d.openingManagers.concat(d.closingManagers).join(', ') || d.totalManagersWorking + ' os.'}${d.ncManagers?.length ? ` [NC/T: ${d.ncManagers.join(', ')}]` : ''}`
+                        : `Dzień ${d.day}: ${d.totalManagersWorking} menedżerów prowadzących zmianę na sali.${(d.ncManagers?.length || 0) > 0 ? ` Non-Coverage (${d.ncManagers?.length}): ${d.ncManagers?.join(', ')}.` : ''}${extSupportCount > 0 ? ` Wsparcie na innych kawiarniach (${extSupportCount}): ${d.externalSupportManagers?.join(', ')}.` : ''} Otwarcia: ${d.openingManagers.join(', ') || 'BRAK'}. Zamknięcia: ${d.closingManagers.join(', ') || 'BRAK'}`
                     }
                   >
                     <div className="flex flex-col items-center gap-0.5">
@@ -1540,6 +1544,14 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                           title={`Wsparcie poza kawiarnią:\n${d.externalSupportManagers?.join('\n')}`}
                         >
                           +{extSupportCount}
+                        </span>
+                      )}
+                      {d.ncManagers && d.ncManagers.length > 0 && (
+                        <span 
+                          className="text-[7px] leading-none px-0.5 py-0.2 rounded bg-purple-900 text-purple-200 font-bold border border-purple-500 mt-0.5" 
+                          title={`Non-Coverage / Szkolenia (wykluczone z prowadzenia zmiany na sali):\n${d.ncManagers.join('\n')}`}
+                        >
+                          +{d.ncManagers.length} NC
                         </span>
                       )}
                     </div>
@@ -1832,6 +1844,20 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
           holidayName={dayReqModalData.holidayName}
           initialRequirement={dayReqModalData.requirement}
           isReadOnly={isReadOnly}
+          onApplyToAllWeekday={onApplyDayRequirementToWeekday ? async (dow, req) => {
+            await onApplyDayRequirementToWeekday({
+              year: data.year,
+              month: data.month,
+              dayOfWeek: dow,
+              requirement: req
+            });
+            setToastMessage({
+              type: 'success',
+              title: `📅 Zaktualizowano wszystkie dni typu: ${dayReqModalData.dayName}!`,
+              message: `Wymóg: ${req.manager_count} MGR (${req.start_time || '07:00'} – ${req.end_time || '22:30'}, ${req.required_hours || 16}h).`
+            });
+          } : undefined}
+          onOpenWeeklyRequirements={onOpenWeeklyModal}
           onSave={async (req) => {
             if (onSaveDayRequirement) {
               await onSaveDayRequirement(req);

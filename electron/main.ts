@@ -1037,6 +1037,22 @@ function setupIpcHandlers() {
       // Tabela mogła jeszcze nie istnieć w starszej bazie
     }
 
+    // 5c. Standardowy profil tygodniowy kawiarni (dni tygodnia 0..7: domyślnie 2 MGR)
+    let weeklyRequirements: any[] = [];
+    try {
+      const wStmt = db.prepare(`
+        SELECT day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes
+        FROM manager_weekly_requirements
+        ORDER BY CASE WHEN day_of_week = 0 THEN 7 WHEN day_of_week = 7 THEN 8 ELSE day_of_week END ASC
+      `);
+      while (wStmt.step()) {
+        weeklyRequirements.push(wStmt.getAsObject());
+      }
+      wStmt.free();
+    } catch (_) {
+      // Tabela mogła jeszcze nie istnieć
+    }
+
     // 6. Zmiany graniczne z sąsiednich miesięcy dla inspekcji Kodeksu Pracy na styku miesięcy
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
@@ -1120,6 +1136,7 @@ function setupIpcHandlers() {
       shifts,
       events,
       dayRequirements,
+      weeklyRequirements,
       monthlyNorm,
       boundaryShifts: {
         prevMonthShifts,
@@ -1718,6 +1735,123 @@ function setupIpcHandlers() {
       Number(month),
       Number(day)
     ]);
+    dbManager.persist();
+    if (mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return true;
+  });
+
+  // Pobranie profilu standardowego tygodnia (dni tygodnia 0..7)
+  ipcMain.handle('db:get-manager-weekly-requirements', () => {
+    const db = dbManager.getDb();
+    try {
+      const stmt = db.prepare(`
+        SELECT day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes
+        FROM manager_weekly_requirements
+        ORDER BY CASE WHEN day_of_week = 0 THEN 7 WHEN day_of_week = 7 THEN 8 ELSE day_of_week END ASC
+      `);
+      const list: any[] = [];
+      while (stmt.step()) {
+        list.push(stmt.getAsObject());
+      }
+      stmt.free();
+      return list;
+    } catch (e) {
+      console.error('Błąd pobierania manager_weekly_requirements:', e);
+      return [];
+    }
+  });
+
+  // Zapis całego profilu standardowego tygodnia (wszystkie dni lub wybrane)
+  ipcMain.handle('db:save-manager-weekly-requirements', (_event, requirements: any[]) => {
+    const db = dbManager.getDb();
+    if (!Array.isArray(requirements)) return false;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO manager_weekly_requirements (day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(day_of_week) DO UPDATE SET
+          day_name = excluded.day_name,
+          is_open = excluded.is_open,
+          manager_count = excluded.manager_count,
+          start_time = excluded.start_time,
+          end_time = excluded.end_time,
+          required_hours = excluded.required_hours,
+          notes = excluded.notes,
+          updated_at = CURRENT_TIMESTAMP
+      `);
+      for (const req of requirements) {
+        stmt.run([
+          Number(req.day_of_week),
+          String(req.day_name),
+          req.is_open !== undefined ? (req.is_open ? 1 : 0) : 1,
+          req.manager_count !== undefined ? Number(req.manager_count) : 2,
+          req.start_time ? String(req.start_time) : null,
+          req.end_time ? String(req.end_time) : null,
+          req.required_hours !== undefined ? Number(req.required_hours) : null,
+          req.notes ? String(req.notes).trim() : null
+        ]);
+      }
+      stmt.free();
+      dbManager.persist();
+      if (mainWindow) {
+        mainWindow.webContents.send('data:refreshed');
+      }
+      return true;
+    } catch (e) {
+      console.error('Błąd zapisu manager_weekly_requirements:', e);
+      return false;
+    }
+  });
+
+  // Masowe zastosowanie wymogu do wszystkich dni danego typu w miesiącu (np. do wszystkich poniedziałków)
+  ipcMain.handle('db:apply-day-requirement-to-weekday', (_event, payload: {
+    year: number;
+    month: number;
+    dayOfWeek: number; // 0=Nd, 1=Pn, ..., 6=So, 7=Nd Handlowa
+    requirement: {
+      is_open: boolean | number;
+      manager_count: number;
+      start_time?: string | null;
+      end_time?: string | null;
+      required_hours?: number | null;
+      notes?: string | null;
+    }
+  }) => {
+    const db = dbManager.getDb();
+    const { year, month, dayOfWeek, requirement } = payload;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const isOpen = requirement.is_open ? 1 : 0;
+    const managerCount = Number(requirement.manager_count ?? 2);
+    const startTime = requirement.start_time || null;
+    const endTime = requirement.end_time || null;
+    const requiredHours = requirement.required_hours !== undefined ? Number(requirement.required_hours) : null;
+    const notes = requirement.notes || null;
+
+    const stmt = db.prepare(`
+      INSERT INTO manager_day_requirements (year, month, day, date, is_open, manager_count, start_time, end_time, required_hours, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(year, month, day) DO UPDATE SET
+        is_open = excluded.is_open,
+        manager_count = excluded.manager_count,
+        start_time = excluded.start_time,
+        end_time = excluded.end_time,
+        required_hours = excluded.required_hours,
+        notes = excluded.notes
+    `);
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(year, month - 1, day);
+      const dow = d.getDay();
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isTrading = dayOfWeek === 7;
+      const targetDow = isTrading ? 0 : dayOfWeek;
+      if (dow === targetDow) {
+        stmt.run([year, month, day, dateStr, isOpen, managerCount, startTime, endTime, requiredHours, notes]);
+      }
+    }
+    stmt.free();
     dbManager.persist();
     if (mainWindow) {
       mainWindow.webContents.send('data:refreshed');

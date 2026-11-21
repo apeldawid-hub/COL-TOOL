@@ -24,6 +24,42 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.15',
+    date: '2026-11-21',
+    title: 'Standardowy Profil Tygodnia (Godziny & 2 MGR) oraz Wykluczenie Non-Coverage (NC / T) ze Zmian Prowadzących',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Stały profil tygodniowy kawiarni w SQLite: predefiniowane godziny obecności i standard 2 MGR na sali dla 8 wariantów dni tygodnia.',
+      'Domyślny profil sieci Starbucks: Pn–So 07:00–22:30 (16h), Niedziela 08:00–21:00 (14h/16h) z automatycznym dziedziczeniem przez cały kalendarz.',
+      'Dedykowany panel WeeklyRequirementsModal z szybkim dostępem w nagłówku grafiku oraz w Speed-Dialu.',
+      'Bezwzględne wykluczenie Non-Coverage (NC, T, TAM, TPM, BT, PRE, MEE, RET) z osób prowadzących zmianę na sali (Coverage).',
+      'Nowy fioletowy badge +X NC w wierszu "Obsada (Dziennie)" oraz automatyczne uwzględnienie profilu w AutoSchedulerze AI.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Tabela SQLite manager_weekly_requirements oraz modal WeeklyRequirementsModal do zarządzania stałym profilem godzin i obsady dni tygodnia.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Automatyczne wykluczenie zmian Non-Coverage (NC) i szkoleń (T) z liczby osób prowadzących zmianę na sali (totalManagersWorking).',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Opcja masowej propagacji wymogów dnia na wszystkie dni danego typu w miesiącu z poziomu DayRequirementsModal.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Wsparcie stałego profilu tygodnia w algorytmie solvera AutoSchedulerEngine.',
+        module: 'managers_schedule'
+      }
+    ]
+  },
+  {
     version: '2.9.14',
     date: '2026-11-21',
     title: 'Wymogi Obecności Menedżerów w Dniach Niestandardowych (Wigilia, Sylwester, 1 MGR, 0 MGR) & Elastyczne Okno Dyżuru na Siatce Grafiku',

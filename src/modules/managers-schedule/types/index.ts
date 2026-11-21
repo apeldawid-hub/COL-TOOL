@@ -8,6 +8,7 @@ export type {
   ManagerCalculatedRow,
   DayCoverageSummary,
   ManagerDayRequirement,
+  ManagerWeeklyRequirement,
   MonthlyNormRecord,
   ManagerScheduleMonthData,
   RcpAbsenceConflict,

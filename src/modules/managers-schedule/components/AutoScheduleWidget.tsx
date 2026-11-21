@@ -43,6 +43,7 @@ interface AutoScheduleWidgetProps {
   onOpenVersionModal?: () => void;
   onExportExcel?: () => void;
   onOpenTeamModal?: () => void;
+  onOpenWeeklyRequirementsModal?: () => void;
   onToggleTorView?: () => void;
   isTorActive?: boolean;
   isPublished?: boolean;
@@ -63,6 +64,7 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
   onOpenVersionModal,
   onExportExcel,
   onOpenTeamModal,
+  onOpenWeeklyRequirementsModal,
   onToggleTorView,
   isTorActive = false,
   isPublished = false,
@@ -148,7 +150,8 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
       balanceFairness: true,
       smoothWeeklyHours: true,
       iterationsCount: 2000,
-      dayRequirements: data.dayRequirements
+      dayRequirements: data.dayRequirements,
+      weeklyRequirements: data.weeklyRequirements
     };
 
     // Uruchamiamy asynchronicznie w tle (nie blokuje renderowania grafiku)
@@ -399,7 +402,7 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
           )}
 
           {/* RZĄD GŁÓWNYCH MINI-IKONEK SZYBKIEJ AKCJI (SPEED DIAL) */}
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid grid-cols-7 gap-1">
             
             {/* 1. AUTOSCHEDULING AI */}
             <button
@@ -469,6 +472,24 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
                   <Users className="w-3.5 h-3.5 text-[#006241]" />
                 </div>
                 <span className="text-[9.5px] font-bold tracking-tight">Zespół</span>
+              </button>
+            )}
+
+            {/* 5. WZORZEC TYGODNIA (2 MGR) */}
+            {onOpenWeeklyRequirementsModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onOpenWeeklyRequirementsModal();
+                }}
+                title="Stały Wzorzec Tygodnia (Godziny & 2 MGR na sali)"
+                className="p-2 rounded-2xl bg-white hover:bg-emerald-50/70 border border-stone-200 text-stone-700 hover:text-[#006241] flex flex-col items-center justify-center gap-1 transition cursor-pointer shadow-2xs group"
+              >
+                <div className="w-7 h-7 rounded-xl bg-emerald-100 text-[#006241] flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Clock className="w-3.5 h-3.5 text-[#006241]" />
+                </div>
+                <span className="text-[9.5px] font-bold tracking-tight">Wzorzec</span>
               </button>
             )}
 
