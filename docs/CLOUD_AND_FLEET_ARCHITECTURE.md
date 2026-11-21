@@ -145,3 +145,9 @@ Wszelkie dodatkowe lokale dodawane przez użytkownika są oznaczane jako `isCust
     2. Pre-Restore Safety Snapshot (automatyczna migawka ratunkowa bieżącego stanu tuż przed cofnięciem).
     3. Selektywne przywracanie domenowe (`schedules`, `personnel`, `financials`, `trainings`).
   - Wdrożenie dwustopniowego przywracania (Read-Only Preview) oraz komunikatu autorytatywnego dla stacji podrzędnych (`CloudRestoreNoticeModal`).
+- **2026-11-21 (v2.9.11):**
+  - Pełna reaktywność rejestracji i persystencji nowych kawiarni we flocie:
+    1. Wdrożenie reaktywnego odświeżania `availableStores` w `StoreContext` opartego o wersję stanu (`storesVersion`).
+    2. Reakcja `FleetService` oraz `FleetMasterDashboard` na zdarzenie `sbx-stores-list-updated` (natychmiastowe uaktualnienie spisu kawiarni i statystyk floty).
+    3. Dedykowany przycisk i modal `+ Dodaj Kawiarnię` w pulpicie Centrali `FleetMasterDashboard`.
+    4. Eliminacja cichego błędu w `StoreSwitcherModal` i weryfikacja statusu dodawania kawiarni.

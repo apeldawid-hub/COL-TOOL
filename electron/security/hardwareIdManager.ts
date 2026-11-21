@@ -136,7 +136,17 @@ export class HardwareIdManager {
     const cpus = os.cpus() || [];
     const cpuModel = cpus[0]?.model ? cpus[0].model.trim() : 'UNKNOWN_CPU';
     const cpuCores = cpus.length || 1;
-    const hostname = os.hostname() ? os.hostname().trim().toLowerCase() : 'unknown-host';
+    let hostname = os.hostname() ? os.hostname().trim().toLowerCase() : 'unknown-host';
+    if (platform === 'darwin') {
+      try {
+        const localHostName = execSync('scutil --get LocalHostName', {
+          encoding: 'utf8',
+          timeout: 1000,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }).trim().toLowerCase();
+        if (localHostName) hostname = localHostName;
+      } catch (_) {}
+    }
     const primaryMac = this.getPrimaryMacAddress();
 
     return {
@@ -251,6 +261,27 @@ export class HardwareIdManager {
    * - Deterministically sorts candidates alphabetically by name.
    */
   public getPrimaryMacAddress(): string {
+    // 0. macOS: Pobierz stały, fizyczny adres sprzętowy (factory MAC) z pominięciem losowych adresów prywatnych Wi-Fi
+    if (process.platform === 'darwin') {
+      try {
+        const out = execSync('networksetup -listallhardwareports', {
+          encoding: 'utf8',
+          timeout: 1500,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        });
+        // Priorytet 1: Fizyczny interfejs Wi-Fi (en0 na MacBookach)
+        const wifiMatch = out.match(/Hardware Port:\s*Wi-Fi[\s\S]*?Device:\s*(en[0-9]+)[\s\S]*?Ethernet Address:\s*([a-f0-9:]{17})/i);
+        if (wifiMatch && wifiMatch[2]) {
+          return wifiMatch[2].toLowerCase().trim();
+        }
+        // Priorytet 2: Fizyczny Ethernet (wbudowany)
+        const ethMatch = out.match(/Hardware Port:\s*Ethernet[\s\S]*?Device:\s*(en[0-9]+)[\s\S]*?Ethernet Address:\s*([a-f0-9:]{17})/i);
+        if (ethMatch && ethMatch[2]) {
+          return ethMatch[2].toLowerCase().trim();
+        }
+      } catch (_) {}
+    }
+
     const interfaces = os.networkInterfaces();
     if (!interfaces) {
       return '00:00:00:00:00:00';

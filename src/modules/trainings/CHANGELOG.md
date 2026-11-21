@@ -9,7 +9,12 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+
+## [v2.9.12] — 2026-11-21
+- Bieżąca synchronizacja i optymalizacje modułu.
+
 ## [v2.9.11] — 2026-11-06
+- **Audyt Bezpieczeństwa & SQL Hardening**: Wprowadzono parametryzację zapytań SQL (`?`) oraz walidację typu numerycznego dla `partnerId` w serwisach bazy danych szkoleń (`deleteTrainingPartner`, `getTrainingShifts`, `saveTrainingShiftsBatch`, `getTrainingSkillChecks`).
 - Bieżąca synchronizacja i optymalizacje modułu.
 
 ## [v2.9.10] — 2026-11-06

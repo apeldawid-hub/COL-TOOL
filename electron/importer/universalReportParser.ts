@@ -184,9 +184,38 @@ export class UniversalReportParser {
   ): Promise<ParseReportPreviewResult> {
     try {
       let buffer: Buffer;
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB limit bezpieczeństwa
       if (typeof fileBufferOrPath === 'string') {
+        if (!fs.existsSync(fileBufferOrPath)) {
+          return {
+            success: false,
+            reportType: 'UNKNOWN',
+            reportTypeName: 'Błąd',
+            validation: { isValid: false, warnings: [], errors: ['Plik nie istnieje na dysku.'] },
+            message: 'Wybrany plik nie istnieje.'
+          };
+        }
+        const stat = fs.statSync(fileBufferOrPath);
+        if (stat.size > MAX_FILE_SIZE) {
+          return {
+            success: false,
+            reportType: 'UNKNOWN',
+            reportTypeName: 'Błąd',
+            validation: { isValid: false, warnings: [], errors: ['Plik przekracza dopuszczalny limit rozmiaru (50 MB).'] },
+            message: 'Rozmiar pliku przekracza dopuszczalny limit bezpieczeństwa (50 MB).'
+          };
+        }
         buffer = fs.readFileSync(fileBufferOrPath);
       } else {
+        if (fileBufferOrPath.length > MAX_FILE_SIZE) {
+          return {
+            success: false,
+            reportType: 'UNKNOWN',
+            reportTypeName: 'Błąd',
+            validation: { isValid: false, warnings: [], errors: ['Plik przekracza dopuszczalny limit rozmiaru (50 MB).'] },
+            message: 'Rozmiar bufora pliku przekracza dopuszczalny limit bezpieczeństwa (50 MB).'
+          };
+        }
         buffer = fileBufferOrPath;
       }
 

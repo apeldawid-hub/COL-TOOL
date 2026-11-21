@@ -61,7 +61,7 @@
   },
   "AppRuntimeMode": {
     "file": "src/context/AuthContext.tsx",
-    "line": 16,
+    "line": 17,
     "kind": "type"
   },
   "AppUserRole": {
@@ -81,12 +81,12 @@
   },
   "AuthContextType": {
     "file": "src/context/AuthContext.tsx",
-    "line": 18,
+    "line": 19,
     "kind": "interface"
   },
   "AuthProvider": {
     "file": "src/context/AuthContext.tsx",
-    "line": 54,
+    "line": 56,
     "kind": "const"
   },
   "AuthService": {
@@ -1811,7 +1811,7 @@
   },
   "fleetService": {
     "file": "src/services/admin/fleetService.ts",
-    "line": 623,
+    "line": 634,
     "kind": "const"
   },
   "formatFirestoreValue": {
@@ -1836,7 +1836,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 1025,
+    "line": 1060,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1851,7 +1851,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 1010,
+    "line": 1045,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1866,7 +1866,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 1017,
+    "line": 1052,
     "kind": "function"
   },
   "isManagerInTraining": {
@@ -1876,7 +1876,7 @@
   },
   "licensingService": {
     "file": "src/services/security/licensingService.ts",
-    "line": 639,
+    "line": 657,
     "kind": "const"
   },
   "logger": {
@@ -1941,12 +1941,12 @@
   },
   "useAuth": {
     "file": "src/context/AuthContext.tsx",
-    "line": 394,
+    "line": 473,
     "kind": "const"
   },
   "useStore": {
     "file": "src/context/StoreContext.tsx",
-    "line": 167,
+    "line": 176,
     "kind": "const"
   },
   "useTutorial": {

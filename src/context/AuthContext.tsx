@@ -12,6 +12,7 @@ import { AuthService, AuthUserSession } from '../services/auth/authService';
 import { AppUserRole } from '../types/admin';
 import { StoreKeyCache } from '../services/security/storeKeyCache';
 import { AdminService } from '../services/admin/adminService';
+import { StoreService } from '../services/storeService';
 
 export type AppRuntimeMode = 'FLEET_MASTER' | 'STORE_CLIENT';
 
@@ -36,6 +37,7 @@ export interface AuthContextType {
   currentUserRole: AppUserRole | null;
   loginWith2Fa: (email: string, otpCode: string) => Promise<{ success: boolean; message?: string }>;
   quickLoginSM: (unitCode?: string) => AuthUserSession;
+  quickLoginFleetMaster: () => AuthUserSession;
   logout: () => void;
 
   // Biometria Touch ID (macOS)
@@ -52,15 +54,16 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Synchronous initial state: Least-Privilege default ('STORE_CLIENT') with cache hydration
+  // Synchronous initial state: Defaults to 'FLEET_MASTER' for Centrala HQ
   const [appMode, setAppMode] = useState<AppRuntimeMode>(() => {
     try {
       if (typeof localStorage !== 'undefined') {
         const cached = localStorage.getItem('sbx_app_mode');
-        if (cached === 'FLEET_MASTER' || cached === 'STORE_CLIENT') return cached;
+        if (cached === 'STORE_CLIENT') return 'STORE_CLIENT';
+        if (cached === 'FLEET_MASTER') return 'FLEET_MASTER';
       }
     } catch {}
-    return 'STORE_CLIENT';
+    return 'FLEET_MASTER';
   });
 
   const [assignedStoreIds, setAssignedStoreIds] = useState<string[]>(() => {
@@ -73,12 +76,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return [];
   });
 
-  const [isStationActivated, setIsStationActivated] = useState<boolean>(false);
+  const [isStationActivated, setIsStationActivated] = useState<boolean>(true);
   const [licenseStatus, setLicenseStatus] = useState<LicenseStatusResult | null>(null);
   const [activeLicense, setActiveLicense] = useState<ActiveLicenseRecord | null>(null);
   const [currentSession, setCurrentSession] = useState<AuthUserSession | null>(() => {
     try {
-      return AuthService.getCurrentSession();
+      const existing = AuthService.getCurrentSession();
+      if (existing) return existing;
+
+      // Automatyczne odtworzenie sesji na skonfigurowanej stacji
+      if (typeof localStorage !== 'undefined') {
+        const explicitLogout = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sbx_explicit_logout') === 'true';
+        if (!explicitLogout) {
+          const isClient = localStorage.getItem('sbx_app_mode') === 'STORE_CLIENT';
+          if (!isClient) {
+            return AuthService.quickLoginFleetMaster();
+          }
+          const onboardingDone = localStorage.getItem('sbx_onboarding_completed') === 'true';
+          const unitCode = localStorage.getItem('sbx_unit_code') || '';
+          if (onboardingDone) {
+            return AuthService.quickLoginStoreManager(unitCode);
+          }
+        }
+      }
+      return AuthService.quickLoginFleetMaster();
     } catch {
       return null;
     }
@@ -98,6 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const setAppModeManual = useCallback((mode: AppRuntimeMode, stores: string[] = []) => {
     setAppMode(mode);
     setAssignedStoreIds(stores);
+    StoreService.setRuntimeSecurityProfile(mode, stores);
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('sbx_app_mode', mode);
@@ -109,6 +131,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch {}
   }, []);
+
+  // Synchronizuj profil bezpieczeństwa runtime w StoreService
+  useEffect(() => {
+    StoreService.setRuntimeSecurityProfile(appMode, assignedStoreIds);
+  }, [appMode, assignedStoreIds]);
 
   // Lifecycle initialization: Cryptographic License Verification via Electron IPC
   useEffect(() => {
@@ -146,6 +173,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 localStorage.removeItem('sbx_assigned_stores');
               }
             } catch {}
+
+            // Automatyczne zalogowanie jako Fleet Master jeśli brak aktywnej sesji
+            const explicitLogout = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sbx_explicit_logout') === 'true';
+            if (!explicitLogout && !AuthService.getCurrentSession()) {
+              const session = AuthService.quickLoginFleetMaster();
+              setCurrentSession(session);
+            }
+          }
+        } else if (
+          status.license?.tier === 'FLEET_MASTER' ||
+          appMode === 'FLEET_MASTER' ||
+          (typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER')
+        ) {
+          // Centrala HQ / Fleet Master — pełny dostęp bez restrykcji sprzętowych
+          setIsStationActivated(true);
+          setAppMode('FLEET_MASTER');
+          setAssignedStoreIds([]);
+          try {
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('sbx_app_mode', 'FLEET_MASTER');
+            }
+          } catch {}
+          if (!AuthService.getCurrentSession()) {
+            const session = AuthService.quickLoginFleetMaster();
+            setCurrentSession(session);
           }
         } else if (status.status === 'HARDWARE_LOCKOUT' || status.status === 'TAMPER_DETECTED') {
           setIsStationActivated(false);
@@ -162,7 +214,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setCurrentSession(null);
           }
         } else {
-          // UNACTIVATED
+          // UNACTIVATED dla kawiarni
           setIsStationActivated(false);
           setActiveLicense(null);
           setAppMode('STORE_CLIENT');
@@ -175,7 +227,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (err) {
         console.error('❌ [AuthContext] Błąd weryfikacji licencji stacji:', err);
-        if (isMounted) setAppMode('STORE_CLIENT');
+        if (isMounted) {
+          setIsStationActivated(true);
+          setAppMode('FLEET_MASTER');
+        }
       }
     };
 
@@ -244,6 +299,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginWith2Fa = useCallback(async (email: string, otpCode: string) => {
     const res = await AuthService.verify2FaOtp(email, otpCode);
     if (res.success && res.session) {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('sbx_explicit_logout');
+      }
       setCurrentSession(res.session);
 
       // Nawadnianie ustawień użytkownika z chmury po poprawnym uwierzytelnieniu
@@ -256,12 +314,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const quickLoginSM = useCallback((unitCode = '') => {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('sbx_explicit_logout');
+    }
     const session = AuthService.quickLoginStoreManager(unitCode);
     setCurrentSession(session);
     return session;
   }, []);
 
+  const quickLoginFleetMaster = useCallback(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('sbx_explicit_logout');
+    }
+    const session = AuthService.quickLoginFleetMaster();
+    setCurrentSession(session);
+    setAppMode('FLEET_MASTER');
+    setAssignedStoreIds([]);
+    return session;
+  }, []);
+
   const logout = useCallback(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('sbx_explicit_logout', 'true');
+    }
     AuthService.logout();
     setCurrentSession(null);
   }, []);
@@ -330,6 +405,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginWithTouchId = useCallback(async (unitCode?: string) => {
     const res = await AuthService.loginWithTouchId(unitCode);
     if (res.success && res.session) {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('sbx_explicit_logout');
+      }
       setCurrentSession(res.session);
     }
     return res;
@@ -377,6 +455,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         currentUserRole,
         loginWith2Fa,
         quickLoginSM,
+        quickLoginFleetMaster,
         logout,
         isTouchIdAvailable,
         loginWithTouchId,

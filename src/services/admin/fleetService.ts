@@ -33,6 +33,17 @@ export class FleetService {
 
   private constructor() {
     this.loadState();
+    if (typeof window !== 'undefined') {
+      try {
+        window.addEventListener('sbx-stores-list-updated', () => {
+          this.notify();
+        });
+      } catch {}
+    }
+  }
+
+  public refresh(): void {
+    this.notify();
   }
 
   public static getInstance(): FleetService {

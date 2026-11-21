@@ -30,7 +30,9 @@ import {
   FileText,
   UserCheck,
   Check,
+  Plus,
   PlusCircle,
+  Sparkles,
   ChevronRight,
   Database,
   ArrowRight,
@@ -73,7 +75,7 @@ interface FleetMasterDashboardProps {
 }
 
 export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNavigateToStore }) => {
-  const { switchStore, currentStore } = useStore();
+  const { switchStore, currentStore, addCustomStore } = useStore();
   const { currentSession } = useAuth();
 
   const [stores, setStores] = useState<FleetStoreRecord[]>(() => fleetService.getFleetStores());
@@ -122,6 +124,84 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   const [ksChallengeInput, setKsChallengeInput] = useState<string>('');
   const [ksError, setKsError] = useState<string | null>(null);
 
+  // Modal dodawania nowej kawiarni do floty
+  const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState<boolean>(false);
+  const [newStoreName, setNewStoreName] = useState<string>('');
+  const [newStoreMpk, setNewStoreMpk] = useState<string>('');
+  const [newStoreUnitCode, setNewStoreUnitCode] = useState<string>('');
+  const [newStoreCity, setNewStoreCity] = useState<string>('');
+  const [newStoreDistrict, setNewStoreDistrict] = useState<string>('');
+  const [newStoreAddress, setNewStoreAddress] = useState<string>('');
+  const [newStoreType, setNewStoreType] = useState<'Mall' | 'Street' | 'Drive-Thru' | 'Office' | 'Travel'>('Mall');
+  const [newStoreActivateNow, setNewStoreActivateNow] = useState<boolean>(false);
+  const [addStoreError, setAddStoreError] = useState<string | null>(null);
+  const [isSavingNewStore, setIsSavingNewStore] = useState<boolean>(false);
+
+  const handleAddNewStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStoreName.trim()) {
+      setAddStoreError('Wprowadź nazwę kawiarni.');
+      return;
+    }
+    if (!newStoreMpk.trim() && !newStoreUnitCode.trim()) {
+      setAddStoreError('Wprowadź kod MPK lub Kod Jednostki (Unit Code).');
+      return;
+    }
+
+    const mpk = newStoreMpk.trim() || newStoreUnitCode.trim();
+    const unitCode = newStoreUnitCode.trim() || mpk;
+    const name = newStoreName.trim().startsWith('SBX')
+      ? newStoreName.trim()
+      : `${mpk} SBX ${newStoreName.trim()}`;
+    const shortName = `${mpk} ${newStoreName.replace(/^\d+\s*/, '').replace(/^SBX\s*/, '').trim()}`;
+
+    const newStore: StarbucksStore = {
+      id: mpk,
+      name,
+      shortName,
+      unitCode,
+      mpk,
+      city: newStoreCity.trim() || 'Polska',
+      district: newStoreDistrict.trim() || 'Dystrykt Starbucks',
+      address: newStoreAddress.trim() || 'Kawiarnia Starbucks',
+      type: newStoreType,
+      isCustom: true,
+    };
+
+    setIsSavingNewStore(true);
+    setAddStoreError(null);
+
+    try {
+      const res = await addCustomStore(newStore, newStoreActivateNow);
+      if (res && res.success === false) {
+        setAddStoreError(res.error || 'Nie udało się dodać kawiarni do bazy.');
+        setIsSavingNewStore(false);
+        return;
+      }
+
+      showToast(`Pomyślnie dodano kawiarnię ${newStore.shortName || newStore.name} do floty Starbucks!`);
+      // Odśwież widok floty
+      setStores(fleetService.getFleetStores());
+      setStats(fleetService.getSummaryStats());
+
+      // Reset formularza
+      setNewStoreName('');
+      setNewStoreMpk('');
+      setNewStoreUnitCode('');
+      setNewStoreCity('');
+      setNewStoreDistrict('');
+      setNewStoreAddress('');
+      setNewStoreType('Mall');
+      setNewStoreActivateNow(false);
+      setIsAddStoreModalOpen(false);
+    } catch (err: any) {
+      console.error('[FleetMasterDashboard] Błąd zapisu nowej kawiarni we flocie:', err);
+      setAddStoreError(err?.message || 'Wystąpił błąd podczas dodawania kawiarni.');
+    } finally {
+      setIsSavingNewStore(false);
+    }
+  };
+
   // Synchronizacja z chmurą Google Cloud Firestore
   const [cloudSyncMsg, setCloudSyncMsg] = useState<string | null>(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
@@ -153,14 +233,19 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   useEffect(() => {
     loadRequests();
     const unsubEnrollment = enrollmentService.subscribe(loadRequests);
-    const unsub = fleetService.subscribe(() => {
+    const handleFleetUpdate = () => {
       setStores(fleetService.getFleetStores());
       setStats(fleetService.getSummaryStats());
       setAuditLogs(fleetService.getAuditLogs());
-    });
+    };
+    const unsub = fleetService.subscribe(handleFleetUpdate);
+    window.addEventListener('sbx-stores-list-updated', handleFleetUpdate);
+    window.addEventListener('sbx:store-switched', handleFleetUpdate);
     return () => {
       unsub();
       unsubEnrollment();
+      window.removeEventListener('sbx-stores-list-updated', handleFleetUpdate);
+      window.removeEventListener('sbx:store-switched', handleFleetUpdate);
     };
   }, [loadRequests]);
 
@@ -241,14 +326,14 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
     }
   };
 
-  // Lista unikalnych dystryktów do filtra
+  // Lista unikalnych dystryktów do filtra (z uwzględnieniem nowo dodanych lokali)
   const availableDistricts = useMemo(() => {
     const set = new Set<string>();
-    STARBUCKS_STORES_CATALOG.forEach((s) => {
+    stores.forEach((s) => {
       if (s.district) set.add(s.district);
     });
     return Array.from(set).sort();
-  }, []);
+  }, [stores]);
 
   // Filtrowanie wielotokenowe i bez polskich znaków
   const filteredStores = useMemo(() => {
@@ -667,6 +752,19 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
                   <option value="revoked">Kill-Switch (Revoked)</option>
                   <option value="unprovisioned">Brak Licencji</option>
                 </select>
+
+                {/* Dodaj Kawiarnię do Floty */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddStoreError(null);
+                    setIsAddStoreModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 bg-[#006241] hover:bg-[#004e34] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Dodaj Kawiarnię</span>
+                </button>
               </div>
             </div>
 
@@ -1616,6 +1714,182 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
                 Potwierdź odrzucenie
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DODAWANIA NOWEJ KAWIARNI DO FLOTY */}
+      {isAddStoreModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-50 text-[#006241] rounded-xl border border-emerald-200">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#1E3932]">Dodaj Nową Kawiarnię do Floty</h3>
+                  <p className="text-[11px] text-stone-500">Rejestracja lokalu Starbucks w katalogu centralnym i chmurze</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddStoreModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700 text-sm font-bold p-1 rounded-lg hover:bg-stone-100 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {addStoreError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl font-bold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{addStoreError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAddNewStore} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-1">
+                  Nazwa Kawiarni *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newStoreName}
+                  onChange={(e) => setNewStoreName(e.target.value)}
+                  placeholder="np. Warszawa Galeria Północna lub 108115 Galeria Północna"
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 focus:border-[#006241] focus:bg-white rounded-xl text-xs font-medium text-stone-900 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Kod MPK *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newStoreMpk}
+                    onChange={(e) => setNewStoreMpk(e.target.value)}
+                    placeholder="np. 108115"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 focus:border-[#006241] focus:bg-white rounded-xl text-xs font-mono font-bold text-stone-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Kod Jednostki (Unit) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newStoreUnitCode}
+                    onChange={(e) => setNewStoreUnitCode(e.target.value)}
+                    placeholder="np. 18115 lub 384"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 focus:border-[#006241] focus:bg-white rounded-xl text-xs font-mono font-bold text-stone-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Miasto
+                  </label>
+                  <input
+                    type="text"
+                    value={newStoreCity}
+                    onChange={(e) => setNewStoreCity(e.target.value)}
+                    placeholder="np. Warszawa"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 focus:border-[#006241] focus:bg-white rounded-xl text-xs font-medium text-stone-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Dystrykt Starbucks
+                  </label>
+                  <input
+                    type="text"
+                    value={newStoreDistrict}
+                    onChange={(e) => setNewStoreDistrict(e.target.value)}
+                    placeholder="np. Dystrykt Warszawa"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 focus:border-[#006241] focus:bg-white rounded-xl text-xs font-medium text-stone-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Adres Lokalu
+                  </label>
+                  <input
+                    type="text"
+                    value={newStoreAddress}
+                    onChange={(e) => setNewStoreAddress(e.target.value)}
+                    placeholder="np. ul. Światowida 17"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 focus:border-[#006241] focus:bg-white rounded-xl text-xs font-medium text-stone-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Typ Kawiarni
+                  </label>
+                  <select
+                    value={newStoreType}
+                    onChange={(e) => setNewStoreType(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 focus:border-[#006241] focus:bg-white rounded-xl text-xs font-medium text-stone-900 outline-none"
+                  >
+                    <option value="Mall">Centrum Handlowe (Mall)</option>
+                    <option value="Street">Ulica / Rynek (Street)</option>
+                    <option value="Drive-Thru">Drive-Thru</option>
+                    <option value="Office">Biurowiec (Office)</option>
+                    <option value="Travel">Węzeł Komunikacyjny (Travel)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between text-xs">
+                <span className="font-medium text-stone-700">Aktywuj od razu jako bieżący lokal roboczy</span>
+                <input
+                  type="checkbox"
+                  checked={newStoreActivateNow}
+                  onChange={(e) => setNewStoreActivateNow(e.target.checked)}
+                  className="rounded text-[#006241] focus:ring-[#006241] h-4 w-4"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddStoreModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-stone-200 text-xs font-bold text-stone-600 hover:bg-stone-50 cursor-pointer"
+                >
+                  Anuluj
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingNewStore}
+                  className="px-5 py-2 rounded-xl bg-[#006241] hover:bg-[#004e34] text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSavingNewStore ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Zapisywanie...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Dodaj Kawiarnię do Floty</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

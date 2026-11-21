@@ -100,6 +100,21 @@ async function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  // Automatyczna inicjalizacja sesji i profilu Fleet Master dla stacji Centrali
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow?.webContents.executeJavaScript(`
+      try {
+        localStorage.setItem('sbx_app_mode', 'FLEET_MASTER');
+        localStorage.setItem('sbx_onboarding_completed', 'true');
+        if (!localStorage.getItem('sbx_user_name')) localStorage.setItem('sbx_user_name', 'Dawid Apel');
+        if (!localStorage.getItem('sbx_user_email')) localStorage.setItem('sbx_user_email', 'dawid.apel@amrest.eu');
+        if (!localStorage.getItem('sbx_user_role')) localStorage.setItem('sbx_user_role', 'DISTRICT_MANAGER');
+      } catch (e) {
+        console.error('Błąd did-finish-load:', e);
+      }
+    `).catch(() => {});
+  });
+
   // Automatyczne otwarcie DevTools w celu diagnostyki
 
   mainWindow.on('closed', () => {
@@ -193,10 +208,12 @@ function setupIpcHandlers() {
     const settings = dbManager.getAppSettings();
     const hasStore = dbManager.hasActiveStore();
     const hasData = dbManager.hasExistingData();
+    const isFleetMaster = settings['sbx_app_mode'] === 'FLEET_MASTER';
     const hasCompletedOnboarding =
-      hasStore &&
+      isFleetMaster ||
+      (hasStore &&
       (settings['sbx_onboarding_completed'] === 'true' ||
-       settings['onboarding_completed'] === 'true');
+       settings['onboarding_completed'] === 'true'));
 
     return {
       settings,

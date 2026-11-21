@@ -409,11 +409,16 @@ export class StoreService {
         const diskStores: StarbucksStore[] = await apiObj.getCustomStores();
         if (Array.isArray(diskStores) && diskStores.length > 0) {
           const localStores = this.getCustomStores();
-          const localMap = new Map(localStores.map(s => [s.id, s]));
+          const localMap = new Map<string, StarbucksStore>();
+          for (const s of localStores) {
+            const key = (s.id || s.mpk || s.unitCode || '').toLowerCase().trim();
+            if (key) localMap.set(key, s);
+          }
           
           // Scal kawiarnie z dysku i z localStorage (dysk ma pierwszeństwo jako trwałe źródło prawdy)
           for (const ds of diskStores) {
-            localMap.set(ds.id, { ...ds, isCustom: true });
+            const key = (ds.id || ds.mpk || ds.unitCode || '').toLowerCase().trim();
+            if (key) localMap.set(key, { ...ds, isCustom: true });
           }
 
           const merged = Array.from(localMap.values());
@@ -487,7 +492,21 @@ export class StoreService {
 
     try {
       const customStores = this.getCustomStores();
-      const existingIdx = customStores.findIndex((s) => s.id === store.id || s.mpk === store.mpk);
+      const norm = (v?: string) => String(v || '').trim().toLowerCase();
+      const targetId = norm(store.id);
+      const targetMpk = norm(store.mpk);
+      const targetUnit = norm(store.unitCode);
+
+      const existingIdx = customStores.findIndex((s) => {
+        const sid = norm(s.id);
+        const smpk = norm(s.mpk);
+        const sunit = norm(s.unitCode);
+        return (
+          (targetId && sid === targetId) ||
+          (targetMpk && smpk === targetMpk) ||
+          (targetUnit && sunit === targetUnit)
+        );
+      });
 
       const storeToSave = { ...store, isCustom: true };
 

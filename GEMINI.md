@@ -44,10 +44,13 @@ Agent natychmiast rozpoznaje skróty w promptach użytkownika i zawęża konteks
   - `/cloud` lub `[Cloud]` ➔ **Chmura Firestore & Outbox Sync** (`src/services/sync/`)
   - `/fleet` lub `[Fleet]` ➔ **Flota & Przełącznik Kawiarni** (`src/services/storeService.ts`)
   - `/auth` lub `[Auth]` ➔ **Bezpieczeństwo, OTP & Hardware ID** (`src/context/AuthContext.tsx`)
+  - `/security` lub `[Security]` ➔ **Audyt Bezpieczeństwa & Trust Boundaries** (`.agents/skills/security-audit/`)
+  - `/slop` lub `[Anti-Slop]` ➔ **Audyt Jakości Kodu & UI Quality Gate** (`.agents/skills/anti-slop/`)
+  - `/plan` lub `[Plan]` ➔ **Inżynieria Założeń & Doubt-Driven Planning** (`.agents/skills/doubt-driven-planning/`)
   - `/core` lub `[Core]` ➔ **Electron & SQLite** (`electron/`)
   - `/ota` lub `[OTA]` ➔ **Mikropatche & Aktualizacje** (`scripts/publish-patch.js`)
 - **Pytanie / Inspekcja (`?`):**
-  - `?m1`, `?m2`, `?m3`, `?m4`, `?cloud` itp. ➔ natychmiastowa analiza, audyt i podsumowanie bez wprowadzania zmian w kodzie.
+  - `?m1`, `?m2`, `?m3`, `?m4`, `?cloud`, `?security`, `?slop` itp. ➔ natychmiastowa analiza, audyt i podsumowanie bez wprowadzania zmian w kodzie.
 
 ---
 

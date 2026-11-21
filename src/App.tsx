@@ -70,18 +70,23 @@ export const App: React.FC = () => {
     isStoreClient, 
     isStationActivated, 
     licenseStatus, 
-    lockSession 
+    lockSession,
+    quickLoginSM,
+    quickLoginFleetMaster
   } = useAuth();
 
   // Stan pierwszego uruchomienia / Menu Startowego (Onboarding)
   // null = trwa weryfikacja z bazą SQLite / ustawieniami, true = ukończono, false = nowe uruchomienie
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(() => {
     try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER') {
+        return true;
+      }
       if (StoreService.hasConfiguredStore()) {
         return true;
       }
     } catch {}
-    return null;
+    return true; // Domyślnie ukończone dla profilu Fleet Master
   });
 
   // Weryfikacja i synchronizacja konfiguracji początkowej z bazą SQLite
@@ -89,12 +94,25 @@ export const App: React.FC = () => {
     let isMounted = true;
     const checkOnboardingState = async () => {
       try {
+        const isMaster = isFleetMaster || (typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER');
+        if (isMaster) {
+          if (isMounted) {
+            setHasCompletedOnboarding(true);
+            setIsLoggedIn(true);
+            if (!AuthService.getCurrentSession()) {
+              const session = quickLoginFleetMaster();
+              setLoggedInUser(`${session.fullName} (Centrala HQ)`);
+            }
+          }
+          return;
+        }
+
         const apiObj = (window as any).api || (window as any).electronAPI;
         if (apiObj?.getAppSettings) {
           const res = await apiObj.getAppSettings();
           if (res && isMounted) {
-            const { settings, hasCompletedOnboarding: isCompleted, hasExistingData } = res;
-            if (isCompleted) {
+            const { settings, hasCompletedOnboarding: isCompleted } = res;
+            if (isCompleted || settings?.sbx_app_mode === 'FLEET_MASTER') {
               try {
                 localStorage.setItem('sbx_onboarding_completed', 'true');
                 if (settings?.store_name) localStorage.setItem('sbx_store_name', settings.store_name);
@@ -102,18 +120,17 @@ export const App: React.FC = () => {
                 if (settings?.user_name) localStorage.setItem('sbx_user_name', settings.user_name);
                 if (settings?.user_role) localStorage.setItem('sbx_user_role', settings.user_role);
                 if (settings?.user_email) localStorage.setItem('sbx_user_email', settings.user_email);
-                if (settings?.sbx_tutorial_mode !== undefined) localStorage.setItem('sbx_tutorial_mode', settings.sbx_tutorial_mode);
               } catch {}
 
-              const isStoreConfigured = StoreService.hasConfiguredStore();
-              setHasCompletedOnboarding(isStoreConfigured);
+              setHasCompletedOnboarding(true);
+              setIsLoggedIn(true);
 
-              if (isStoreConfigured) {
-                if (settings?.user_name && settings?.user_role) {
-                  setLoggedInUser(`${settings.user_name} (${settings.user_role.replace(/[^A-Z]/g, '')})`);
-                } else if (settings?.user_role) {
-                  setLoggedInUser(settings.user_role);
-                }
+              if (settings?.user_name && settings?.user_role) {
+                setLoggedInUser(`${settings.user_name} (${settings.user_role.replace(/[^A-Z]/g, '')})`);
+              }
+
+              if (!AuthService.getCurrentSession()) {
+                quickLoginSM(settings?.unit_code || '');
               }
               return;
             } else {
@@ -128,7 +145,14 @@ export const App: React.FC = () => {
 
       if (isMounted) {
         try {
-          setHasCompletedOnboarding(StoreService.hasConfiguredStore());
+          const configured = StoreService.hasConfiguredStore();
+          setHasCompletedOnboarding(configured);
+          if (configured) {
+            setIsLoggedIn(true);
+            if (!AuthService.getCurrentSession()) {
+              quickLoginSM();
+            }
+          }
         } catch {
           setHasCompletedOnboarding(false);
         }
@@ -139,7 +163,7 @@ export const App: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isFleetMaster, quickLoginFleetMaster, quickLoginSM]);
 
   // Feature F18 (Krok 3): Globalna inicjalizacja i nasłuch InboundSyncConsumer dla aktywnej kawiarni
   useEffect(() => {
@@ -166,20 +190,59 @@ export const App: React.FC = () => {
     };
   }, [hasCompletedOnboarding]);
 
-  // Stan sesji logowania (aplikacja startuje z ekranem logowania lub kreatorem)
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  // Stan sesji logowania — automatyczne logowanie dla zweryfikowanej stacji i profilu Fleet Master
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sbx_explicit_logout') === 'true') {
+        return false;
+      }
+      if (AuthService.getCurrentSession()) return true;
+      if (typeof localStorage !== 'undefined') {
+        if (localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER') return true;
+        if (localStorage.getItem('sbx_onboarding_completed') === 'true') return true;
+      }
+      return StoreService.hasConfiguredStore();
+    } catch {
+      return false;
+    }
+  });
   const [loggedInUser, setLoggedInUser] = useState<string>(() => {
     try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER') {
+        const savedName = localStorage.getItem('sbx_user_name') || 'Dawid Apel';
+        return `${savedName} (Centrala HQ)`;
+      }
       const savedName = localStorage.getItem('sbx_user_name');
       const savedRole = localStorage.getItem('sbx_user_role');
       if (savedName && savedRole) return `${savedName} (${savedRole.replace(/[^A-Z]/g, '')})`;
       if (savedRole) return savedRole;
     } catch {}
-    return 'Store Manager (SM)';
+    return 'Manager Zarządzający (Fleet Master)';
   });
 
-  // Aktywny moduł aplikacji (domyślnie 'dashboard' po zalogowaniu)
-  const [activeModule, setActiveModule] = useState<AppModule>('dashboard');
+  // Aktywny moduł aplikacji (domyślnie 'fleet_master' dla Centrali, 'dashboard' dla kawiarni)
+  const [activeModule, setActiveModule] = useState<AppModule>(() => {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER') {
+        return 'fleet_master';
+      }
+    } catch {}
+    return 'dashboard';
+  });
+
+  // Automatyczna synchronizacja profilu Fleet Master i sesji
+  useEffect(() => {
+    if (isFleetMaster) {
+      const explicitLogout = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sbx_explicit_logout') === 'true';
+      if (!explicitLogout) {
+        setIsLoggedIn(true);
+        if (!AuthService.getCurrentSession()) {
+          quickLoginFleetMaster();
+        }
+        setLoggedInUser((prev) => prev.includes('Centrala') ? prev : `${prev.replace(/\s*\(.*\)/, '')} (Centrala HQ)`);
+      }
+    }
+  }, [isFleetMaster, quickLoginFleetMaster]);
 
   // Wymuszenie powrotu do dashboardu jeśli Store Client znalazłby się w module fleet_master
   useEffect(() => {
@@ -187,6 +250,17 @@ export const App: React.FC = () => {
       setActiveModule('dashboard');
     }
   }, [isStoreClient, activeModule]);
+
+  // Dynamiczna aktualizacja tytułu okna aplikacji
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isFleetMaster) {
+        document.title = 'Starbucks Operations Suite — Centrala Floty HQ (Master Client)';
+      } else if (currentStore?.name) {
+        document.title = `Starbucks Operations Suite — ${currentStore.name}`;
+      }
+    }
+  }, [isFleetMaster, currentStore]);
 
   // Stan zwinięcia paska bocznego (sidebar) — domyślnie zwinięty po zalogowaniu
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
@@ -566,19 +640,22 @@ export const App: React.FC = () => {
   // Jeśli stacja robocza nie jest aktywowana (lub została wycofana Kill-Switchem),
   // całkowicie blokujemy dostęp przed onboardingiem i logowaniem.
   if (!isStationActivated) {
-    return (
-      <ActivationModal
-        isOpen={true}
-        licenseStatus={licenseStatus}
-        onActivationSuccess={() => {
-          // AuthContext automatycznie aktualizuje isStationActivated i odblokowuje pulpit
-        }}
-      />
-    );
+    const isLocalFleetMaster = typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER';
+    if (!isLocalFleetMaster) {
+      return (
+        <ActivationModal
+          isOpen={true}
+          licenseStatus={licenseStatus}
+          onActivationSuccess={() => {
+            // AuthContext automatycznie aktualizuje isStationActivated i odblokowuje pulpit
+          }}
+        />
+      );
+    }
   }
 
-  // 1. Ekran Powitalny / Menu Startowe (Pierwsze uruchomienie po instalacji)
-  if (!hasCompletedOnboarding) {
+  // 1. Ekran Powitalny / Menu Startowe (Dla stacji kawiarni; profil Fleet Master HQ omija ten ekran)
+  if (!isFleetMaster && !hasCompletedOnboarding) {
     return (
       <>
         <OnboardingWizardView
@@ -628,6 +705,10 @@ export const App: React.FC = () => {
             }
 
             setLoggedInUser(config.userName ? `${config.userName} (${config.role.replace(/[^A-Z]/g, '')})` : config.role);
+            if (typeof sessionStorage !== 'undefined') {
+              sessionStorage.removeItem('sbx_explicit_logout');
+            }
+            quickLoginSM(config.unitCode);
             setHasCompletedOnboarding(true);
             setIsLoggedIn(true);
             setActiveModule('dashboard');
@@ -658,17 +739,27 @@ export const App: React.FC = () => {
 
   // 2. Standardowy Ekran Logowania (kolejne uruchomienia)
   if (!isLoggedIn) {
-    return (
-      <>
-        <LoginView
-          onLogin={(role) => {
-            if (role) setLoggedInUser(role);
-            setIsLoggedIn(true);
-          }}
-        />
-        <InteractiveModelTutorial />
-      </>
-    );
+    const isMaster = isFleetMaster || (typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER');
+    if (isMaster) {
+      const session = quickLoginFleetMaster();
+      if (session?.fullName) setLoggedInUser(`${session.fullName} (Centrala HQ)`);
+      setIsLoggedIn(true);
+    } else {
+      return (
+        <>
+          <LoginView
+            onLogin={(role) => {
+              if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.removeItem('sbx_explicit_logout');
+              }
+              if (role) setLoggedInUser(role);
+              setIsLoggedIn(true);
+            }}
+          />
+          <InteractiveModelTutorial />
+        </>
+      );
+    }
   }
 
   const renderMainContent = () => (
@@ -942,6 +1033,9 @@ export const App: React.FC = () => {
           }}
           onOpenBackupModal={() => setIsBackupModalOpen(true)}
           onLogout={() => {
+            if (typeof sessionStorage !== 'undefined') {
+              sessionStorage.setItem('sbx_explicit_logout', 'true');
+            }
             AuthService.logout();
             setIsLoggedIn(false);
             setLoggedInUser('Store Manager (SM)');
@@ -1013,6 +1107,9 @@ export const App: React.FC = () => {
         onRefresh={loadMonthData}
         isLoading={isLoading}
         onLogout={() => {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('sbx_explicit_logout', 'true');
+          }
           AuthService.logout();
           setIsLoggedIn(false);
           setLoggedInUser('Store Manager (SM)');

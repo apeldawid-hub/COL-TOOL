@@ -106,6 +106,9 @@ Wsparcie deweloperskie opiera się na wyspecjalizowanych umiejętnościach w `.a
 | 📐 **`integrity-sentinel`** | [SKILL.md](file:///.agents/skills/integrity-sentinel/SKILL.md) | Strażnik obliczeń i komunikatów: cykliczna kontrola norm KP, bilansów TOR, formuł TPLH, zaokrągleń i języka alertów. |
 | 🧮 **`col-finance`** | [SKILL.md](file:///.agents/skills/col-finance/SKILL.md) | Finanse P&L, Total COL %, TPLH Coverage/Total, narzut ZUS 19.48%, załoga UoP/UZ, symulator What-If. |
 | 🗄️ **`sqlite-guardian`** | [SKILL.md](file:///.agents/skills/sqlite-guardian/SKILL.md) | Integralność SQLite, defragmentacja VACUUM, rotacja 15 kopii zapasowych, Multi-Store isolation (`store_${id}.db`), nadzór nad architekturą chmurową ([CLOUD_AND_FLEET_ARCHITECTURE.md](./docs/CLOUD_AND_FLEET_ARCHITECTURE.md)). |
+| 🧠 **`doubt-driven-planning`** | [SKILL.md](file:///.agents/skills/doubt-driven-planning/SKILL.md) | Inżynieria założeń (CLAIM ➔ DOUBT ➔ SPEC ➔ IMPLEMENT ➔ VERIFY): weryfikacja blast radius, norm KP i finansów przed kodowaniem. |
+| 🛡️ **`anti-slop`** | [SKILL.md](file:///.agents/skills/anti-slop/SKILL.md) | Bramka jakości (scanaislop/FeedHive): eliminacja martwego kodu, połykanych wyjątków, `console.log`, frazesów LLM i zbędnych gradientów. |
+| 🔒 **`security-audit`** | [SKILL.md](file:///.agents/skills/security-audit/SKILL.md) | Audyt bezpieczeństwa: Zero danych w Git, Multi-Tenant Silo Firestore, izolacja SQLite, walidacja IPC i ochrona parserów Excel. |
 | 🚀 **`ota-patch-publisher`** | [SKILL.md](file:///.agents/skills/ota-patch-publisher/SKILL.md) | Pre-flight QA (`npm run build`), podbicie wersji, publikacja mikropatcha OTA (`npm run patch`) w 3-5 sekund. |
 | 📜 **`version-tracker`** | [SKILL.md](file:///.agents/skills/version-tracker/SKILL.md) | Prowadzenie centralnego rejestru wydań w [VERSION_HISTORY.md](file:///VERSION_HISTORY.md) oraz `CHANGELOG.md`. |
 

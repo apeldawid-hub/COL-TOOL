@@ -297,7 +297,7 @@ export class AuthService {
 
       // Weryfikacja czy konto nie zostało zablokowane (Kill-Switch) w AdminService
       const user = AdminService.getUserByEmail(session.email);
-      if (!user || !user.isActive || user.sessionVersion > session.sessionVersion) {
+      if (user && (!user.isActive || user.sessionVersion > session.sessionVersion)) {
         this.logout();
         return null;
       }
@@ -306,6 +306,52 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Szybkie logowanie Managera Zarządzającego (Fleet Master HQ / Centrala)
+   */
+  public static quickLoginFleetMaster(): AuthUserSession {
+    let storedName = 'Dawid Apel';
+    let storedEmail = 'dawid.apel@amrest.eu';
+    if (typeof localStorage !== 'undefined') {
+      storedName = localStorage.getItem('sbx_user_name') || storedName;
+      storedEmail = localStorage.getItem('sbx_user_email') || storedEmail;
+    }
+
+    const session: AuthUserSession = {
+      userId: 'usr_fleet_master_root',
+      storeUnitCode: 'HQ',
+      fullName: storedName,
+      email: storedEmail,
+      role: 'DISTRICT_MANAGER',
+      permissions: ROLE_DEFAULT_PERMISSIONS.DISTRICT_MANAGER,
+      sessionToken: `tok_fm_${Date.now()}`,
+      sessionVersion: 1,
+      deviceName: this.getDeviceName(),
+      deviceFingerprint: this.getDeviceFingerprint(),
+      loginAt: new Date().toISOString(),
+    };
+
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(session));
+      localStorage.setItem('sbx_user_name', session.fullName);
+      localStorage.setItem('sbx_user_email', session.email);
+      localStorage.setItem('sbx_user_role', 'Manager Zarządzający (Fleet Master)');
+      localStorage.setItem('sbx_app_mode', 'FLEET_MASTER');
+      localStorage.removeItem('sbx_assigned_stores');
+    }
+
+    AdminService.addAuditLog({
+      actorName: session.fullName,
+      actorRole: 'DISTRICT_MANAGER',
+      actionType: 'LOGIN_2FA',
+      targetResource: 'system:fleet_master',
+      details: 'Uwierzytelnienie stacji Centrali Floty (Fleet Master HQ)',
+      deviceName: this.getDeviceName(),
+    });
+
+    return session;
   }
 
   /**

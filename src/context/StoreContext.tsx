@@ -32,14 +32,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [currentStore, setCurrentStoreState] = useState<StarbucksStore>(() => StoreService.getCurrentStore());
   const [isStoreSwitcherOpen, setIsStoreSwitcherOpen] = useState<boolean>(false);
+  const [storesVersion, setStoresVersion] = useState<number>(0);
 
   // Profile-aware availableStores
   const availableStores = useMemo(() => {
     return StoreService.getAvailableStoresForProfile(appMode, assignedStoreIds);
-  }, [appMode, assignedStoreIds]);
+  }, [appMode, assignedStoreIds, storesVersion]);
 
   // Odświeżanie stanu przy zmianach zewnętrznych
   const refreshStores = useCallback(() => {
+    StoreService.invalidateCache();
+    setStoresVersion((v) => v + 1);
     setCurrentStoreState(StoreService.getCurrentStore());
   }, []);
 
@@ -115,14 +118,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: false, error: 'Dodawanie kawiarni jest wyłączone na stacjach klienckich' };
     }
     const res = await StoreService.addCustomStore(store, activate, { appMode });
-    if (activate && res.success) {
-      setCurrentStoreState(store);
+    if (res.success) {
+      StoreService.invalidateCache();
+      setStoresVersion((v) => v + 1);
+      if (activate) {
+        setCurrentStoreState(store);
+      }
     }
     return res;
   }, [isStoreClient, appMode]);
 
   const removeCustomStore = useCallback(async (storeId: string) => {
     await StoreService.removeCustomStore(storeId);
+    StoreService.invalidateCache();
+    setStoresVersion((v) => v + 1);
     // Jeśli usunięto aktualnie wybraną, przełącz na domyślną
     if (currentStore.id === storeId) {
       const fallback = StoreService.getCurrentStore();

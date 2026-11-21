@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.12](#v2.9.12--2026-11-21)** | 2026-11-21 | Reaktywność Rejestracji i Persystencji Nowych Kawiarni we Flocie & Przycisk Dodawania Lokalu w Fleet Master | `patch` | 🚀 Opublikowana |
 | **[v2.9.11](#v2.9.11--2026-11-07)** | 2026-11-07 | Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji | `patch` | 🚀 Opublikowana |
 | **[v2.9.10](#v2.9.10--2026-11-06)** | 2026-11-06 | Automatyczne Kopie Zapasowe (Cloud Snapshots), Trzypoziomowa Tarcza Kolizyjna i Wycofanie Migracji Manualnej (Feature F19) | `patch` | 🚀 Opublikowana |
 | **[v2.9.9](#v2.9.9--2026-11-05)** | 2026-11-05 | Architektura Cloud-First Real-Time: Synchronizacja Firestore w Czasie Rzeczywistym, Write-Through i Lustro Lokalne SQLite (Feature F18) | `patch` | 🚀 Opublikowana |
@@ -41,6 +42,28 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.12] — 2026-11-21
+**Tytuł:** Reaktywność Rejestracji i Persystencji Nowych Kawiarni we Flocie & Przycisk Dodawania Lokalu w Fleet Master  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- Reaktywny rejestr kawiarni we flocie: natychmiastowe uaktualnianie availableStores i spisu lokali bez konieczności przeładowywania aplikacji.
+- Dedykowany przycisk "+ Dodaj Kawiarnię" w pulpicie Centrali (FleetMasterDashboard): bezpośrednie dodawanie kawiarni z poziomu widoku Floty.
+- Globalna subskrypcja zdarzenia sbx-stores-list-updated: automatyczna aktualizacja liczników floty (stats.totalStores), tabeli lokali i listy dystryktów.
+- Weryfikacja zapisu i eliminacja cichego błędu w StoreSwitcherModal: zapobieganie zamknięciu modalu przy odmowie zapisu.
+
+#### ✨ Nowe Funkcje:
+- Dedykowany przycisk "+ Dodaj Kawiarnię" oraz modal rejestracji kawiarni bezpośrednio w pulpicie Centrali (FleetMasterDashboard).
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Automatyczna synchronizacja profilu runtime StoreService.setRuntimeSecurityProfile z AuthContext oraz weryfikacja błędów w StoreSwitcherModal.
+
+#### 🐛 Poprawki Błędów:
+- Wprowadzenie wersjonowania stanu storesVersion w StoreContext, gwarantującego natychmiastowe ponowne przeliczenie availableStores po dodaniu lub usunięciu lokalu.
+- Podpięcie nasłuchiwania zdarzenia sbx-stores-list-updated w FleetService oraz FleetMasterDashboard w celu natychmiastowego odświeżania tabeli floty i metryk KPI.
+
+---
 
 ### [v2.9.11] — 2026-11-07
 **Tytuł:** Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji  

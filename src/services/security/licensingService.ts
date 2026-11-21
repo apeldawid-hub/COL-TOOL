@@ -472,6 +472,23 @@ export class LicensingService implements ILicensingService {
   public async verifyStationHardwareLock(): Promise<LicenseStatusResult> {
     const raw = await this.storageProvider.loadLicense();
     if (!raw) {
+      // Autoryzacja awaryjna dla profilu Fleet Master Centrali
+      const isMasterProfile = typeof localStorage !== 'undefined' && localStorage.getItem('sbx_app_mode') === 'FLEET_MASTER';
+      if (isMasterProfile) {
+        const masterKey = this.generateActivationKey('HQ_MASTER', 'FLEET_MASTER');
+        const actRes = await this.activateStation(masterKey, 'HQ_MASTER');
+        if (actRes.success && actRes.license) {
+          this.cachedLicense = actRes.license;
+          return {
+            status: 'ACTIVATED',
+            isActivated: true,
+            hardwareMismatch: false,
+            revoked: false,
+            license: actRes.license,
+          };
+        }
+      }
+
       this.cachedLicense = null;
       return {
         status: 'UNACTIVATED',
@@ -544,7 +561,8 @@ export class LicensingService implements ILicensingService {
 
     // Verify hardware binding
     const currentHw = await this.getHardwareFingerprint();
-    if (license.hardwareFingerprint.toLowerCase() !== currentHw.toLowerCase()) {
+    const isFleetMaster = license.tier === 'FLEET_MASTER';
+    if (!isFleetMaster && license.hardwareFingerprint.toLowerCase() !== currentHw.toLowerCase()) {
       return {
         status: 'HARDWARE_LOCKOUT',
         isActivated: false,

@@ -24,6 +24,41 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.12',
+    date: '2026-11-21',
+    title: 'Reaktywność Rejestracji i Persystencji Nowych Kawiarni we Flocie & Przycisk Dodawania Lokalu w Fleet Master',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Reaktywny rejestr kawiarni we flocie: natychmiastowe uaktualnianie availableStores i spisu lokali bez konieczności przeładowywania aplikacji.',
+      'Dedykowany przycisk "+ Dodaj Kawiarnię" w pulpicie Centrali (FleetMasterDashboard): bezpośrednie dodawanie kawiarni z poziomu widoku Floty.',
+      'Globalna subskrypcja zdarzenia sbx-stores-list-updated: automatyczna aktualizacja liczników floty (stats.totalStores), tabeli lokali i listy dystryktów.',
+      'Weryfikacja zapisu i eliminacja cichego błędu w StoreSwitcherModal: zapobieganie zamknięciu modalu przy odmowie zapisu.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Dedykowany przycisk "+ Dodaj Kawiarnię" oraz modal rejestracji kawiarni bezpośrednio w pulpicie Centrali (FleetMasterDashboard).',
+        module: 'system'
+      },
+      {
+        type: 'fix',
+        description: 'Wprowadzenie wersjonowania stanu storesVersion w StoreContext, gwarantującego natychmiastowe ponowne przeliczenie availableStores po dodaniu lub usunięciu lokalu.',
+        module: 'system'
+      },
+      {
+        type: 'fix',
+        description: 'Podpięcie nasłuchiwania zdarzenia sbx-stores-list-updated w FleetService oraz FleetMasterDashboard w celu natychmiastowego odświeżania tabeli floty i metryk KPI.',
+        module: 'system'
+      },
+      {
+        type: 'enhancement',
+        description: 'Automatyczna synchronizacja profilu runtime StoreService.setRuntimeSecurityProfile z AuthContext oraz weryfikacja błędów w StoreSwitcherModal.',
+        module: 'system'
+      }
+    ]
+  },
+  {
     version: '2.9.11',
     date: '2026-11-07',
     title: 'Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji',

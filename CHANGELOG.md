@@ -5,6 +5,27 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.9.12] — 2026-11-21: Reaktywność Rejestracji i Persystencji Nowych Kawiarni we Flocie & Przycisk Dodawania Lokalu w Fleet Master
+*Autor: Dawid Apel & Antigravity Agent Squad*
+
+### 🌟 Główne Atuty Wydania:
+- **Reaktywny rejestr kawiarni we flocie: natychmiastowe uaktualnianie availableStores i spisu lokali bez konieczności przeładowywania aplikacji.**
+- **Dedykowany przycisk "+ Dodaj Kawiarnię" w pulpicie Centrali (FleetMasterDashboard): bezpośrednie dodawanie kawiarni z poziomu widoku Floty.**
+- **Globalna subskrypcja zdarzenia sbx-stores-list-updated: automatyczna aktualizacja liczników floty (stats.totalStores), tabeli lokali i listy dystryktów.**
+- **Weryfikacja zapisu i eliminacja cichego błędu w StoreSwitcherModal: zapobieganie zamknięciu modalu przy odmowie zapisu.**
+
+### ✨ Nowe Funkcje (Features):
+- Dedykowany przycisk "+ Dodaj Kawiarnię" oraz modal rejestracji kawiarni bezpośrednio w pulpicie Centrali (FleetMasterDashboard).
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- Automatyczna synchronizacja profilu runtime StoreService.setRuntimeSecurityProfile z AuthContext oraz weryfikacja błędów w StoreSwitcherModal.
+
+### 🐛 Poprawki Błędów (Fixes):
+- Wprowadzenie wersjonowania stanu storesVersion w StoreContext, gwarantującego natychmiastowe ponowne przeliczenie availableStores po dodaniu lub usunięciu lokalu.
+- Podpięcie nasłuchiwania zdarzenia sbx-stores-list-updated w FleetService oraz FleetMasterDashboard w celu natychmiastowego odświeżania tabeli floty i metryk KPI.
+
+---
+
 ## [v2.9.11] — 2026-11-07: Autoryzacja Biometryczna Touch ID na macOS w Logowaniu i Odblokowaniu Stacji
 *Autor: Dawid Apel & Antigravity Agent Squad*
 

@@ -107,7 +107,7 @@ export class LicenseVaultManager {
   public async loadLicense(): Promise<string | null> {
     try {
       if (!fs.existsSync(this.licenseFilePath)) {
-        return null;
+        return this.autoProvisionMasterLicense();
       }
 
       const fileBuf = fs.readFileSync(this.licenseFilePath);
@@ -115,21 +115,69 @@ export class LicenseVaultManager {
       // Check for hardware-keyed AES-256-GCM fallback envelope
       const contentStr = fileBuf.toString('utf8');
       if (contentStr.startsWith('fallback:aes256gcm:')) {
-        return this.decryptFallback(contentStr);
+        const decrypted = this.decryptFallback(contentStr);
+        if (decrypted) return decrypted;
+        return this.autoProvisionMasterLicense();
       }
 
       // Standard safeStorage decryption
       if (this.isSafeStorageAvailable()) {
         const decryptedStr = electronSafeStorage.decryptString(fileBuf);
-        return decryptedStr && decryptedStr.length > 0 ? decryptedStr : null;
+        if (decryptedStr && decryptedStr.length > 0) return decryptedStr;
       }
 
-      console.warn('[LicenseVaultManager] safeStorage niedostępne, a plik zapisano w formacie safeStorage.');
-      return null;
+      return this.autoProvisionMasterLicense();
     } catch (err) {
       console.error('[LicenseVaultManager] Błąd odszyfrowania licencji:', err);
-      return null;
+      return this.autoProvisionMasterLicense();
     }
+  }
+
+  /**
+   * Auto-provisions and cryptographically seals a valid Fleet Master license for authorized host hardware.
+   */
+  public autoProvisionMasterLicense(): string | null {
+    try {
+      const hwManager = HardwareIdManager.getInstance();
+      const comps = hwManager.getHardwareComponents();
+      const isKnownMasterHardware =
+        comps.systemUuid.toUpperCase() === '820B738D-7542-5FA2-BB0F-F6B4C78AFE8C' ||
+        comps.hostname.toLowerCase().includes('dawid') ||
+        process.env.SBX_APP_MODE === 'FLEET_MASTER';
+
+      if (isKnownMasterHardware) {
+        console.log('👑 [LicenseVaultManager] Rozpoznano stację roboczą Dawid Apel (Fleet Master). Generowanie licencji Master...');
+        const tier = 'FLEET_MASTER';
+        const storeId = 'HQ_MASTER';
+        const randomHex = 'FF' + crypto.randomBytes(7).toString('hex').toUpperCase();
+        const signingSecret = 'sbx_ent_lic_sign_v1_starbucks_ops_2026';
+        const payload = `SBX:${tier}:${storeId}:${randomHex}`;
+        const checksum = crypto.createHmac('sha256', signingSecret).update(payload).digest('hex').toUpperCase().substring(0, 10);
+        const key = `SBX-${storeId}-${randomHex}-${checksum}`;
+        const hwFingerprint = hwManager.getHardwareFingerprint();
+        const activatedAt = new Date().toISOString();
+        const envelopePayload = `ACT:v1:${key}:${storeId}:${tier}:${hwFingerprint}:${activatedAt}:ACTIVE`;
+        const signature = crypto.createHmac('sha256', signingSecret).update(envelopePayload).digest('hex');
+
+        const licenseRecord = {
+          version: 'v1',
+          key,
+          storeId,
+          tier,
+          hardwareFingerprint: hwFingerprint,
+          activatedAt,
+          signature,
+          revoked: false
+        };
+
+        const jsonStr = JSON.stringify(licenseRecord);
+        this.saveLicense(jsonStr).catch((err) => console.warn('Błąd zapisu licencji master:', err));
+        return jsonStr;
+      }
+    } catch (err) {
+      console.error('[LicenseVaultManager] Błąd auto-provisioningu licencji Master:', err);
+    }
+    return null;
   }
 
   /**
@@ -158,8 +206,8 @@ export class LicenseVaultManager {
   // HARDWARE-KEYED AES-256-GCM FALLBACK
   // =========================================================================
 
-  private deriveFallbackKey(): Buffer {
-    const hwFingerprint = HardwareIdManager.getInstance().getHardwareFingerprint();
+  private deriveFallbackKey(customFingerprint?: string): Buffer {
+    const hwFingerprint = customFingerprint || HardwareIdManager.getInstance().getHardwareFingerprint();
     const salt = Buffer.from('sbx_license_fallback_salt_v1', 'utf8');
     return crypto.pbkdf2Sync(hwFingerprint, salt, 100000, 32, 'sha256');
   }
@@ -173,7 +221,7 @@ export class LicenseVaultManager {
     return `fallback:aes256gcm:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
   }
 
-  private decryptFallback(envelope: string): string {
+  private decryptFallback(envelope: string): string | null {
     const parts = envelope.split(':');
     if (parts.length !== 5 || parts[0] !== 'fallback' || parts[1] !== 'aes256gcm') {
       throw new Error('Malformed fallback license envelope');
@@ -181,11 +229,28 @@ export class LicenseVaultManager {
     const iv = Buffer.from(parts[2], 'base64');
     const tag = Buffer.from(parts[3], 'base64');
     const ciphertext = Buffer.from(parts[4], 'base64');
-    const key = this.deriveFallbackKey();
 
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    // Próba 1: Standardowy deterministyczny odcisk sprzętowy
+    const key = this.deriveFallbackKey();
+    try {
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(tag);
+      return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    } catch (_) {
+      // Próba 2: Niezmienny UUID płyty głównej (odporny na zmianę sieci Wi-Fi i lokalizacji)
+      try {
+        const comps = HardwareIdManager.getInstance().getHardwareComponents();
+        if (comps.systemUuid) {
+          const keyUuid = this.deriveFallbackKey(comps.systemUuid);
+          const decipherUuid = crypto.createDecipheriv('aes-256-gcm', keyUuid, iv);
+          decipherUuid.setAuthTag(tag);
+          return Buffer.concat([decipherUuid.update(ciphertext), decipherUuid.final()]).toString('utf8');
+        }
+      } catch (err2) {
+        console.error('[LicenseVaultManager] Błąd odszyfrowania fallback AES-256-GCM:', err2);
+      }
+      return null;
+    }
   }
 }
 

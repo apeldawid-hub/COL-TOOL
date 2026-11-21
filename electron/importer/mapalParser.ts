@@ -22,10 +22,20 @@ export class MapalParser {
   ): Promise<ImportResult> {
     try {
       let buffer: Buffer;
-
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB limit bezpieczeństwa
       if (typeof fileBufferOrPath === 'string') {
+        if (!fs.existsSync(fileBufferOrPath)) {
+          return { success: false, importedCount: 0, message: 'Wybrany plik nie istnieje.' };
+        }
+        const stat = fs.statSync(fileBufferOrPath);
+        if (stat.size > MAX_FILE_SIZE) {
+          return { success: false, importedCount: 0, message: 'Plik przekracza limit rozmiaru (50 MB).' };
+        }
         buffer = fs.readFileSync(fileBufferOrPath);
       } else {
+        if (fileBufferOrPath.length > MAX_FILE_SIZE) {
+          return { success: false, importedCount: 0, message: 'Bufor pliku przekracza limit rozmiaru (50 MB).' };
+        }
         buffer = fileBufferOrPath;
       }
 

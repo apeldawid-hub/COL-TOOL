@@ -1739,30 +1739,41 @@ export class DatabaseManager {
 
   public deleteTrainingPartner(id: number): boolean {
     if (!this.db) return false;
-    this.db.run(`DELETE FROM training_shifts WHERE partner_id = ${id}`);
-    this.db.run(`DELETE FROM training_skill_checks WHERE partner_id = ${id}`);
-    this.db.run(`DELETE FROM training_partners WHERE id = ${id}`);
+    const safeId = Number(id) || 0;
+    if (safeId <= 0) return false;
+    this.db.run('DELETE FROM training_shifts WHERE partner_id = ?', [safeId]);
+    this.db.run('DELETE FROM training_skill_checks WHERE partner_id = ?', [safeId]);
+    this.db.run('DELETE FROM training_partners WHERE id = ?', [safeId]);
     this.persist();
     return true;
   }
 
   public getTrainingShifts(partnerId?: number): any[] {
     if (!this.db) return [];
-    const query = partnerId
-      ? `SELECT * FROM training_shifts WHERE partner_id = ${partnerId} ORDER BY scheduled_date ASC, shift_code ASC`
-      : `SELECT * FROM training_shifts ORDER BY scheduled_date ASC, shift_code ASC`;
+    const safePartnerId = partnerId ? (Number(partnerId) || 0) : undefined;
     const res: any[] = [];
-    const stmt = this.db.prepare(query);
-    while (stmt.step()) {
-      res.push(stmt.getAsObject());
+    if (safePartnerId && safePartnerId > 0) {
+      const stmt = this.db.prepare('SELECT * FROM training_shifts WHERE partner_id = ? ORDER BY scheduled_date ASC, shift_code ASC');
+      stmt.bind([safePartnerId]);
+      while (stmt.step()) {
+        res.push(stmt.getAsObject());
+      }
+      stmt.free();
+    } else {
+      const stmt = this.db.prepare('SELECT * FROM training_shifts ORDER BY scheduled_date ASC, shift_code ASC');
+      while (stmt.step()) {
+        res.push(stmt.getAsObject());
+      }
+      stmt.free();
     }
-    stmt.free();
     return res;
   }
 
   public saveTrainingShiftsBatch(partnerId: number, shifts: any[]): boolean {
     if (!this.db) return false;
-    this.db.run(`DELETE FROM training_shifts WHERE partner_id = ${partnerId}`);
+    const safePartnerId = Number(partnerId) || 0;
+    if (safePartnerId <= 0) return false;
+    this.db.run('DELETE FROM training_shifts WHERE partner_id = ?', [safePartnerId]);
     const stmt = this.db.prepare(`
       INSERT INTO training_shifts
       (partner_id, shift_code, title, scheduled_date, start_time, end_time, barista_hours_t, trainer_hours_t, sm_hours_t, status, trainer_name, station, notes)
@@ -1770,7 +1781,7 @@ export class DatabaseManager {
     `);
     for (const s of shifts) {
       stmt.run([
-        partnerId,
+        safePartnerId,
         s.shift_code,
         s.title,
         s.scheduled_date,
@@ -1819,21 +1830,34 @@ export class DatabaseManager {
 
   public getTrainingSkillChecks(partnerId?: number): any[] {
     if (!this.db) return [];
-    const query = partnerId
-      ? `SELECT * FROM training_skill_checks WHERE partner_id = ${partnerId} ORDER BY exam_date DESC, id DESC`
-      : `SELECT * FROM training_skill_checks ORDER BY exam_date DESC, id DESC`;
+    const safePartnerId = partnerId ? (Number(partnerId) || 0) : undefined;
     const res: any[] = [];
-    const stmt = this.db.prepare(query);
-    while (stmt.step()) {
-      const obj: any = stmt.getAsObject();
-      if (obj.criteria_results && typeof obj.criteria_results === 'string') {
-        try {
-          obj.criteria_results = JSON.parse(obj.criteria_results);
-        } catch (_) {}
+    if (safePartnerId && safePartnerId > 0) {
+      const stmt = this.db.prepare('SELECT * FROM training_skill_checks WHERE partner_id = ? ORDER BY exam_date DESC, id DESC');
+      stmt.bind([safePartnerId]);
+      while (stmt.step()) {
+        const obj: any = stmt.getAsObject();
+        if (obj.criteria_results && typeof obj.criteria_results === 'string') {
+          try {
+            obj.criteria_results = JSON.parse(obj.criteria_results);
+          } catch (_) {}
+        }
+        res.push(obj);
       }
-      res.push(obj);
+      stmt.free();
+    } else {
+      const stmt = this.db.prepare('SELECT * FROM training_skill_checks ORDER BY exam_date DESC, id DESC');
+      while (stmt.step()) {
+        const obj: any = stmt.getAsObject();
+        if (obj.criteria_results && typeof obj.criteria_results === 'string') {
+          try {
+            obj.criteria_results = JSON.parse(obj.criteria_results);
+          } catch (_) {}
+        }
+        res.push(obj);
+      }
+      stmt.free();
     }
-    stmt.free();
     return res;
   }
 

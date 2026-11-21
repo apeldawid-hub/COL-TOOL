@@ -28,19 +28,28 @@ interface StoreSwitcherModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStoreSwitched?: (newStore: StarbucksStore) => void;
+  initialTab?: 'LIST' | 'ADD_NEW';
 }
 
 export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
   isOpen,
   onClose,
   onStoreSwitched,
+  initialTab = 'LIST',
 }) => {
   const { currentStore, availableStores, switchStore, addCustomStore, removeCustomStore, isStoreClient } = useStore();
 
   const [rawQuery, setRawQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCityFilter, setSelectedCityFilter] = useState<string>('ALL');
-  const [activeTab, setActiveTab] = useState<'LIST' | 'ADD_NEW'>('LIST');
+  const [activeTab, setActiveTab] = useState<'LIST' | 'ADD_NEW'>(initialTab);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+      setFormError(null);
+    }
+  }, [isOpen, initialTab]);
 
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -244,6 +253,12 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
 
     try {
       const switchResult: any = await addCustomStore(newStore, true);
+      if (switchResult && switchResult.success === false) {
+        setFormError(switchResult.error || 'Nie udało się dodać kawiarni do bazy floty.');
+        setIsSwitchingDb(false);
+        setSwitchedStoreId(null);
+        return;
+      }
       if (switchResult && typeof switchResult.isNew === 'boolean') {
         setDbSwitchStatus({ isNew: switchResult.isNew, storeName: newStore.name });
       }
@@ -257,16 +272,17 @@ export const StoreSwitcherModal: React.FC<StoreSwitcherModalProps> = ({
       setNewStoreUnitCode('');
       setNewStoreAddress('');
       setActiveTab('LIST');
-    } catch (err) {
-      console.error('Błąd dodawania i aktywowania nowej kawiarni:', err);
-      setFormError('Wystąpił błąd podczas tworzenia bazy kawiarni.');
-    } finally {
-      setIsSwitchingDb(false);
+
       setTimeout(() => {
         setSwitchedStoreId(null);
         setDbSwitchStatus(null);
         onClose();
       }, 550);
+    } catch (err: any) {
+      console.error('Błąd dodawania i aktywowania nowej kawiarni:', err);
+      setFormError(err?.message || 'Wystąpił błąd podczas tworzenia bazy kawiarni.');
+    } finally {
+      setIsSwitchingDb(false);
     }
   };
 
