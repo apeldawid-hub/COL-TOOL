@@ -717,6 +717,7 @@ export class DatabaseManager {
     // Zapewnij uniwersalne definicje zmian i normy KP bez mockowych grafików i pracowników
     this.ensureShiftDefinitions();
     this.seedMonthlyNorms();
+    this.seedWeeklyRequirements();
 
     console.log(`✅ [Nowa Kawiarnia] Skonfigurowano app_settings i stores dla: ${storeName} (Kod: ${primaryStoreCode})`);
   }

@@ -226,7 +226,7 @@
   },
   "CloudBatchUploadPlan": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 150,
+    "line": 152,
     "kind": "interface"
   },
   "CloudDocsSyncResult": {
@@ -236,7 +236,7 @@
   },
   "CloudHealthStatus": {
     "file": "src/services/sync/cloudSyncService.ts",
-    "line": 18,
+    "line": 21,
     "kind": "interface"
   },
   "CloudIntegrityScheduler": {
@@ -246,12 +246,12 @@
   },
   "CloudMigrationService": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 269,
+    "line": 273,
     "kind": "class"
   },
   "CloudMigrationServiceDeps": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 228,
+    "line": 230,
     "kind": "interface"
   },
   "CloudOperationalDoc": {
@@ -271,7 +271,7 @@
   },
   "CloudSyncService": {
     "file": "src/services/sync/cloudSyncService.ts",
-    "line": 34,
+    "line": 37,
     "kind": "class"
   },
   "ColBonusSheet": {
@@ -421,7 +421,7 @@
   },
   "DEFAULT_FIREBASE_PROJECT_ID": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 260,
+    "line": 264,
     "kind": "const"
   },
   "DEFAULT_MIN_STAFF_AM": {
@@ -441,6 +441,11 @@
   },
   "DEFAULT_SHIFT_DEFINITIONS": {
     "file": "src/modules/managers-schedule/constants/defaultShifts.ts",
+    "line": 4,
+    "kind": "const"
+  },
+  "DEFAULT_WEEKLY_REQUIREMENTS": {
+    "file": "src/modules/managers-schedule/constants/defaultWeeklyRequirements.ts",
     "line": 4,
     "kind": "const"
   },
@@ -561,12 +566,12 @@
   },
   "FIRESTORE_BASE_URL": {
     "file": "src/services/sync/cloudSyncService.ts",
-    "line": 16,
+    "line": 19,
     "kind": "const"
   },
   "FIRESTORE_PROJECT_ID": {
     "file": "src/services/sync/cloudSyncService.ts",
-    "line": 15,
+    "line": 18,
     "kind": "const"
   },
   "FIRST_30_DAYS_DURATION": {
@@ -681,17 +686,17 @@
   },
   "HealthGdprVaultPayload": {
     "file": "src/services/security/vaultService.ts",
-    "line": 278,
+    "line": 281,
     "kind": "interface"
   },
   "IBackupProvider": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 219,
+    "line": 221,
     "kind": "interface"
   },
   "ICloudVaultUploader": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 223,
+    "line": 225,
     "kind": "interface"
   },
   "IHardwareFingerprintProvider": {
@@ -711,7 +716,7 @@
   },
   "ILocalDatabaseExtractor": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 213,
+    "line": 215,
     "kind": "interface"
   },
   "IMasterCredentialProvider": {
@@ -721,7 +726,7 @@
   },
   "INITIAL_BACKOFF_MS": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 263,
+    "line": 267,
     "kind": "const"
   },
   "ImportModal": {
@@ -766,7 +771,7 @@
   },
   "KNOWN_SQLITE_TABLES": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 238,
+    "line": 240,
     "kind": "const"
   },
   "KeyValidationResult": {
@@ -856,12 +861,12 @@
   },
   "MAX_DOCS_PER_BATCH": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 261,
+    "line": 265,
     "kind": "const"
   },
   "MAX_UPLOAD_RETRIES": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 262,
+    "line": 266,
     "kind": "const"
   },
   "MIN_DAILY_FLOOR_HOURS": {
@@ -1021,12 +1026,12 @@
   },
   "MigrationReceipt": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 165,
+    "line": 167,
     "kind": "interface"
   },
   "MigrationResult": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 197,
+    "line": 199,
     "kind": "interface"
   },
   "MnemonicValidationResult": {
@@ -1121,7 +1126,7 @@
   },
   "PackagedVaultManifest": {
     "file": "src/services/security/cloudMigrationService.ts",
-    "line": 132,
+    "line": 134,
     "kind": "interface"
   },
   "ParityCertificate": {
@@ -1506,7 +1511,7 @@
   },
   "SyncOperationResult": {
     "file": "src/services/sync/cloudSyncService.ts",
-    "line": 26,
+    "line": 29,
     "kind": "interface"
   },
   "SyncOutboxEntry": {
@@ -1691,12 +1696,12 @@
   },
   "VaultPackagingResult": {
     "file": "src/services/security/vaultService.ts",
-    "line": 322,
+    "line": 325,
     "kind": "interface"
   },
   "VaultService": {
     "file": "src/services/security/vaultService.ts",
-    "line": 348,
+    "line": 351,
     "kind": "class"
   },
   "VaultType": {
@@ -1706,7 +1711,7 @@
   },
   "VaultUnpackagingResult": {
     "file": "src/services/security/vaultService.ts",
-    "line": 334,
+    "line": 337,
     "kind": "interface"
   },
   "WeekRecord": {
@@ -1726,7 +1731,7 @@
   },
   "WeeklyRequirementsModal": {
     "file": "src/modules/managers-schedule/components/WeeklyRequirementsModal.tsx",
-    "line": 25,
+    "line": 15,
     "kind": "const"
   },
   "WeeklyScheduleTable": {
@@ -1856,7 +1861,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 1132,
+    "line": 1167,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1871,7 +1876,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 1117,
+    "line": 1152,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1886,7 +1891,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 1124,
+    "line": 1159,
     "kind": "function"
   },
   "isManagerInTraining": {

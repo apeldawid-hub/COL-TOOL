@@ -115,6 +115,13 @@ export class CloudIntegrityScheduler {
             anomalies.push(`Metadane kawiarni [${store.id}] w chmurze są uszkodzone (brak storeId).`);
           }
         }
+
+        // Weryfikacja i auto-heal konfiguracji godzin zmian i profilu tygodnia w chmurze
+        const shiftConfigUrl = `${FIRESTORE_BASE_URL}/stores/${store.id}/meta/shift_configuration`;
+        const shiftRes = await fetch(shiftConfigUrl);
+        if (!shiftRes.ok) {
+          await CloudSyncService.ensureStoreShiftHoursInCloud(store.id);
+        }
       } catch (e: any) {
         anomalies.push(`Błąd odczytu instancji kawiarni [${store.id}]: ${e.message}`);
       }

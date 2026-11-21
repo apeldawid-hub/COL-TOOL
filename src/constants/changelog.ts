@@ -24,6 +24,41 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.17',
+    date: '2026-11-21',
+    title: 'Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Chmury Firestore per Jednostka Floty',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Gwarancja godzin zmian w chmurze: każda kawiarnia posiada bezpośrednio w swoim silosie Firestore definicje 16 zmian menedżerskich z czasem trwania i godzinami.',
+      'Profil tygodnia w chmurze: automatyczne przypisanie standardu 2 MGR (Pn–So 07:00–22:30, Nd 08:00–21:00) w stores/{storeId}/meta/weekly_requirements.',
+      'Automatyczna aprowizacja i samonaprawa (auto-heal) przy dodawaniu lokalu oraz w codziennym audycie integralności floty.',
+      'Pełna persystencja w bezpiecznym skarbcu chmurowym (Cloud Vault) oraz automatyczny seed w silniku wielolokalowym SQLite.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Automatyczne tworzenie i weryfikacja dokumentów shift_configuration oraz weekly_requirements w silosie Firestore każdej kawiarni.',
+        module: 'system'
+      },
+      {
+        type: 'enhancement',
+        description: 'Auto-heal w CloudIntegrityScheduler — wykrywanie i naprawa brakujących definicji zmian w codziennym audycie floty.',
+        module: 'system'
+      },
+      {
+        type: 'database',
+        description: 'Inicjalizacja domyślnego profilu tygodniowego 2 MGR (seedWeeklyRequirements) przy tworzeniu nowej bazy kawiarni w SQLite.',
+        module: 'database'
+      },
+      {
+        type: 'compliance',
+        description: 'Włączenie tabel manager_day_requirements i manager_weekly_requirements do zaszyfrowanej paczki ScheduleVaultPayload.',
+        module: 'system'
+      }
+    ]
+  },
+  {
     version: '2.9.15',
     date: '2026-11-21',
     title: 'Standardowy Profil Tygodnia (Godziny & 2 MGR) oraz Wykluczenie Non-Coverage (NC / T) ze Zmian Prowadzących',

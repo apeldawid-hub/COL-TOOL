@@ -270,6 +270,9 @@ export interface ScheduleVaultPayload {
     contract_type?: string;
     computable_time: number;
   }>;
+  shiftDefinitions?: Array<any>;
+  weeklyRequirements?: Array<any>;
+  dayRequirements?: Array<any>;
 }
 
 /**

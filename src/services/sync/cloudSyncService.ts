@@ -11,6 +11,9 @@
 
 import { StoreStorage } from '../storeStorage';
 import { AuthService } from '../auth/authService';
+import { StoreService } from '../storeService';
+import { DEFAULT_SHIFT_DEFINITIONS } from '../../modules/managers-schedule/constants/defaultShifts';
+import { DEFAULT_WEEKLY_REQUIREMENTS } from '../../modules/managers-schedule/constants/defaultWeeklyRequirements';
 
 export const FIRESTORE_PROJECT_ID = 'starbucks-ops-suite';
 export const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
@@ -74,9 +77,12 @@ export class CloudSyncService {
       });
 
       if (res.ok) {
+        // Natychmiast zabezpiecz godziny zmian i wzorzec tygodnia w chmurze
+        await this.ensureStoreShiftHoursInCloud(store.id);
+
         return {
           success: true,
-          message: `Pomyślnie wydzielono i zarejestrowano obszar kawiarni [${store.id} - ${store.shortName}] w chmurze Google Cloud.`,
+          message: `Pomyślnie wydzielono i zarejestrowano obszar kawiarni [${store.id} - ${store.shortName}] w chmurze Google Cloud wraz z konfiguracją godzin zmian.`,
           timestamp: new Date().toISOString(),
         };
       }
@@ -95,6 +101,103 @@ export class CloudSyncService {
         error: err.message,
       };
     }
+  }
+
+  /**
+   * Zapewnia, że kawiarnia w chmurze posiada predefiniowane godziny zmian oraz profil tygodnia:
+   * - stores/{storeId}/meta/shift_configuration (katalog zmian AM, PM, AMN, PMN, SUP, MIB...)
+   * - stores/{storeId}/meta/weekly_requirements (profil tygodnia: Pn-So 07:00-22:30, Nd 08:00-21:00, 2 MGR)
+   */
+  public static async ensureStoreShiftHoursInCloud(
+    storeId: string,
+    customShiftDefs?: any[],
+    customWeeklyReqs?: any[]
+  ): Promise<{ success: boolean; shiftDefsConfigured: boolean; weeklyReqsConfigured: boolean; error?: string }> {
+    try {
+      const shiftDefs = customShiftDefs || DEFAULT_SHIFT_DEFINITIONS;
+      const weeklyReqs = customWeeklyReqs || DEFAULT_WEEKLY_REQUIREMENTS;
+      const nowIso = new Date().toISOString();
+
+      // 1. Zapis konfiguracji godzin zmian (meta/shift_configuration)
+      const shiftConfigUrl = `${FIRESTORE_BASE_URL}/stores/${storeId}/meta/shift_configuration`;
+      const shiftConfigBody = {
+        fields: {
+          storeId: { stringValue: storeId },
+          totalShifts: { integerValue: String(shiftDefs.length) },
+          updatedAt: { stringValue: nowIso },
+          summary: { stringValue: 'Standard Starbucks (AM: 07:00–15:00, PM: 14:30–22:30, AMN: 08:00–16:00, PMN: 13:00–21:00)' },
+          shiftDefinitionsJson: { stringValue: JSON.stringify(shiftDefs) },
+        },
+      };
+
+      const shiftRes = await fetch(shiftConfigUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(shiftConfigBody),
+      });
+
+      // 2. Zapis wzorca tygodnia (meta/weekly_requirements)
+      const weeklyUrl = `${FIRESTORE_BASE_URL}/stores/${storeId}/meta/weekly_requirements`;
+      const weeklyBody = {
+        fields: {
+          storeId: { stringValue: storeId },
+          standardManagerCount: { integerValue: '2' },
+          updatedAt: { stringValue: nowIso },
+          summary: { stringValue: 'Standard 2 MGR (Pn–So 07:00–22:30 [16h], Nd 08:00–21:00 [14h/16h])' },
+          weeklyRequirementsJson: { stringValue: JSON.stringify(weeklyReqs) },
+        },
+      };
+
+      const weeklyRes = await fetch(weeklyUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(weeklyBody),
+      });
+
+      const isOk = shiftRes.ok && weeklyRes.ok;
+      return {
+        success: isOk,
+        shiftDefsConfigured: shiftRes.ok,
+        weeklyReqsConfigured: weeklyRes.ok,
+        error: !isOk
+          ? `Błąd zapisu w chmurze: shift_config HTTP ${shiftRes.status}, weekly_reqs HTTP ${weeklyRes.status}`
+          : undefined,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        shiftDefsConfigured: false,
+        weeklyReqsConfigured: false,
+        error: err.message,
+      };
+    }
+  }
+
+  /**
+   * Zapewnia, że WSZYSTKIE kawiarnie we flocie posiadają przypisane godziny zmian i profil tygodnia w chmurze.
+   */
+  public static async ensureAllStoresShiftHoursInCloud(): Promise<{
+    totalStores: number;
+    successCount: number;
+    results: Record<string, { success: boolean; error?: string }>;
+  }> {
+    const stores = StoreService.getAllStores();
+    const results: Record<string, { success: boolean; error?: string }> = {};
+    let successCount = 0;
+
+    for (const store of stores) {
+      const res = await this.ensureStoreShiftHoursInCloud(store.id);
+      results[store.id] = { success: res.success, error: res.error };
+      if (res.success) {
+        successCount++;
+      }
+    }
+
+    return {
+      totalStores: stores.length,
+      successCount,
+      results,
+    };
   }
 
   /**

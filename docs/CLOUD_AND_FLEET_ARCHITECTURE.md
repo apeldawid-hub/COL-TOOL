@@ -58,6 +58,8 @@ Google Cloud Firestore: starbucks-ops-suite
 ├── stores/
 │   ├── 108120/                              <-- Instancja Kawiarni 108120 Janki
 │   │   ├── meta/profile                     (metadane lokalu, typ, status, data alokacji)
+│   │   ├── meta/shift_configuration         (katalog zmian, godziny rozpoczęcia i zakończenia)
+│   │   ├── meta/weekly_requirements         (stały wzorzec tygodnia, domyślnie 2 MGR)
 │   │   ├── vault_schedules/{docId}          (zaszyfrowany sejf grafików pracowniczych)
 │   │   ├── vault_personnel/{docId}          (zaszyfrowany sejf bazy personelu)
 │   │   ├── vault_financials/{docId}         (zaszyfrowany sejf stawek i planów AOP)

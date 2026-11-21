@@ -119,6 +119,8 @@ export interface ExtractedStoreTables {
   manager_schedule_versions?: any[];
   manager_monthly_norms?: any[];
   manager_monthly_roster?: any[];
+  manager_day_requirements?: any[];
+  manager_weekly_requirements?: any[];
   training_partners?: any[];
   training_shifts?: any[];
   training_skill_checks?: any[];
@@ -251,6 +253,8 @@ export const KNOWN_SQLITE_TABLES = [
   'manager_schedule_versions',
   'manager_monthly_norms',
   'manager_monthly_roster',
+  'manager_day_requirements',
+  'manager_weekly_requirements',
   'training_partners',
   'training_shifts',
   'training_skill_checks',
@@ -889,6 +893,9 @@ export class CloudMigrationService {
         versions: partIdx === 0 ? allVersions : [],
         trainingShifts: partIdx === 0 ? allTrainingShifts : [],
         fichajesLogs: chunkFichajes,
+        shiftDefinitions: partIdx === 0 ? (tables.shift_definitions || []) : [],
+        weeklyRequirements: partIdx === 0 ? (tables.manager_weekly_requirements || []) : [],
+        dayRequirements: partIdx === 0 ? (tables.manager_day_requirements || []) : [],
       };
 
       const scheduleRes = await VaultService.packageScheduleVault(

@@ -11,6 +11,13 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+## [v2.9.17] — 2026-11-21
+- **Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Firestore Kawiarni**:
+  - Bezpośrednia synchronizacja 16 kanonicznych definicji zmian w `stores/{storeId}/meta/shift_configuration`.
+  - Stały profil tygodniowy w chmurze `stores/{storeId}/meta/weekly_requirements` (2 MGR, Pn–So 07:00–22:30, Nd 08:00–21:00).
+  - Automatyczna aprowizacja nowych kawiarni oraz codzienna autodiagnostyka i samonaprawa (auto-heal) w `CloudIntegrityScheduler`.
+  - Włączenie tabel wymogów obecności do szyfrowanego skarbca `ScheduleVaultPayload`.
+
 ## [v2.9.16] — 2026-11-21
 - Bieżąca synchronizacja i optymalizacje modułu.
 

@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.17](#v2.9.17--2026-11-21)** | 2026-11-21 | Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Chmury Firestore per Jednostka Floty | `patch` | 🚀 Opublikowana |
 | **[v2.9.15](#v2.9.15--2026-11-21)** | 2026-11-21 | Standardowy Profil Tygodnia (Godziny & 2 MGR) oraz Wykluczenie Non-Coverage (NC / T) ze Zmian Prowadzących | `patch` | 🚀 Opublikowana |
 | **[v2.9.14](#v2.9.14--2026-11-21)** | 2026-11-21 | Wymogi Obecności Menedżerów w Dniach Niestandardowych (Wigilia, Sylwester, 1 MGR, 0 MGR) & Elastyczne Okno Dyżuru na Siatce Grafiku | `patch` | 🚀 Opublikowana |
 | **[v2.9.12](#v2.9.12--2026-11-21)** | 2026-11-21 | Reaktywność Rejestracji i Persystencji Nowych Kawiarni we Flocie & Przycisk Dodawania Lokalu w Fleet Master | `patch` | 🚀 Opublikowana |
@@ -44,6 +45,27 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.17] — 2026-11-21
+**Tytuł:** Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Chmury Firestore per Jednostka Floty  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- Każda kawiarnia we flocie posiada teraz w swoim dedykowanym silosie Firestore (`stores/{storeId}/meta/shift_configuration`) 16 kanonicznych definicji zmian menedżerskich z przypisanymi godzinami rozpoczęcia, zakończenia i czasem trwania.
+- Przypisanie domyślnego profilu tygodniowego w chmurze (`stores/{storeId}/meta/weekly_requirements`): standard 2 MGR (Pn–So 07:00–22:30, Nd 08:00–21:00) dla każdej jednostki.
+- Mechanizm automatycznej aprowizacji w `CloudSyncService.provisionStoreCloudArea()` przy dołączaniu nowej kawiarni do floty.
+- Samonaprawa (auto-heal) w cyklicznym audycie integralności `CloudIntegrityScheduler.runDailyAudit()` — natychmiastowe uzupełnienie brakujących konfiguracji w Firestore.
+- Inicjalizacja domyślnego profilu 2 MGR (`seedWeeklyRequirements`) przy tworzeniu bazy SQLite dla nowego lokalu.
+- Włączenie tabel `manager_day_requirements` i `manager_weekly_requirements` do zaszyfrowanej paczki `ScheduleVaultPayload` w migracji chmurowej.
+
+#### ✨ Nowe Funkcje:
+- Automatyczna rejestracja dokumentów `shift_configuration` i `weekly_requirements` w silosie kawiarni w Firestore.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Gwarancja spójności godzin i profilu obsady pomiędzy stacjami roboczymi kawiarni a chmurą Firestore.
+- Samonaprawialny audyt floty z automatyczną naprawą brakujących węzłów metadanych.
+
+---
 
 ### [v2.9.15] — 2026-11-21
 **Tytuł:** Standardowy Profil Tygodnia (Godziny & 2 MGR) oraz Wykluczenie Non-Coverage (NC / T) ze Zmian Prowadzących  

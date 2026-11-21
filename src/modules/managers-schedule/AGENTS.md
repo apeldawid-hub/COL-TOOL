@@ -28,6 +28,7 @@ src/modules/managers-schedule/
 │   └── index.ts                    # Dedykowane interfejsy TypeScript Modułu 2 (zmiany, KP, TOR, wsparcia)
 ├── constants/
 │   ├── defaultShifts.ts            # Stałe katalogu zmian Starbucks, kolory badge'y i typy
+│   ├── defaultWeeklyRequirements.ts # Standardowy profil tygodniowy (2 MGR, godziny obecności dla 8 dni tygodnia)
 │   └── index.ts                    # Stałe Kodeksu Pracy (11h/35h), Floor 32h/224h, solver AI (2k prób)
 ├── components/
 │   ├── AutoScheduleModal.tsx        # Modal AutoScheduling (generator grafiku AI, diff, KPI)
