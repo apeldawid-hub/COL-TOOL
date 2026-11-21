@@ -2195,7 +2195,7 @@ export const UnifiedSettingsModal: React.FC<UnifiedSettingsModalProps> = ({
                           className="w-full mt-2.5 px-3 py-2 bg-white hover:bg-emerald-50 border border-stone-300 hover:border-[#006241] text-[#006241] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs group"
                         >
                           <Store className="w-3.5 h-3.5 text-[#CBA258]" />
-                          <span>Przełącz lub Dodaj Kawiarnię...</span>
+                          <span>Przełącz Kawiarnię...</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                         </button>
                       ) : (

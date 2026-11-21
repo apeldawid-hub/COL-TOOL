@@ -112,7 +112,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return res;
   }, [isStoreClient, assignedStoreIds, appMode]);
 
-  const addCustomStore = useCallback(async (store: StarbucksStore, activate = true) => {
+  const addCustomStore = useCallback(async (store: StarbucksStore, activate = false) => {
     if (isStoreClient) {
       console.warn('[Security Guard] Dodawanie własnych kawiarni jest wyłączone w trybie STORE_CLIENT.');
       return { success: false, error: 'Dodawanie kawiarni jest wyłączone na stacjach klienckich' };

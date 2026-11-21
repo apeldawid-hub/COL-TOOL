@@ -133,7 +133,6 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   const [newStoreDistrict, setNewStoreDistrict] = useState<string>('');
   const [newStoreAddress, setNewStoreAddress] = useState<string>('');
   const [newStoreType, setNewStoreType] = useState<'Mall' | 'Street' | 'Drive-Thru' | 'Office' | 'Travel'>('Mall');
-  const [newStoreActivateNow, setNewStoreActivateNow] = useState<boolean>(false);
   const [addStoreError, setAddStoreError] = useState<string | null>(null);
   const [isSavingNewStore, setIsSavingNewStore] = useState<boolean>(false);
 
@@ -165,21 +164,21 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
       district: newStoreDistrict.trim() || 'Dystrykt Starbucks',
       address: newStoreAddress.trim() || 'Kawiarnia Starbucks',
       type: newStoreType,
-      isCustom: true,
+      isCustom: false,
     };
 
     setIsSavingNewStore(true);
     setAddStoreError(null);
 
     try {
-      const res = await addCustomStore(newStore, newStoreActivateNow);
+      const res = await addCustomStore(newStore, false);
       if (res && res.success === false) {
         setAddStoreError(res.error || 'Nie udało się dodać kawiarni do bazy.');
         setIsSavingNewStore(false);
         return;
       }
 
-      showToast(`Pomyślnie dodano kawiarnię ${newStore.shortName || newStore.name} do floty Starbucks!`);
+      showToast(`Pomyślnie zarejestrowano kawiarnię ${newStore.shortName || newStore.name} w globalnej flocie Starbucks!`);
       // Odśwież widok floty
       setStores(fleetService.getFleetStores());
       setStats(fleetService.getSummaryStats());
@@ -192,7 +191,6 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
       setNewStoreDistrict('');
       setNewStoreAddress('');
       setNewStoreType('Mall');
-      setNewStoreActivateNow(false);
       setIsAddStoreModalOpen(false);
     } catch (err: any) {
       console.error('[FleetMasterDashboard] Błąd zapisu nowej kawiarni we flocie:', err);
@@ -1853,14 +1851,12 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
                 </div>
               </div>
 
-              <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between text-xs">
-                <span className="font-medium text-stone-700">Aktywuj od razu jako bieżący lokal roboczy</span>
-                <input
-                  type="checkbox"
-                  checked={newStoreActivateNow}
-                  onChange={(e) => setNewStoreActivateNow(e.target.checked)}
-                  className="rounded text-[#006241] focus:ring-[#006241] h-4 w-4"
-                />
+              <div className="p-3 bg-emerald-50/60 border border-emerald-200/70 rounded-xl text-xs text-stone-600 flex items-start gap-2.5">
+                <Building2 className="w-4 h-4 text-[#006241] mt-0.5 shrink-0" />
+                <span>
+                  Lokal zostanie dodany do centralnego rejestru floty Starbucks oraz zarejestrowany w chmurze Firestore.
+                  Na stacji roboczej Fleet Managera nie jest tworzona lokalna baza SQLite.
+                </span>
               </div>
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-stone-100">

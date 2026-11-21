@@ -418,7 +418,7 @@ export class StoreService {
           // Scal kawiarnie z dysku i z localStorage (dysk ma pierwszeństwo jako trwałe źródło prawdy)
           for (const ds of diskStores) {
             const key = (ds.id || ds.mpk || ds.unitCode || '').toLowerCase().trim();
-            if (key) localMap.set(key, { ...ds, isCustom: true });
+            if (key) localMap.set(key, { ...ds, isCustom: false });
           }
 
           const merged = Array.from(localMap.values());
@@ -480,7 +480,7 @@ export class StoreService {
    */
   public static async addCustomStore(
     store: StarbucksStore,
-    activate = true,
+    activate = false,
     securityContext?: { appMode: AppRuntimeMode | string }
   ): Promise<{ success: boolean; isNew?: boolean; error?: string }> {
     const effectiveMode = securityContext?.appMode ?? this.runtimeSecurityProfile.appMode;
@@ -508,7 +508,7 @@ export class StoreService {
         );
       });
 
-      const storeToSave = { ...store, isCustom: true };
+      const storeToSave = { ...store, isCustom: false };
 
       if (existingIdx >= 0) {
         customStores[existingIdx] = storeToSave;
