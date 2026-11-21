@@ -147,7 +147,8 @@ export const AutoScheduleWidget: React.FC<AutoScheduleWidgetProps> = ({
       preferConsecutiveOffDays: true,
       balanceFairness: true,
       smoothWeeklyHours: true,
-      iterationsCount: 2000
+      iterationsCount: 2000,
+      dayRequirements: data.dayRequirements
     };
 
     // Uruchamiamy asynchronicznie w tle (nie blokuje renderowania grafiku)

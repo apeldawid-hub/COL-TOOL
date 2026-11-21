@@ -24,6 +24,42 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.14',
+    date: '2026-11-21',
+    title: 'Wymogi Obecności Menedżerów w Dniach Niestandardowych (Wigilia, Sylwester, 1 MGR, 0 MGR) & Elastyczne Okno Dyżuru na Siatce Grafiku',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Konfiguracja wymogów obecności menedżera bezpośrednio na siatce grafiku: kliknięcie w nagłówek dnia otwiera panel DayRequirementsModal.',
+      'Definicja godzin obecności menedżera: wprowadzony przedział (np. 07:00–16:00) określa bezpośrednio czas pracy kierownika (9.0h), a nie godziny otwarcia lokalu dla gości.',
+      'Elastyczna liczba menedżerów (0, 1 lub 2): obsługa dni zamkniętych (0 MGR, 0h) oraz pojedynczych dyżurów całodziennych (1 MGR, np. Wigilia).',
+      'Eliminacja fałszywych alarmów: dolny wiersz obsady oraz licznik luk kadrowych rozpoznają spełnienie wymogu 1 MGR bez alarmu "BRAK ZAMKNIĘCIA".',
+      '1-klik dopasowania zmiany w ShiftPickerPopover oraz pełna integracja z silnikiem optymalizacyjnym AutoScheduler AI.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Dedykowane okno dialogowe DayRequirementsModal oraz tabela SQLite manager_day_requirements do zapisu niestandardowych wymogów obsady per dzień.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Automatyczne wyliczanie długości dyżuru menedżera z przedziału godzinowego (np. 07:00-16:00 = 9h) zasilające bilans czasu pracy i TOR.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Szybka akcja w oknie ShiftPickerPopover do natychmiastowego ustawienia dyżuru menedżera zgodnego z wymogiem dnia.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Rozszerzenie solvera AutoSchedulerEngine o respektowanie profilu dnia (brak szukania drugiej zmiany przy manager_count = 1).',
+        module: 'managers_schedule'
+      }
+    ]
+  },
+  {
     version: '2.9.12',
     date: '2026-11-21',
     title: 'Reaktywność Rejestracji i Persystencji Nowych Kawiarni we Flocie & Przycisk Dodawania Lokalu w Fleet Master',

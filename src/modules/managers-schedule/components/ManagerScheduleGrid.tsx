@@ -4,13 +4,15 @@ import {
   ShiftDefinition,
   ManagerEmployee,
   LaborLawViolation,
-  ManagerScheduleShift
+  ManagerScheduleShift,
+  ManagerDayRequirement
 } from '../../../types';
 import { ShiftPickerPopover } from './ShiftPickerPopover';
 import { LaborLawViolationDialog } from './LaborLawViolationDialog';
+import { DayRequirementsModal } from './DayRequirementsModal';
 import { ManagerScheduleEngine, formatManagerRole } from '../services/managerScheduleEngine';
 import { SmartSwapEngine, SmartSwapChange } from '../services/smartSwapEngine';
-import { AlertTriangle, CheckCircle2, MessageSquare, Edit3, Calendar, Users, TrendingUp, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Columns, Eye, EyeOff, Sparkles, ArrowRightLeft, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, MessageSquare, Edit3, Calendar, Users, TrendingUp, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Columns, Eye, EyeOff, Sparkles, ArrowRightLeft, X, Clock } from 'lucide-react';
 import { useStore } from '../../../context/StoreContext';
 
 interface ManagerScheduleGridProps {
@@ -26,6 +28,8 @@ interface ManagerScheduleGridProps {
   onBatchUpdateShifts?: (shifts: ManagerScheduleShift[]) => Promise<void>;
   onUpdateDisposition?: (empId: number, day: number, disposition: string) => Promise<void>;
   onUpdateEvent: (day: number, text: string) => Promise<void>;
+  onSaveDayRequirement?: (req: ManagerDayRequirement) => Promise<void>;
+  onResetDayRequirement?: (year: number, month: number, day: number) => Promise<void>;
   onOpenComplianceModal?: () => void;
   onOpenConflictModal?: () => void;
   boundaryShifts?: {
@@ -42,6 +46,8 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
   onBatchUpdateShifts,
   onUpdateDisposition,
   onUpdateEvent,
+  onSaveDayRequirement,
+  onResetDayRequirement,
   onOpenComplianceModal,
   onOpenConflictModal,
   boundaryShifts,
@@ -71,6 +77,14 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
     currentStartTime?: string;
     currentEndTime?: string;
     currentDisposition?: string;
+  } | null>(null);
+
+  // Modal konfiguracji wymogów obecności menedżera dla wybranego dnia (np. Wigilia 1 MGR 07:00-16:00, 9h)
+  const [dayReqModalData, setDayReqModalData] = useState<{
+    day: number;
+    dayName: string;
+    holidayName?: string;
+    requirement?: ManagerDayRequirement;
   } | null>(null);
 
   const [violationPrompt, setViolationPrompt] = useState<{
@@ -678,10 +692,29 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                 return (
                   <th
                     key={`day-${d.day}`}
-                    className={`px-0.5 py-1 text-center font-bold min-w-[30px] md:min-w-[33px] xl:min-w-[36px] border-r border-[#E2E8E5] transition-colors ${headerBg}`}
-                    title={d.isHoliday ? `Święto: ${d.holidayName}` : d.isTradingSunday ? 'Niedziela Handlowa' : ''}
+                    onClick={() => {
+                      if (isReadOnly) return;
+                      setDayReqModalData({
+                        day: d.day,
+                        dayName: d.dayName,
+                        holidayName: d.holidayName,
+                        requirement: d.requirement
+                      });
+                    }}
+                    className={`px-0.5 py-1 text-center font-bold min-w-[30px] md:min-w-[33px] xl:min-w-[36px] border-r border-[#E2E8E5] transition-colors ${
+                      isReadOnly ? 'cursor-default' : 'cursor-pointer hover:brightness-95 group'
+                    } ${headerBg}`}
+                    title={
+                      d.requirement
+                        ? `Wymóg menedżera: ${
+                            !d.requirement.is_open || d.requirement.manager_count === 0
+                              ? 'Zamknięte (0h, 0 MGR)'
+                              : `${d.requirement.manager_count} MGR (${d.requirement.start_time}–${d.requirement.end_time}, ${d.requirement.required_hours}h)`
+                          }${d.requirement.notes ? ` [${d.requirement.notes}]` : ''} — Kliknij, aby zmienić`
+                        : `${d.isHoliday ? `Święto: ${d.holidayName}. ` : d.isTradingSunday ? 'Niedziela Handlowa. ' : ''}Kliknij, aby skonfigurować godziny obecności menedżera`
+                    }
                   >
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center relative">
                       <span className="text-[9px] font-semibold text-stone-500">
                         {d.dayName}
                       </span>
@@ -690,6 +723,23 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                       }`}>
                         {d.day}
                       </span>
+
+                      {/* Odznaka niestandardowego wymogu dnia (np. Wigilia 1 MGR 9h, Zamknięte 0h) */}
+                      {d.requirement && (
+                        <span
+                          className={`mt-0.5 px-0.5 py-0.2 rounded text-[7px] font-black leading-none uppercase tracking-tighter shadow-2xs ${
+                            !d.requirement.is_open || d.requirement.manager_count === 0
+                              ? 'bg-rose-600 text-white'
+                              : d.requirement.manager_count === 1
+                              ? 'bg-[#006241] text-white ring-1 ring-emerald-400'
+                              : 'bg-emerald-800 text-emerald-100'
+                          }`}
+                        >
+                          {!d.requirement.is_open || d.requirement.manager_count === 0
+                            ? '0h'
+                            : `${d.requirement.manager_count}M ${d.requirement.required_hours}h`}
+                        </span>
+                      )}
                     </div>
                   </th>
                 );
@@ -1437,28 +1487,57 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
               )}
 
               {data.daySummaries.map(d => {
+                const req = d.requirement;
+                const isDayClosed = req ? (!req.is_open || req.manager_count === 0) : false;
+                const isSingleManagerDay = req ? (req.is_open && req.manager_count === 1) : false;
+
                 const isAmOk = d.hasOpeningCoverage;
                 const isPmOk = d.hasClosingCoverage;
+                const isSingleOk = d.totalManagersWorking >= 1;
                 const extSupportCount = d.externalSupportManagers?.length || 0;
 
                 return (
                   <td
                     key={`cov-${d.day}`}
                     className="p-0.5 text-center border-r border-emerald-900/60 bg-[#1E3932] min-w-[30px] md:min-w-[33px] xl:min-w-[36px]"
-                    title={`Dzień ${d.day}: ${d.totalManagersWorking} menedżerów pracujących w Janki.${extSupportCount > 0 ? ` Wsparcie na innych kawiarniach (${extSupportCount}): ${d.externalSupportManagers?.join(', ')}.` : ''} Otwarcia: ${d.openingManagers.join(', ') || 'BRAK'}. Zamknięcia: ${d.closingManagers.join(', ') || 'BRAK'}`}
+                    title={
+                      isDayClosed
+                        ? `Dzień ${d.day}: Kawiarnia nieczynna (wymóg: 0 MGR). Pracujących: ${d.totalManagersWorking}`
+                        : isSingleManagerDay
+                        ? `Dzień ${d.day} (Wymóg: 1 MGR, ${req?.start_time}–${req?.end_time}, ${req?.required_hours}h): ${
+                            isSingleOk ? 'OBSADZONY' : 'BRAK OBSADY!'
+                          }. Menedżerowie na sali: ${d.openingManagers.concat(d.closingManagers).join(', ') || d.totalManagersWorking + ' os.'}`
+                        : `Dzień ${d.day}: ${d.totalManagersWorking} menedżerów pracujących w kawiarni.${extSupportCount > 0 ? ` Wsparcie na innych kawiarniach (${extSupportCount}): ${d.externalSupportManagers?.join(', ')}.` : ''} Otwarcia: ${d.openingManagers.join(', ') || 'BRAK'}. Zamknięcia: ${d.closingManagers.join(', ') || 'BRAK'}`
+                    }
                   >
                     <div className="flex flex-col items-center gap-0.5">
                       <span className="text-[11px] font-bold text-white leading-none">
                         {d.totalManagersWorking}
                       </span>
-                      <div className="flex items-center gap-0.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${isAmOk ? 'bg-emerald-400' : 'bg-rose-500 ring-1 ring-white'}`} title={isAmOk ? 'Otwarcie obsadzone' : 'BRAK OTWARCIA!'} />
-                        <span className={`w-1.5 h-1.5 rounded-full ${isPmOk ? 'bg-amber-400' : 'bg-rose-500 ring-1 ring-white'}`} title={isPmOk ? 'Zamknięcie obsadzone' : 'BRAK ZAMKNIĘCIA!'} />
-                      </div>
+                      {isDayClosed ? (
+                        <div className="flex items-center justify-center">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${d.totalManagersWorking === 0 ? 'bg-stone-400' : 'bg-amber-400'}`}
+                            title={d.totalManagersWorking === 0 ? 'Lokal zamknięty (OK)' : 'Lokal zamknięty, ale zaplanowano dyżur'}
+                          />
+                        </div>
+                      ) : isSingleManagerDay ? (
+                        <div className="flex items-center justify-center gap-0.5">
+                          <span
+                            className={`w-2 h-2 rounded-full ${isSingleOk ? 'bg-emerald-400 ring-1 ring-emerald-200' : 'bg-rose-500 ring-1 ring-white animate-pulse'}`}
+                            title={isSingleOk ? `Obsadzona 1 zmiana (${req?.start_time}–${req?.end_time}, ${req?.required_hours}h)` : 'BRAK OBSADY MENEDŻERSKIEJ!'}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-0.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${isAmOk ? 'bg-emerald-400' : 'bg-rose-500 ring-1 ring-white'}`} title={isAmOk ? 'Otwarcie obsadzone' : 'BRAK OTWARCIA!'} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${isPmOk ? 'bg-amber-400' : 'bg-rose-500 ring-1 ring-white'}`} title={isPmOk ? 'Zamknięcie obsadzone' : 'BRAK ZAMKNIĘCIA!'} />
+                        </div>
+                      )}
                       {extSupportCount > 0 && (
                         <span 
                           className="text-[7px] leading-none px-0.5 py-0.2 rounded bg-lime-800 text-lime-200 font-bold border border-lime-600 mt-0.5" 
-                          title={`Wsparcie poza kawiarnią Janki:\n${d.externalSupportManagers?.join('\n')}`}
+                          title={`Wsparcie poza kawiarnią:\n${d.externalSupportManagers?.join('\n')}`}
                         >
                           +{extSupportCount}
                         </span>
@@ -1738,6 +1817,44 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
             );
             setViolationPrompt(null);
           }}
+        />
+      )}
+
+      {/* MODAL KONFIGURACJI WYMOGÓW OBECNOŚCI MENEDŻERA DLA DNIA (WIGILIA / SYLWESTER / SKRÓCONY DYŻUR) */}
+      {dayReqModalData && (
+        <DayRequirementsModal
+          isOpen={Boolean(dayReqModalData)}
+          year={data.year}
+          month={data.month}
+          monthName={data.monthName}
+          day={dayReqModalData.day}
+          dayName={dayReqModalData.dayName}
+          holidayName={dayReqModalData.holidayName}
+          initialRequirement={dayReqModalData.requirement}
+          isReadOnly={isReadOnly}
+          onSave={async (req) => {
+            if (onSaveDayRequirement) {
+              await onSaveDayRequirement(req);
+              setToastMessage({
+                type: 'success',
+                title: `📅 Wymóg Dnia ${req.day} Zapisany!`,
+                message: !req.is_open || req.manager_count === 0
+                  ? 'Dzień oznaczony jako zamknięty (0h dyżuru menedżera).'
+                  : `Wymóg: ${req.manager_count} MGR, dyżur: ${req.start_time} – ${req.end_time} (${req.required_hours}h).`
+              });
+            }
+          }}
+          onReset={async (y, m, d) => {
+            if (onResetDayRequirement) {
+              await onResetDayRequirement(y, m, d);
+              setToastMessage({
+                type: 'info',
+                title: `📅 Dzień ${d}: Przywrócono Standard`,
+                message: 'Przywrócono standardowe wymogi obsadowe (2 menedżerów: AM + PM).'
+              });
+            }
+          }}
+          onClose={() => setDayReqModalData(null)}
         />
       )}
 

@@ -7,6 +7,7 @@ export type {
   LaborLawViolation,
   ManagerCalculatedRow,
   DayCoverageSummary,
+  ManagerDayRequirement,
   MonthlyNormRecord,
   ManagerScheduleMonthData,
   RcpAbsenceConflict,

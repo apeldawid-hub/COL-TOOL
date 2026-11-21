@@ -1019,6 +1019,24 @@ function setupIpcHandlers() {
     }
     normStmt.free();
 
+    // 5b. Wymogi dziennej obsady menedżerów (dni niestandardowe / Wigilia / skrócone dyżury)
+    let dayRequirements: any[] = [];
+    try {
+      const reqStmt = db.prepare(`
+        SELECT id, year, month, day, date, is_open, manager_count, start_time, end_time, required_hours, notes
+        FROM manager_day_requirements
+        WHERE year = ? AND month = ?
+        ORDER BY day ASC
+      `);
+      reqStmt.bind([year, month]);
+      while (reqStmt.step()) {
+        dayRequirements.push(reqStmt.getAsObject());
+      }
+      reqStmt.free();
+    } catch (_) {
+      // Tabela mogła jeszcze nie istnieć w starszej bazie
+    }
+
     // 6. Zmiany graniczne z sąsiednich miesięcy dla inspekcji Kodeksu Pracy na styku miesięcy
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
@@ -1101,6 +1119,7 @@ function setupIpcHandlers() {
       shiftDefinitions,
       shifts,
       events,
+      dayRequirements,
       monthlyNorm,
       boundaryShifts: {
         prevMonthShifts,
@@ -1649,6 +1668,56 @@ function setupIpcHandlers() {
       ]);
       stmt.free();
     }
+    dbManager.persist();
+    if (mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return true;
+  });
+
+  // Zapis niestandardowych wymogów obecności menedżerów per dzień (np. Wigilia, 1 MGR 07:00-16:00, 9h)
+  ipcMain.handle('db:save-manager-day-requirement', (_event, req: any) => {
+    const db = dbManager.getDb();
+    const year = Number(req.year);
+    const month = Number(req.month);
+    const day = Number(req.day);
+    const date = String(req.date || `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+    const isOpen = req.is_open !== undefined ? (req.is_open ? 1 : 0) : 1;
+    const managerCount = req.manager_count !== undefined ? Number(req.manager_count) : 2;
+    const startTime = req.start_time ? String(req.start_time) : null;
+    const endTime = req.end_time ? String(req.end_time) : null;
+    const requiredHours = req.required_hours !== undefined ? Number(req.required_hours) : null;
+    const notes = req.notes ? String(req.notes).trim() : null;
+
+    const stmt = db.prepare(`
+      INSERT INTO manager_day_requirements (year, month, day, date, is_open, manager_count, start_time, end_time, required_hours, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(year, month, day) DO UPDATE SET
+        is_open = excluded.is_open,
+        manager_count = excluded.manager_count,
+        start_time = excluded.start_time,
+        end_time = excluded.end_time,
+        required_hours = excluded.required_hours,
+        notes = excluded.notes
+    `);
+    stmt.run([year, month, day, date, isOpen, managerCount, startTime, endTime, requiredHours, notes]);
+    stmt.free();
+
+    dbManager.persist();
+    if (mainWindow) {
+      mainWindow.webContents.send('data:refreshed');
+    }
+    return true;
+  });
+
+  // Usunięcie niestandardowego wymogu dnia (przywrócenie standardowych 2 zmian AM + PM)
+  ipcMain.handle('db:delete-manager-day-requirement', (_event, year: number, month: number, day: number) => {
+    const db = dbManager.getDb();
+    db.run(`DELETE FROM manager_day_requirements WHERE year = ? AND month = ? AND day = ?`, [
+      Number(year),
+      Number(month),
+      Number(day)
+    ]);
     dbManager.persist();
     if (mainWindow) {
       mainWindow.webContents.send('data:refreshed');

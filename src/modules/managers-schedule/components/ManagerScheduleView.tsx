@@ -107,6 +107,7 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
         const shifts: ManagerScheduleShift[] = res.shifts || [];
         const events: { day: number; event_text: string }[] = res.events || [];
         const normRecord: MonthlyNormRecord | null = res.monthlyNorm || null;
+        const dayRequirements = res.dayRequirements || [];
 
         setMonthlyNormRecord(normRecord);
         setBoundaryShifts(res.boundaryShifts);
@@ -121,7 +122,8 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
           normRecord,
           res.boundaryShifts,
           res.rcpLogs,
-          res.hasCompleteRcpLogs
+          res.hasCompleteRcpLogs,
+          dayRequirements
         );
 
         setScheduleData(calculated);
@@ -358,9 +360,33 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
     setSelectedMonth(now.monthIndex + 1);
   };
 
-  // Weryfikacja braków obsady
+  // Zapis niestandardowego wymogu dnia (np. Wigilia 1 MGR 07:00-16:00, 9h)
+  const handleSaveDayRequirement = async (req: import('../../../types').ManagerDayRequirement) => {
+    try {
+      if ((window as any).api?.saveManagerDayRequirement) {
+        await (window as any).api.saveManagerDayRequirement(req);
+        await loadScheduleData();
+      }
+    } catch (err) {
+      console.error('Błąd zapisu wymogu dnia:', err);
+    }
+  };
+
+  // Reset wymogu dnia do standardu (2 MGR: AM + PM)
+  const handleResetDayRequirement = async (y: number, m: number, d: number) => {
+    try {
+      if ((window as any).api?.deleteManagerDayRequirement) {
+        await (window as any).api.deleteManagerDayRequirement(y, m, d);
+        await loadScheduleData();
+      }
+    } catch (err) {
+      console.error('Błąd resetowania wymogu dnia:', err);
+    }
+  };
+
+  // Weryfikacja braków obsady (z uwzględnieniem dni o wymogu 1 MGR lub 0 MGR)
   const coverageGapsCount = scheduleData?.daySummaries.filter(
-    d => !d.hasOpeningCoverage || !d.hasClosingCoverage
+    d => d.isCoverageMet !== undefined ? !d.isCoverageMet : (!d.hasOpeningCoverage || !d.hasClosingCoverage)
   ).length || 0;
 
   // Status publikacji grafiku (reguła 7 dni art. 129 § 3 KP)
@@ -531,6 +557,8 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
               onBatchUpdateShifts={handleApplyAutoSchedule}
               onUpdateDisposition={handleUpdateDisposition}
               onUpdateEvent={handleUpdateEvent}
+              onSaveDayRequirement={handleSaveDayRequirement}
+              onResetDayRequirement={handleResetDayRequirement}
               onOpenComplianceModal={() => setShowComplianceModal(true)}
               onOpenConflictModal={() => setShowRcpConflictModal(true)}
               onOpenTeamModal={() => setShowTeamModal(true)}

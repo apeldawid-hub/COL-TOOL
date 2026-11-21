@@ -51,6 +51,7 @@ export interface IElectronAPI {
     shiftDefinitions: any[];
     shifts: any[];
     events: any[];
+    dayRequirements?: any[];
     monthlyNorm?: any;
     boundaryShifts?: any;
     rcpLogs?: Record<number, Record<number, { hours: number; unitCode?: string; unitName?: string }>>;
@@ -61,6 +62,8 @@ export interface IElectronAPI {
   saveManagerDisposition: (payload: { year: number; month: number; day: number; date: string; employee_id: number; disposition: string }) => Promise<boolean>;
   saveBatchManagerDispositions: (payload: { year: number; month: number; items: Array<{ day: number; employee_id: number; disposition: string; date?: string }> }) => Promise<boolean>;
   saveManagerEvent: (event: any) => Promise<boolean>;
+  saveManagerDayRequirement: (req: any) => Promise<boolean>;
+  deleteManagerDayRequirement: (year: number, month: number, day: number) => Promise<boolean>;
   manageEmployees: (payload: any) => Promise<boolean>;
   saveManagerEmployees?: (payload: any) => Promise<boolean>;
   copyRosterFromPreviousMonth: (year: number, month: number) => Promise<any[]>;
@@ -211,6 +214,8 @@ const api: IElectronAPI = {
   saveManagerDisposition: (payload) => ipcRenderer.invoke('db:save-manager-disposition', payload),
   saveBatchManagerDispositions: (payload) => ipcRenderer.invoke('db:save-batch-manager-dispositions', payload),
   saveManagerEvent: (event) => ipcRenderer.invoke('db:save-manager-event', event),
+  saveManagerDayRequirement: (req: any) => ipcRenderer.invoke('db:save-manager-day-requirement', req),
+  deleteManagerDayRequirement: (year: number, month: number, day: number) => ipcRenderer.invoke('db:delete-manager-day-requirement', year, month, day),
   manageEmployees: (payload) => ipcRenderer.invoke('db:manage-employees', payload),
   saveManagerEmployees: (payload) => ipcRenderer.invoke('db:manage-employees', payload),
   copyRosterFromPreviousMonth: (year: number, month: number) => ipcRenderer.invoke('db:copy-roster-from-previous-month', year, month),

@@ -32,6 +32,7 @@ src/modules/managers-schedule/
 ├── components/
 │   ├── AutoScheduleModal.tsx        # Modal AutoScheduling (generator grafiku AI, diff, KPI)
 │   ├── AutoScheduleWidget.tsx       # Floating Starbucks Speed-Dial Navigation Hub (radial progress, LM/NM, TOR, akcje)
+│   ├── DayRequirementsModal.tsx    # Modal konfiguracji wymogów obecności menedżera per dzień (Wigilia, Sylwester, 1 MGR, 0 MGR)
 │   ├── InterStoreSupportModal.tsx   # Asystent wsparcia międzykawiarnianego (3 scenariusze, tarcza KP, SMS)
 │   ├── LaborLawComplianceModal.tsx # Tarcza Kodeksu Pracy (inspektor naruszeń)
 │   ├── LaborLawViolationDialog.tsx # Dialog ostrzegawczy pre-flight przy próbie złamania przepisów KP
@@ -162,6 +163,18 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
    - Kolumna RCP dla menedżerów odzwierciedla zarejestrowany czas pracy z systemu MAPAL.
    - W przypadku menedżerów logowania obejmują wszystkie zmiany — **również te zrealizowane w innych kawiarniach** (wsparcia SAM, SPM, SUP, Nowy Świat 323, Sadyba 341, San Park 756, Arkadia 327 itd.).
    - Parser importu MAPAL (`mapalParser.ts`) oraz handlery IPC (`main.ts`) wykorzystują kanoniczny słownik polskich zdrobnień (`NICKNAME_MAP`: `Gabi` $\leftrightarrow$ `Gabriela`, `Zuza` $\leftrightarrow$ `Zuzanna`, `Werka` $\leftrightarrow$ `Weronika`, `Hania` $\leftrightarrow$ `Hanna`, `Ola` $\leftrightarrow$ `Aleksandra`, `Kuba` $\leftrightarrow$ `Jakub`, `Maciek` $\leftrightarrow$ `Maciej` itd.).
+
+### Algorytm 8: Niestandardowe Wymogi Obecności Menedżerów per Dzień (Wigilia, Sylwester, Skrócone Dyżury)
+1. **Definicja Wymiaru Czasu Pracy Menedżera (Shift Hours vs Godziny Otwarcia Lokalu)**:
+   - Wprowadzany w oknie `DayRequirementsModal` przedział czasu (`start_time` – `end_time`) definiuje **bezpośrednio godziny obecności i dyżuru kierownika** na zmianie (z procedurami otwarcia, kasy, rozruchu ekspresów i zamknięcia), a **nie** godziny otwarcia kawiarni dla klientów.
+   - Wyliczone godziny ($\text{end} - \text{start}$, np. 07:00–16:00 = **9.0 h**) stanowią nominalny czas pracy menedżera, zasilając bilans miesiąca i TOR.
+2. **Elastyczna Liczba Menedżerów w Dniu (`manager_count`)**:
+   - **0 MGR (Zamknięte / Święto)**: np. 25 grudnia — brak zaplanowanej obsady jest w pełni poprawny (`isCoverageMet: true`), wskaźnik obsady wyświetla `0/0 MGR` bez fałszywych alarmów.
+   - **1 MGR (Pojedyncza Zmiana Całodzienna)**: np. Wigilia — wymagany dokładnie 1 menedżer na sali (`totalManagersWorking >= 1`). Wiersz obsady zapala zieloną kropkę, eliminując fałszywe powiadomienie *„BRAK ZAMKNIĘCIA”*.
+   - **2 MGR (Standard)**: otwarcie i zamknięcie (AM + PM).
+3. **Zasilenie AutoSchedulera AI i Szybki Wybór w Popoverze**:
+   - Generator AI w `AutoSchedulerEngine` respektuje wymogi dnia: dla dnia z `manager_count === 1` generuje dokładnie 1 zmianę z wyliczonym czasem trwania (np. 9.0h), nie rezerwując niepotrzebnie drugiego menedżera.
+   - W oknie wyboru zmiany (`ShiftPickerPopover`) wyświetla się wyróżniony kafelek akcji: *„Dopasuj do wymogu dnia: 07:00–16:00 (9.0h)”* pozwalający przypisać dyżur 1 kliknięciem.
    - Zapytania do bazy łączą tabelę główną `manager_employees` oraz składy miesięczne `manager_monthly_roster`, zapewniając prawidłowe przypisanie godzin menedżerów historycznych (np. Hanna Domachowska, Maciej Chlabicz, Weronika Stasiewicz).
    - **Ochrona Floor Hours Modułu 1**: Zapytania Modułu 1 filtrują bazę ściśle po identyfikatorze aktywnego lokalu, gwarantując, że godziny wsparcia w obcych lokalach nie zniekształcają wskaźników TPLH ani zapotrzebowania Floor Hours kawiarni macierzystej.
    - Tooltip komórki grafiku informuje o lokalu wsparcia: `📍 Zalogowano wsparcie MAPAL: Xh w [Nazwa Lokalu] (kod: XXX)`.
@@ -213,7 +226,8 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
 - `manager_schedule_events`: ważne wydarzenia per dzień (year, month, day, date, event_text).
 - `manager_schedule_versions`: rejestr wersji grafiku i publikacji (id, year, month, version_num, version_type, title, description, shifts_json, events_json, is_published, created_at).
 - `manager_monthly_norms`: oficjalne normy miesięczne na -10 i +10 lat (lata 2016–2036, 252 miesiące) z możliwością manualnego override (`year, month, working_days, off_days, full_time_hours, is_custom, notes, updated_at`).
-- Indeksy: `idx_mgr_roster_ym`, `idx_mgr_roster_emp`, `idx_mgr_shifts_ym`, `idx_mgr_shifts_emp`, `idx_mgr_events_ym`, `idx_mgr_versions_ym`.
+- `manager_day_requirements`: niestandardowe wymogi obecności menedżera per dzień (`year, month, day, date, is_open, manager_count, start_time, end_time, required_hours, notes`) — np. Wigilia 1 MGR 07:00-16:00 (9.0h), Boże Narodzenie 0 MGR (0h).
+- Indeksy: `idx_mgr_roster_ym`, `idx_mgr_roster_emp`, `idx_mgr_shifts_ym`, `idx_mgr_shifts_emp`, `idx_mgr_events_ym`, `idx_mgr_versions_ym`, `idx_mgr_day_req_ym`.
 
 ---
 

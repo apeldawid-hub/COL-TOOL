@@ -1253,6 +1253,22 @@ export class DatabaseManager {
         PRIMARY KEY(year, month)
       );
 
+      CREATE TABLE IF NOT EXISTS manager_day_requirements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        day INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        is_open INTEGER DEFAULT 1,
+        manager_count INTEGER DEFAULT 2,
+        start_time TEXT,
+        end_time TEXT,
+        required_hours REAL,
+        notes TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(year, month, day)
+      );
+
       CREATE TABLE IF NOT EXISTS manager_monthly_roster (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         year INTEGER NOT NULL,
@@ -1280,6 +1296,7 @@ export class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_mgr_versions_ym ON manager_schedule_versions(year, month);
       CREATE INDEX IF NOT EXISTS idx_mgr_roster_ym ON manager_monthly_roster(year, month);
       CREATE INDEX IF NOT EXISTS idx_mgr_roster_emp ON manager_monthly_roster(employee_id);
+      CREATE INDEX IF NOT EXISTS idx_mgr_day_req_ym ON manager_day_requirements(year, month);
 
       -- Moduł 3: Szkolenia (Starbucks Training Suite)
       CREATE TABLE IF NOT EXISTS training_partners (
@@ -1956,6 +1973,7 @@ export class DatabaseManager {
       'manager_schedule_versions',
       'manager_monthly_norms',
       'manager_monthly_roster',
+      'manager_day_requirements',
       'training_partners',
       'training_shifts',
       'training_skill_checks'
@@ -2195,6 +2213,7 @@ export class DatabaseManager {
       { tableName: 'manager_employees', label: 'Kierownicy (Baza Zespołu)' },
       { tableName: 'manager_monthly_roster', label: 'Autonomiczne Składy Miesięczne' },
       { tableName: 'manager_monthly_norms', label: 'Normy Kodeksu Pracy' },
+      { tableName: 'manager_day_requirements', label: 'Wymogi Dziennej Obsady Menedżerów' },
       { tableName: 'training_partners', label: 'Szkolenia: Baza Partnerów' },
       { tableName: 'training_shifts', label: 'Szkolenia: Zmiany First 30' },
       { tableName: 'training_skill_checks', label: 'Szkolenia: Arkusze Egzaminów' },

@@ -1,11 +1,11 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-21T19:05:18.762Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-21T20:48:26.499Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
 ## 📡 1. Kontrakty Mostu IPC (`window.api.*` — `IElectronAPI`)
-Łącznie wykrytych metod IPC w `electron/preload.ts`: **143**.
+Łącznie wykrytych metod IPC w `electron/preload.ts`: **146**.
 
 | Metoda IPC | Opcjonalna | Podpis Typu | Kategoria / Uwagi |
 | :--- | :---: | :--- | :--- |
@@ -57,6 +57,7 @@
 | `window.api.shiftDefinitions` | Nie | `any[]` | — |
 | `window.api.shifts` | Nie | `any[]` | — |
 | `window.api.events` | Nie | `any[]` | — |
+| `window.api.dayRequirements` | Tak | `any[]` | — |
 | `window.api.monthlyNorm` | Tak | `any` | — |
 | `window.api.boundaryShifts` | Tak | `any` | — |
 | `window.api.rcpLogs` | Tak | `Record<number, Record<number, { hours: number; unitCode?: string; unitName?: string }>>` | — |
@@ -66,6 +67,8 @@
 | `window.api.saveManagerDisposition` | Nie | `(payload: { year: number; month: number; day: number; date: string; employee_id: number; disposition: string }) => Promise<boolean>` | — |
 | `window.api.saveBatchManagerDispositions` | Nie | `(payload: { year: number; month: number; items: Array<{ day: number; employee_id: number; disposition: string; date?: string }> }) => Promise<boolean>` | — |
 | `window.api.saveManagerEvent` | Nie | `(event: any) => Promise<boolean>` | — |
+| `window.api.saveManagerDayRequirement` | Nie | `(req: any) => Promise<boolean>` | — |
+| `window.api.deleteManagerDayRequirement` | Nie | `(year: number, month: number, day: number) => Promise<boolean>` | — |
 | `window.api.manageEmployees` | Nie | `(payload: any) => Promise<boolean>` | — |
 | `window.api.saveManagerEmployees` | Tak | `(payload: any) => Promise<boolean>` | — |
 | `window.api.copyRosterFromPreviousMonth` | Nie | `(year: number, month: number) => Promise<any[]>` | — |
@@ -156,7 +159,7 @@
 ---
 
 ## 🗄️ 2. Schemat Tabel Bazy SQLite (`store_${safeId}.db`)
-Łącznie wykrytych tabel w `electron/database/db.ts`: **19**.
+Łącznie wykrytych tabel w `electron/database/db.ts`: **20**.
 
 ### Tabela: `app_settings`
 ```sql
@@ -368,6 +371,25 @@ CREATE TABLE IF NOT EXISTS manager_monthly_norms (
   notes TEXT,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY(year, month)
+);
+```
+
+### Tabela: `manager_day_requirements`
+```sql
+CREATE TABLE IF NOT EXISTS manager_day_requirements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL,
+  day INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  is_open INTEGER DEFAULT 1,
+  manager_count INTEGER DEFAULT 2,
+  start_time TEXT,
+  end_time TEXT,
+  required_hours REAL,
+  notes TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(year, month, day)
 );
 ```
 

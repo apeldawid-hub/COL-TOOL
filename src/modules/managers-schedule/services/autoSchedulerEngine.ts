@@ -55,6 +55,8 @@ export interface AutoScheduleOptions {
   pinnedCells?: Set<string>;
   /** Liczba symulacji turniejowych Monte Carlo (domyślnie 2 000 prób) */
   iterationsCount?: number;
+  /** Niestandardowe wymogi obecności menedżera per dzień (np. 1 MGR w Wigilię, 0 MGR w Boże Narodzenie) */
+  dayRequirements?: Record<number, import('../../../types').ManagerDayRequirement>;
 }
 
 export interface AutoScheduleProgress {
@@ -451,13 +453,27 @@ export class AutoSchedulerEngine {
         }
       });
 
+      const req = options.dayRequirements?.[day];
+      let neededOpening = !hasOpening;
+      let neededClosing = !hasClosing;
+
+      if (req) {
+        if (!req.is_open || req.manager_count === 0) {
+          neededOpening = false;
+          neededClosing = false;
+        } else if (req.manager_count === 1) {
+          neededOpening = !hasOpening && !hasClosing;
+          neededClosing = false;
+        }
+      }
+
       daySlotTemplates.push({
         day,
         isSunday: isSunday[day],
         isPeak: isPeak[day],
         dayOfWeek: dayOfWeek[day],
-        neededOpening: !hasOpening,
-        neededClosing: !hasClosing,
+        neededOpening,
+        neededClosing,
         neededMid: false
       });
     }
@@ -478,8 +494,13 @@ export class AutoSchedulerEngine {
 
     let baseHoursNeeded = 0;
     daySlotTemplates.forEach(d => {
-      if (d.neededOpening) baseHoursNeeded += d.isSunday ? 6.0 : 8.0;
-      if (d.neededClosing) baseHoursNeeded += d.isSunday ? 7.0 : 8.0;
+      const r = options.dayRequirements?.[d.day];
+      if (r && r.is_open && r.manager_count === 1) {
+        if (d.neededOpening) baseHoursNeeded += (r.required_hours || 8.0);
+      } else {
+        if (d.neededOpening) baseHoursNeeded += d.isSunday ? 6.0 : 8.0;
+        if (d.neededClosing) baseHoursNeeded += d.isSunday ? 7.0 : 8.0;
+      }
     });
 
     const surplusHours = regularTargetNominalHours - (regularAssignedHours + baseHoursNeeded);

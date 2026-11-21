@@ -10,6 +10,16 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+## [v2.9.14] — 2026-11-21
+- **Niestandardowe Wymogi Obecności Menedżerów per Dzień (Wigilia, Sylwester, Skrócone Dyżury)**:
+  - Wdrożenie okna dialogowego `DayRequirementsModal` otwieranego bezpośrednio z nagłówka dnia na siatce grafiku.
+  - Wprowadzony przedział definiuje bezpośrednio godziny dyżuru i obecności kierownika (np. 07:00–16:00 = 9.0h pracy), a nie godziny otwarcia kawiarni dla klientów.
+  - Elastyczna liczba menedżerów: 1 menedżer (pojedyncza zmiana całodzienna), 2 menedżerów (AM+PM) lub 0 menedżerów (lokal zamknięty, np. Boże Narodzenie 25.12).
+  - Tabela `manager_day_requirements` w SQLite wraz z obsługą IPC (`saveManagerDayRequirement`, `deleteManagerDayRequirement`).
+  - Eliminacja fałszywych alarmów w wierszu obsady i podsumowaniach luki kadrowej dla dni o wymogu 1 MGR lub 0 MGR.
+  - Wyróżniony 1-klik w `ShiftPickerPopover` do natychmiastowego dopasowania zmiany menedżera do wyliczonych godzin obecności dnia.
+  - Zasilenie silnika `AutoSchedulerEngine` (solver AI planuje dokładnie 1 menedżera na wyliczone godziny).
+
 ## [v2.9.13] — 2026-11-21
 - Bieżąca synchronizacja i optymalizacje modułu.
 

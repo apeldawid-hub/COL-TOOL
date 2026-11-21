@@ -437,6 +437,20 @@ export interface ManagerCalculatedRow {
   violationsByDay: Record<number, LaborLawViolation[]>;
 }
 
+export interface ManagerDayRequirement {
+  id?: number;
+  year: number;
+  month: number;
+  day: number;
+  date: string;
+  is_open: boolean;            // true = wymagana obecność menedżera, false = lokal nieczynny / brak obsady
+  manager_count: number;       // wymagana liczba menedżerów: 0, 1 lub 2
+  start_time?: string;         // wymagane godziny obecności menedżera (początek), np. '07:00'
+  end_time?: string;           // wymagane godziny obecności menedżera (koniec), np. '16:00'
+  required_hours?: number;     // wyliczone godziny obecności: np. 9.0 (16:00 - 07:00)
+  notes?: string;              // etykieta, np. 'Wigilia'
+}
+
 export interface DayCoverageSummary {
   day: number;
   dayName: string; // 'Wt', 'Śr', etc.
@@ -456,6 +470,8 @@ export interface DayCoverageSummary {
   externalSupportManagers?: string[]; // Menedżerowie na wsparciach (SUP, SAM, SPM na innych kawiarniach)
   eventText?: string;
   violationsCount: number;
+  requirement?: ManagerDayRequirement; // Niestandardowy wymóg obecności menedżera (np. Wigilia 1 MGR 07:00-16:00)
+  isCoverageMet?: boolean;             // Czy spełniono wymóg obecności menedżera
 }
 
 export interface MonthlyNormRecord {
@@ -489,6 +505,7 @@ export interface ManagerScheduleMonthData {
   rows: ManagerCalculatedRow[];
   daySummaries: DayCoverageSummary[];
   events: Record<number, string>;
+  dayRequirements?: Record<number, ManagerDayRequirement>; // Wymogi obecności menedżera per dzień (np. 1 MGR 07:00-16:00 w Wigilię)
   totalTeamHours: number;
   averageCoveragePercent: number;
   violations: LaborLawViolation[];

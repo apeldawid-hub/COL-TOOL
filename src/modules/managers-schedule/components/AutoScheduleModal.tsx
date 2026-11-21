@@ -115,7 +115,8 @@ export const AutoScheduleModal: React.FC<AutoScheduleModalProps> = ({
       preferConsecutiveOffDays: true,
       balanceFairness: true,
       smoothWeeklyHours: true,
-      iterationsCount: 2000
+      iterationsCount: 2000,
+      dayRequirements: data.dayRequirements
     };
 
     try {

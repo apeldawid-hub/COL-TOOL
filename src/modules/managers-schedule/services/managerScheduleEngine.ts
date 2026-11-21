@@ -9,7 +9,8 @@ import {
   PublicationStatusInfo,
   ShiftComplianceTestResult,
   MonthlyNormRecord,
-  RcpAbsenceConflict
+  RcpAbsenceConflict,
+  ManagerDayRequirement
 } from '../../../types/index';
 
 /**
@@ -732,7 +733,8 @@ export class ManagerScheduleEngine {
       nextMonthShifts?: ManagerScheduleShift[];
     },
     rcpLogs?: Record<number, Record<number, { hours: number; unitCode?: string; unitName?: string }>>,
-    hasCompleteRcpLogs?: boolean
+    hasCompleteRcpLogs?: boolean,
+    dayRequirements?: ManagerDayRequirement[] | Record<number, ManagerDayRequirement>
   ): ManagerScheduleMonthData {
     const monthName = POLISH_MONTH_NAMES[month - 1] || `Miesiąc ${month}`;
     const calculatedNorms = this.calculateMonthNorms(year, month);
@@ -767,6 +769,16 @@ export class ManagerScheduleEngine {
       if (ev.event_text && ev.event_text.trim()) {
         eventsMap[ev.day] = ev.event_text.trim();
       }
+    }
+
+    // Mapa niestandardowych wymogów obecności menedżerów per dzień (np. 1 MGR w Wigilię)
+    const dayRequirementsMap: Record<number, ManagerDayRequirement> = {};
+    if (Array.isArray(dayRequirements)) {
+      for (const r of dayRequirements) {
+        dayRequirementsMap[r.day] = r;
+      }
+    } else if (dayRequirements) {
+      Object.assign(dayRequirementsMap, dayRequirements);
     }
 
     const allMonthViolations: LaborLawViolation[] = [];
@@ -925,6 +937,23 @@ export class ManagerScheduleEngine {
 
       const dayViolationsCount = rows.reduce((sum, r) => sum + (r.violationsByDay[day]?.length || 0), 0);
 
+      const req = dayRequirementsMap[day];
+      let isCoverageMet = false;
+      if (req) {
+        if (!req.is_open || req.manager_count === 0) {
+          // Kawiarnia zamknięta - brak wymaganej obecności menedżerów
+          isCoverageMet = true;
+        } else if (req.manager_count === 1) {
+          // Wymagany dokładnie 1 menedżer na sali (np. Wigilia 07:00-16:00, 9h)
+          isCoverageMet = totalManagersWorking >= 1;
+        } else {
+          // Standardowe 2 zmiany
+          isCoverageMet = openingManagers.length > 0 && closingManagers.length > 0;
+        }
+      } else {
+        isCoverageMet = openingManagers.length > 0 && closingManagers.length > 0;
+      }
+
       daySummaries.push({
         day,
         dayName,
@@ -943,7 +972,9 @@ export class ManagerScheduleEngine {
         closingManagers,
         externalSupportManagers,
         eventText: eventsMap[day] || undefined,
-        violationsCount: dayViolationsCount
+        violationsCount: dayViolationsCount,
+        requirement: req,
+        isCoverageMet
       });
     }
 
@@ -1007,6 +1038,7 @@ export class ManagerScheduleEngine {
       rows,
       daySummaries,
       events: eventsMap,
+      dayRequirements: dayRequirementsMap,
       totalTeamHours,
       averageCoveragePercent,
       violations: allMonthViolations,

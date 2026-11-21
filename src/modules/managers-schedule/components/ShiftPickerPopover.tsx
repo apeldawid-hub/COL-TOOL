@@ -416,6 +416,61 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
         ) : (
           <>
             <div className="p-5 max-h-[75vh] overflow-y-auto space-y-5">
+          {/* BANER NIESTANDARDOWEGO WYMOGU DNIA (np. Wigilia 1 MGR 07:00-16:00, 9h) */}
+          {(() => {
+            const req = scheduleData?.dayRequirements?.[day];
+            if (!req) return null;
+            if (!req.is_open || req.manager_count === 0) {
+              return (
+                <div className="bg-rose-50 border border-rose-300 rounded-xl p-3 flex items-center justify-between gap-2">
+                  <div className="text-xs">
+                    <span className="font-bold text-rose-950 block">Dzień nieczynny / brak obsady</span>
+                    <span className="text-[11px] text-rose-700">Wymóg: 0 menedżerów {req.notes ? `(${req.notes})` : ''}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectShift('OFF', 0);
+                      onClose();
+                    }}
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-xs transition-all"
+                  >
+                    Ustaw OFF
+                  </button>
+                </div>
+              );
+            }
+            if (req.start_time && req.end_time) {
+              return (
+                <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex items-center justify-between gap-2 shadow-xs">
+                  <div className="text-xs space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                      <span className="font-bold text-emerald-950">
+                        Wymóg obecności dnia: {req.notes || (req.manager_count === 1 ? 'Pojedyncza zmiana' : 'Dyżur')}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-emerald-800">
+                      Godziny menedżera: <strong>{req.start_time} – {req.end_time}</strong> ({req.required_hours}h, {req.manager_count} MGR)
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectShift('AM', req.required_hours, req.start_time, req.end_time);
+                      onClose();
+                    }}
+                    className="px-3 py-1.5 bg-[#006241] hover:bg-[#00754A] text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1 shrink-0"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Dopasuj dyżur ({req.required_hours}h)</span>
+                  </button>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {/* SEKCJA DYSPOZYCYJNOŚCI MENEDŻERA */}
           <div className="bg-stone-50/90 p-3.5 rounded-xl border border-stone-200">
             <div className="flex items-center justify-between mb-2">
