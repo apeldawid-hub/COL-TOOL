@@ -416,6 +416,21 @@ export class InterStoreSupportEngine {
           return { compliant: false, reason: `Naruszenie 11h odpoczynku dobowego po zmianie w dniu ${day - 1} (${rest.toFixed(1)}h odpoczynku)` };
         }
       }
+    } else if (day === 1 && prevMonthShifts && prevMonthShifts.length > 0) {
+      // Styk miesięcy M-1 -> Dzień 1 (art. 132 KP)
+      const lastDayOfPrevMonth = Math.max(...prevMonthShifts.map(s => s.day));
+      const prevShift = prevMonthShifts.find(s => s.employee_id === emp.id && s.day === lastDayOfPrevMonth);
+      if (prevShift && prevShift.hours > 0 && prevShift.shift_code !== 'OFF' && prevShift.shift_code !== 'H' && prevShift.shift_code !== 'L4') {
+        const prevDef = shiftMap.get(prevShift.shift_code);
+        const prevEnd = prevShift.custom_end_time
+          ? parseFloat(prevShift.custom_end_time.split(':')[0]) + (parseFloat(prevShift.custom_end_time.split(':')[1] || '0') / 60)
+          : (prevDef?.end_time ? parseFloat(prevDef.end_time.split(':')[0]) + (parseFloat(prevDef.end_time.split(':')[1] || '0') / 60) : 15.0);
+
+        const rest = (24.0 - prevEnd) + startHour;
+        if (rest < 11.0) {
+          return { compliant: false, reason: `Naruszenie 11h odpoczynku dobowego po zmianie z ostatniego dnia poprzedniego miesiąca (${rest.toFixed(1)}h odpoczynku)` };
+        }
+      }
     }
 
     // 2. Odpoczynek przed dniem kolejnym

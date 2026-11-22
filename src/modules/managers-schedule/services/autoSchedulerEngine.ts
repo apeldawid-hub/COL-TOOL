@@ -210,6 +210,7 @@ interface PrecomputedContext {
     workedLastSunday: boolean;
     workedLastWeekend: boolean;
     consecutiveWorkDaysEnding: number;
+    consecutiveSundaysEnding: number;
   }>;
   prevMonthLastDay: number;
 
@@ -342,12 +343,14 @@ export class AutoSchedulerEngine {
       workedLastSunday: boolean;
       workedLastWeekend: boolean;
       consecutiveWorkDaysEnding: number;
+      consecutiveSundaysEnding: number;
     }>();
 
     employees.forEach(emp => {
       let workedLastSat = false;
       let workedLastSun = false;
       let streak = 0;
+      let consecutiveSundaysEnding = 0;
 
       if (prevMonthShifts.length > 0) {
         const prevMonth = month === 1 ? 12 : month - 1;
@@ -367,13 +370,31 @@ export class AutoSchedulerEngine {
           if (ps && ps.hours > 0 && ps.shift_code !== 'OFF') streak++;
           else break;
         }
+
+        // Obliczenie serii pracujących niedziel z końca poprzedniego miesiąca (art. 151^10 KP)
+        const prevSundays: number[] = [];
+        for (let d = 1; d <= prevMonthLastDay; d++) {
+          if (new Date(prevYear, prevMonth - 1, d).getDay() === 0) {
+            prevSundays.push(d);
+          }
+        }
+        for (let i = prevSundays.length - 1; i >= 0; i--) {
+          const sunD = prevSundays[i];
+          const ps = prevMonthShifts.find(s => s.employee_id === emp.id && s.day === sunD);
+          if (ps && ps.hours > 0 && ps.shift_code !== 'OFF' && ps.shift_code !== 'H' && ps.shift_code !== 'L4') {
+            consecutiveSundaysEnding++;
+          } else {
+            break;
+          }
+        }
       }
 
       prevMonthEmpStats.set(emp.id, {
         workedLastSaturday: workedLastSat,
         workedLastSunday: workedLastSun,
         workedLastWeekend: workedLastSat || workedLastSun,
-        consecutiveWorkDaysEnding: streak
+        consecutiveWorkDaysEnding: streak,
+        consecutiveSundaysEnding
       });
     });
 
@@ -928,10 +949,21 @@ export class AutoSchedulerEngine {
 
       if (isSun) {
         let consecutiveSundays = 1;
+        let reachedFirstSunday = false;
         for (let d = day - 7; d >= 1; d -= 7) {
           const s = workingSchedule.get(`${emp.id}_${d}`);
-          if (s && s.hours > 0 && s.shift_code !== 'OFF') consecutiveSundays++;
-          else break;
+          if (s && s.hours > 0 && s.shift_code !== 'OFF') {
+            consecutiveSundays++;
+            if (d <= 7) reachedFirstSunday = true;
+          } else {
+            break;
+          }
+        }
+        if (day <= 7 || reachedFirstSunday) {
+          const prevCtx = prevMonthEmpStats.get(emp.id);
+          if (prevCtx) {
+            consecutiveSundays += prevCtx.consecutiveSundaysEnding;
+          }
         }
         for (let d = day + 7; d <= totalDays; d += 7) {
           const s = workingSchedule.get(`${emp.id}_${d}`);
@@ -2242,7 +2274,8 @@ export class AutoSchedulerEngine {
     let bestPass: FastCandidateResult | null = null;
     let iterationsDone = 0;
 
-    const BATCH_SIZE = 100;
+    // Asynchroniczny batching dla zerowego obciążenia UI (Zero-Lag 50-pass chunks)
+    const BATCH_SIZE = 50;
 
     for (let round = 0; round < totalRounds; round += BATCH_SIZE) {
       const batchEnd = Math.min(round + BATCH_SIZE, totalRounds);

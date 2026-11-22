@@ -136,7 +136,7 @@
   },
   "AutoSchedulerEngine": {
     "file": "src/modules/managers-schedule/services/autoSchedulerEngine.ts",
-    "line": 237,
+    "line": 238,
     "kind": "class"
   },
   "BARISTA_180_SHIFTS": {
@@ -789,6 +789,11 @@
     "line": 10,
     "kind": "const"
   },
+  "L4CrisisModal": {
+    "file": "src/modules/managers-schedule/components/L4CrisisModal.tsx",
+    "line": 54,
+    "kind": "const"
+  },
   "LaborActualRecord": {
     "file": "src/types/index.ts",
     "line": 46,
@@ -966,7 +971,7 @@
   },
   "ManagerScheduleView": {
     "file": "src/modules/managers-schedule/components/ManagerScheduleView.tsx",
-    "line": 63,
+    "line": 65,
     "kind": "const"
   },
   "ManagerShiftRecord": {
@@ -1599,6 +1604,11 @@
     "line": 603,
     "kind": "type"
   },
+  "TorSplitDrawer": {
+    "file": "src/modules/managers-schedule/components/TorSplitDrawer.tsx",
+    "line": 25,
+    "kind": "const"
+  },
   "TorView": {
     "file": "src/modules/managers-schedule/components/TorView.tsx",
     "line": 26,
@@ -1871,7 +1881,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 1309,
+    "line": 1362,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1886,7 +1896,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 1294,
+    "line": 1347,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1901,7 +1911,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 1301,
+    "line": 1354,
     "kind": "function"
   },
   "isManagerInTraining": {

@@ -16,8 +16,41 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
-## [v2.9.24] — 2026-11-22
+
+## [v2.9.26] — 2026-11-22
 - Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.25] — 2026-11-22
+- **Faza II Rozwoju M2 (Core Enhancements): Zaznaczanie Blokowe, Boczny Panel TOR i Asystent Kryzysowy L4**:
+  - **Zaznaczanie Blokowe (Range Selection) & Hurtowe Wypełnianie (`ManagerScheduleGrid`)**:
+    - Wprowadzenie nawigacji zakresowej: `Shift + Strzałki` lub `Shift + Kliknięcie` zaznacza prostokątny blok komórek (np. 14 dni urlopu dla menedżera lub grupa menedżerów).
+    - Hurtowe wypełnianie: wciśnięcie klawisza zmiany (np. `H`, `L4`, `OFF`, `AM`, `PM`) lub Enter z bufora Type-Ahead aplikuje zmianę do wszystkich zaznaczonych komórek z automatycznym przeliczeniem godzin i normy proporcjonalnej.
+    - Klawisz `Delete` / `Backspace` hurtowo zeruje blok do `OFF`, a `Esc` natychmiast odznacza zakres.
+    - Dedykowany wskaźnik HUD w stopce informujący o liczbie zaznaczonych komórek i pracowników.
+  - **Boczny Panel Split-Screen TOR (`TorSplitDrawer`)**:
+    - Nowy wsuwany z prawej strony panel kwartalnego rozliczenia TOR, dostępny pod przyciskiem `Split-Screen TOR (QX)` w nagłówku grafiku.
+    - Możliwość podglądu bilansu kwartalnego, norm i godzin menedżerów na bieżąco podczas układania grafiku bez opuszczania widoku miesiąca.
+    - Przełącznik kwartałów Q1–Q4 oraz szybkie przejście do pełnego widoku modułu TOR.
+  - **Asystent Kryzysowy Zastępstw Awaryjnych & L4 (`L4CrisisModal`)**:
+    - Dedykowany 1-klikowy asystent reagowania na nagłe zwolnienie lekarskie menedżera.
+    - Silnik selekcji analizuje zespół i typuje najlepszego zastępcę według reguł: 1. Status `OFF` / `NC`, 2. 100% tarcza Kodeksu Pracy (odpoczynek 11h dobowy i 35h tygodniowy), 3. Wyrównanie luki etatowej w miesiącu (minimalizacja kosztownych nadgodzin).
+    - Przycisk 1-Click "Obsadź": natychmiastowe oznaczenie chorego kodem `L4` i wstawienie dyżuru sali dla zastępcy.
+    - Moduł kontaktu dystryktowego: generator gotowej treści SMS do sąsiednich kawiarni w sieci o wsparcie menedżerskie (`SUP`).
+  - **Płynny Batching Solver AI (`autoSchedulerEngine.ts`)**:
+    - Zmniejszenie wielkości partii solvera z 100 do 50 iteracji, eliminujące zacięcia pętli zdarzeń i podwajające częstotliwość odświeżania paska postępu generatora grafiku.
+- **Faza I Rozwoju M2 (Quick Wins): Ergonomia Klawiatury, Floating Context Popover i Tarcza Styków KP**:
+  - **Tarcza Przejść Miesięcznych KP (art. 151¹⁰ i 132 KP)**:
+    - `autoSchedulerEngine.ts`: Rozszerzenie `prevMonthEmpStats` o parametr `consecutiveSundaysEnding` z poprzedniego miesiąca. Solver AI blokuje planowanie 1. lub 2. niedzieli pracującej w nowym miesiącu, jeśli menedżer przepracował już serię 2–3 niedziel na przełomie miesięcy, bezwzględnie chroniąc regułę 4. wolnej niedzieli.
+    - `interStoreSupportEngine.ts`: Weryfikacja 11h odpoczynku dobowego na styku $M-1 \to D_1$ dla menedżerów delegowanych na wsparcie zewnętrznej kawiarni pierwszego dnia miesiąca.
+  - **Lekki Popover Wyboru Zmiany z Kontekstem Dnia (`ShiftPickerPopover`)**:
+    - Eliminacja pełnoekranowego zaciemnienia `bg-black/40 backdrop-blur` na rzecz subtelnego tła `bg-stone-900/20` z kliknięciem poza oknem zamykającym popover (`onClose`).
+    - Bezpośredni podgląd obsady dnia (`otherManagersToday`) w nagłówku okna: Store Manager widzi kto jeszcze prowadzi zmianę (np. AM, PM, SUP) bez zamykania okna ani gubienia kontekstu.
+  - **Klawiaturowy Bufor Type-Ahead dla Kodów Wieloliterowych (`ManagerScheduleGrid`)**:
+    - Umożliwienie płynnego wpisywania z klawiatury kodów złożonych (`SAM`, `SPM`, `MID`, `AMN`, `PMN`, `SUP`, `MIB`, `NC`, `H`, `L4`, `OFF`) bez konieczności klikania myszą.
+    - Wizualny wskaźnik wpisywanego bufora na aktywnej komórce (`{buffer}…`).
+    - Klawisz `Enter` zatwierdza kod z bufora i automatycznie przeskakuje do kolejnego dnia (`Auto-Advance`), a `Delete` / `Backspace` usuwa znaki lub ustawia `OFF`.
+  - **Live Delta Preview HUD w Stopce Siatki (`ManagerScheduleGrid`)**:
+    - Wzbogacenie dolnego paska podsumowania o bieżący podgląd planowanych godzin menedżera do normy miesięcznej (z dynamicznym statusem bilansu `+/-X.Xh`) oraz dobowego stanu obsady Floor (czy spełniono minimum 1 AM + 1 PM).
 
 ## [v2.9.23] — 2026-11-22
 - **Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (`effective_from`, art. 130 KP)**:

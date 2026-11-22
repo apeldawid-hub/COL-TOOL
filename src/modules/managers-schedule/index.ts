@@ -13,6 +13,8 @@ export * from './components/TorView';
 export * from './components/ManagerDispositionsModal';
 export * from './components/AutoScheduleModal';
 export * from './components/InterStoreSupportModal';
+export * from './components/TorSplitDrawer';
+export * from './components/L4CrisisModal';
 export * from './services/managerScheduleEngine';
 export * from './services/torEngine';
 export * from './services/autoSchedulerEngine';

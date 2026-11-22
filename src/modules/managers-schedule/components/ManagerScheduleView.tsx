@@ -22,6 +22,8 @@ import { AutoScheduleWidget } from './AutoScheduleWidget';
 import { InterStoreSupportModal } from './InterStoreSupportModal';
 import { ManagerTeamModal } from './ManagerTeamModal';
 import { WeeklyRequirementsModal } from './WeeklyRequirementsModal';
+import { TorSplitDrawer } from './TorSplitDrawer';
+import { L4CrisisModal } from './L4CrisisModal';
 import { AutoScheduleResult } from '../services/autoSchedulerEngine';
 import { DEFAULT_SHIFT_DEFINITIONS } from '../constants/defaultShifts';
 import { SystemClock } from '../../../services/systemClock';
@@ -92,6 +94,8 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showWeeklyRequirementsModal, setShowWeeklyRequirementsModal] = useState(false);
+  const [showTorDrawer, setShowTorDrawer] = useState(false);
+  const [showL4CrisisModal, setShowL4CrisisModal] = useState(false);
   const [autoScheduleProposal, setAutoScheduleProposal] = useState<AutoScheduleResult | null>(null);
 
   // Załadowanie danych z bazy SQLite
@@ -265,6 +269,59 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
       month: selectedMonth,
       shifts: generatedShifts
     });
+    await loadScheduleData();
+  };
+
+  // Zatwierdzenie awaryjnego zastępstwa L4 (Crisis Assistant)
+  const handleApplyCrisisReplacement = async (
+    absentEmpId: number,
+    replacementEmpId: number,
+    day: number,
+    shiftCode: string
+  ) => {
+    if (isClosed || !scheduleData) return;
+    const dow = new Date(selectedYear, selectedMonth - 1, day).getDay();
+    const isWeekend = dow === 0 || dow === 6;
+
+    const absentRow = scheduleData.rows.find(r => r.employee.id === absentEmpId);
+    const replacementRow = scheduleData.rows.find(r => r.employee.id === replacementEmpId);
+
+    const shiftDef = scheduleData.shiftDefinitions.find(s => s.code === shiftCode);
+    const replHours = shiftDef?.hours || 8.0;
+    const absentL4Hours = isWeekend ? 0.0 : 8.0 * (absentRow?.employee.contract_hours_ratio || 1.0);
+    const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const shiftsToSave: ManagerScheduleShift[] = [
+      {
+        employee_id: absentEmpId,
+        year: selectedYear,
+        month: selectedMonth,
+        day,
+        date: dateStr,
+        shift_code: 'L4',
+        hours: absentL4Hours,
+        disposition: absentRow?.shifts[day]?.disposition || 'FULL'
+      },
+      {
+        employee_id: replacementEmpId,
+        year: selectedYear,
+        month: selectedMonth,
+        day,
+        date: dateStr,
+        shift_code: shiftCode,
+        hours: replHours,
+        custom_start_time: shiftDef?.start_time,
+        custom_end_time: shiftDef?.end_time,
+        disposition: replacementRow?.shifts[day]?.disposition || 'FULL'
+      }
+    ];
+
+    await ScheduleWriteThroughRepository.saveBatchShifts({
+      year: selectedYear,
+      month: selectedMonth,
+      shifts: shiftsToSave
+    });
+
     await loadScheduleData();
   };
 
@@ -530,6 +587,32 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
                   >
                     <Clock className="w-3.5 h-3.5 text-emerald-700" />
                     <span>Profil Tygodnia (2 MGR)</span>
+                  </button>
+                </div>
+
+                {/* Asystent Kryzysowy L4 */}
+                <div className="flex items-center gap-1.5 pl-2 border-l border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowL4CrisisModal(true)}
+                    className="px-2.5 py-0.5 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-800 font-bold text-[11px] border border-rose-300 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    title="Asystent natychmiastowego obsadzenia nagłej absencji / L4"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    <span>🚨 Awaria / Zastępstwo L4</span>
+                  </button>
+                </div>
+
+                {/* Split-Screen TOR Drawer */}
+                <div className="flex items-center gap-1.5 pl-2 border-l border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowTorDrawer(true)}
+                    className="px-2.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-[#006241] font-bold text-[11px] border border-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    title="Wysuń boczny panel kwartalnego rozliczenia TOR bez opuszczania grafiku"
+                  >
+                    <Scale className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Split-Screen TOR (Q{Math.ceil(selectedMonth / 3)})</span>
                   </button>
                 </div>
               </div>
@@ -865,6 +948,32 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
           isReadOnly={isClosed}
           onSave={handleSaveWeeklyRequirements}
           onClose={() => setShowWeeklyRequirementsModal(false)}
+        />
+      )}
+
+      {/* DRAWER TOR SPLIT-SCREEN (LIVE INSPEKTOR KWARTALNY) */}
+      {scheduleData && (
+        <TorSplitDrawer
+          isOpen={showTorDrawer}
+          onClose={() => setShowTorDrawer(false)}
+          year={selectedYear}
+          month={selectedMonth}
+          onOpenFullTor={() => setActiveTab('tor')}
+        />
+      )}
+
+      {/* MODAL ASYSTENTA KRYZYSOWEGO L4 (1-CLICK REPLACEMENT) */}
+      {showL4CrisisModal && scheduleData && (
+        <L4CrisisModal
+          isOpen={showL4CrisisModal}
+          onClose={() => setShowL4CrisisModal(false)}
+          data={scheduleData}
+          boundaryShifts={boundaryShifts}
+          onApplyReplacement={handleApplyCrisisReplacement}
+          onOpenSupportModal={() => {
+            setShowL4CrisisModal(false);
+            setShowSupportModal(true);
+          }}
         />
       )}
     </div>

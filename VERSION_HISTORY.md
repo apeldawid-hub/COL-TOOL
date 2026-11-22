@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.25](#v2.9.25--2026-11-22)** | 2026-11-22 | Faza I & II Rozwoju Modułu M2: Zaznaczanie Blokowe, Type-Ahead Buffer, Asystent Kryzysowy L4 i Split-Screen TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.23](#v2.9.23--2026-11-22)** | 2026-11-22 | Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (effective_from, art. 130 KP) | `patch` | 🚀 Opublikowana |
 | **[v2.9.22](#v2.9.22--2026-11-22)** | 2026-11-22 | Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.19](#v2.9.19--2026-11-22)** | 2026-11-22 | Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR | `patch` | 🚀 Opublikowana |
@@ -49,6 +50,34 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.25] — 2026-11-22
+**Tytuł:** Faza I & II Rozwoju Modułu M2: Zaznaczanie Blokowe, Type-Ahead Buffer, Asystent Kryzysowy L4 i Split-Screen TOR  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- Zaznaczanie blokowe (Range Selection) & hurtowe wypełnianie (Shift + Strzałki / Kliknięcie): Błyskawiczne wprowadzanie urlopów H, L4 i dni wolnych OFF dla zakresu komórek bez uciążliwego klikania pojedynczo.
+- Klawiaturowy bufor Type-Ahead (ManagerScheduleGrid): Wpisywanie kodów wieloliterowych (SAM, SPM, MID, AMN, PMN, SUP, MIB, NC) bezpośrednio z klawiatury ze wskaźnikiem na aktywnej komórce i auto-advance po Enter.
+- Asystent Kryzysowy L4 (L4CrisisModal): 1-klikowe typowanie i obsadzanie zastępstw w nagłych absencjach menedżerów (tarcza 11h/35h KP, optymalizacja etatu) z generatorem SMS dla wsparcia w dystrykcie.
+- Boczny panel Split-Screen TOR (TorSplitDrawer): Wsuwany podgląd kwartalnego rozliczenia TOR Q1–Q4 na żywo podczas edycji grafiku bez opuszczania widoku miesiąca.
+- Lekki Popover Wyboru Zmiany (ShiftPickerPopover): Usunięcie ciemnego tła z zachowaniem widoczności siatki oraz podgląd obsady zespołu w wybranym dniu.
+- Tarcza Styków Miesięcznych KP: autoSchedulerEngine blokuje 4. niedzielę pracującą z rzędu z uwzględnieniem końcówki M-1; interStoreSupportEngine weryfikuje 11h na styku M-1 -> D1.
+- Płynny asynchroniczny batching (autoSchedulerEngine): Zmniejszenie partii solvera z 100 do 50 iteracji z mikrozadaniami pętli zdarzeń dla zerowego obciążenia interfejsu (Zero-Lag UI).
+
+#### ✨ Nowe Funkcje:
+- Zaznaczanie blokowe (Range Selection) i hurtowe wypełnianie zmian w ManagerScheduleGrid.
+- Asystent Kryzysowy Zastępstw Awaryjnych L4CrisisModal z 1-klikowym solverem i modułem kontaktu dystryktowego.
+- Boczny panel TorSplitDrawer do podglądu kwartału TOR na żywo z poziomu siatki miesięcznej.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Klawiaturowy bufor Type-Ahead dla kodów wieloliterowych z wizualnym wskaźnikiem i auto-advance.
+- Lekki floating popover ShiftPickerPopover z podglądem obsady innych menedżerów w wybranym dniu.
+- Optymalizacja pętli zdarzeń i asynchroniczny batching 50 iteracji w autoSchedulerEngine dla płynnego UI podczas 2 000 prób.
+
+#### 🛡️ Kodeks Pracy & Baza SQLite:
+- Uszczelnienie tarczy KP: consecutiveSundaysEnding w autoSchedulerEngine oraz 11h odpoczynku na styku M-1 -> D1 we wsparciach.
+
+---
 
 ### [v2.9.23] — 2026-11-22
 **Tytuł:** Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (effective_from, art. 130 KP)  

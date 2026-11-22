@@ -206,6 +206,22 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
     );
   }, [shiftDefinitions, searchQuery]);
 
+  // Podgląd obsady pozostałych menedżerów w wybranym dniu (Floating Context)
+  const otherManagersToday = useMemo(() => {
+    if (!scheduleData || !scheduleData.rows) return [];
+    return scheduleData.rows
+      .filter(r => r.employee.id !== empId)
+      .map(r => {
+        const sh = r.shifts[day];
+        return {
+          name: r.employee.name,
+          shiftCode: sh?.shift_code || 'OFF',
+          hours: sh?.hours || 0
+        };
+      })
+      .filter(m => m.shiftCode !== 'OFF' && m.hours > 0);
+  }, [scheduleData, empId, day]);
+
   // Grupowanie zmian wg kategorii
   const coverageShifts = filteredShifts.filter(s => s.category === 'coverage' || (!s.is_nc && !s.is_absence && s.category !== 'dispo'));
   const ncShifts = filteredShifts.filter(s => s.is_nc || s.category === 'nc');
@@ -213,14 +229,14 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
   const dispoShifts = filteredShifts.filter(s => s.category === 'dispo');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/20 p-4 animate-fade-in" onClick={onClose}>
       <div 
         className="bg-white rounded-2xl shadow-2xl border border-[#E2E8E5] w-full max-w-xl overflow-hidden animate-scale-up"
         onClick={e => e.stopPropagation()}
       >
         {/* Nagłówek okienka */}
-        <div className="bg-[#1E3932] text-white px-5 py-4 flex items-center justify-between">
-          <div>
+        <div className="bg-[#1E3932] text-white px-5 py-3.5 flex items-center justify-between">
+          <div className="flex-1 min-w-0 pr-3">
             <div className="text-xs uppercase tracking-wider text-emerald-300 font-medium flex items-center gap-2 flex-wrap">
               <span>Wybór Zmiany • Dzień {day} {dayName ? `(${dayName})` : ''}</span>
               {isHoliday ? (
@@ -245,16 +261,31 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
                 </span>
               )}
             </div>
-            <div className="text-base font-semibold mt-0.5 flex items-center gap-2">
+            <div className="text-sm font-semibold mt-0.5 flex items-center gap-2">
               <span>{managerName}</span>
-              <span className="text-xs font-normal text-emerald-200 bg-white/10 px-2 py-0.5 rounded-md">
+              <span className="text-[11px] font-normal text-emerald-200 bg-white/10 px-2 py-0.5 rounded-md">
                 Etat: {(employeeContractRatio * 100).toFixed(0)}% (dobowo {(8.0 * employeeContractRatio).toFixed(1)}h)
               </span>
             </div>
+            {/* Kontekst obsady w wybranym dniu */}
+            {otherManagersToday.length > 0 ? (
+              <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[11px] text-emerald-100/90">
+                <span className="font-medium text-emerald-300 text-[10px]">Inni w dniu {day}:</span>
+                {otherManagersToday.map((m, idx) => (
+                  <span key={idx} className="bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-semibold text-white">
+                    {m.name.split(' ')[0]}: <strong className="text-emerald-300">{m.shiftCode}</strong> ({m.hours}h)
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-1 text-[10px] text-amber-300 font-medium">
+                ⚠️ Brak innych menedżerów na sali w dniu {day}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-white/10 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

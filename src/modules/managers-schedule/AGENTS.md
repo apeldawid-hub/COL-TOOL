@@ -35,10 +35,11 @@ src/modules/managers-schedule/
 │   ├── AutoScheduleWidget.tsx       # Floating Starbucks Speed-Dial Navigation Hub (radial progress, LM/NM, TOR, akcje)
 │   ├── DayRequirementsModal.tsx    # Modal konfiguracji wymogów obecności menedżera per dzień (Wigilia, Sylwester, 1 MGR, 0 MGR)
 │   ├── InterStoreSupportModal.tsx   # Asystent wsparcia międzykawiarnianego (3 scenariusze, tarcza KP, SMS)
+│   ├── L4CrisisModal.tsx           # Asystent kryzysowy L4 & zastępstw awaryjnych (ranking AI, tarcza KP, 1-click replacement, SMS)
 │   ├── LaborLawComplianceModal.tsx # Tarcza Kodeksu Pracy (inspektor naruszeń)
 │   ├── LaborLawViolationDialog.tsx # Dialog ostrzegawczy pre-flight przy próbie złamania przepisów KP
 │   ├── ManagerDispositionsModal.tsx # Zbiorcza matryca dyspozycyjności menedżerów i import z Excela
-│   ├── ManagerScheduleGrid.tsx     # Miesięczna matryca grafiku z przypiętymi kolumnami i wierszem wydarzeń
+│   ├── ManagerScheduleGrid.tsx     # Miesięczna matryca grafiku z przypiętymi kolumnami, range selection i wierszem wydarzeń
 │   ├── ManagerScheduleView.tsx     # Główny widok modułu (przełącznik zakładek Grafik/TOR, kafelki KPI, akcje)
 │   ├── ManagerTeamModal.tsx        # Modal dodawania/edycji menedżerów, stawek, ról i etatów
 │   ├── MonthNormEditModal.tsx      # Modal edycji i podglądu normy miesięcznej KP z przywracaniem
@@ -46,6 +47,7 @@ src/modules/managers-schedule/
 │   ├── ScheduleVersionModal.tsx    # Historia wersji grafiku i publikacja (reguła 7 dni przed startem)
 │   ├── ShiftConfigModal.tsx        # Modal konfiguracji katalogu zmian Starbucks i reguł niedzielnych
 │   ├── ShiftPickerPopover.tsx      # Szybki selektor zmian z blokadą zmian niedzielnych w dni powszednie
+│   ├── TorSplitDrawer.tsx          # Boczny panel (Split-Screen Drawer) podglądu kwartalnego TOR Q1-Q4 na żywo
 │   ├── TorView.tsx                 # Trzymiesięczny Okres Rozliczeniowy (TOR) z podsumowaniem kwartalnym Q1-Q4
 │   └── WeeklyRequirementsModal.tsx # Modal konfiguracji standardowego profilu tygodnia (domyślnie 2 MGR, godziny obecności)
 ├── services/
@@ -608,9 +610,36 @@ Narzędzie umożliwia Store Managerowi wykonywanie precyzyjnych, bezkolizyjnych 
    - W komórce RCP miesiąca proporcjonalnego widnieje odznaka `od {startDay}.{month}`.
    - Tooltipy bilansu i TOTAL prezentują szczegółowy rozkład norm i godzin aktywnego okresu.
 
+6. **Faza I Rozwoju M2 (Quick Wins — v2.9.24)**:
+   - **Tarcza Styków Miesięcznych (art. 151¹⁰ i 132 KP)**:
+     - `autoSchedulerEngine.ts`: Pobiera `consecutiveSundaysEnding` z poprzedniego miesiąca (`prevMonthEmpStats`) i w `canAssignShift` blokuje wyznaczenie 4. niedzieli pracującej z rzędu na przełomie miesięcy.
+     - `interStoreSupportEngine.ts`: Rozszerzono weryfikację odpoczynku dobowego o styk $M-1 \to D_1$ dla wsparć pierwszego dnia miesiąca.
+   - **Klawiaturowy Bufor Type-Ahead (`ManagerScheduleGrid`)**:
+     - Możliwość bezpośredniego wpisywania kodów jedno- i wieloliterowych (`SAM`, `SPM`, `MID`, `AMN`, `PMN`, `SUP`, `MIB`, `NC`, `H`, `L4`, `OFF`) z klawiatury bez myszy.
+     - Dynamiczny floating badge `{buffer}…` na aktywnej komórce. Klawisz `Enter` zatwierdza kod z bufora i przeskakuje do następnego dnia (`Auto-Advance`), a `Delete` / `Backspace` usuwa znaki lub przypisuje `OFF`.
+   - **Floating Context Popover (`ShiftPickerPopover`)**:
+     - Przejście na subtelne tło `bg-stone-900/20` bez rozmycia (`backdrop-blur`), zachowując widoczność siatki.
+     - Kompaktowy podgląd obsady pozostałych menedżerów w wybranym dniu (`otherManagersToday`) w nagłówku popovera.
+   - **Live Delta Preview HUD (`ManagerScheduleGrid`)**:
+     - Dynamiczny pasek podsumowania w stopce tabeli prezentujący aktualny stan planu godzin menedżera do normy miesięcznej oraz dobowy status obsady Floor (32h / 1 AM + 1 PM).
+7. **Faza II Rozwoju M2 (Core Enhancements — v2.9.24)**:
+   - **Zaznaczanie Blokowe (Range Selection) & Batch Fill (`ManagerScheduleGrid`)**:
+     - Możliwość zaznaczania prostokątnych zakresów komórek za pomocą `Shift + Strzałki` lub `Shift + Kliknięcie`.
+     - Hurtowe wypełnianie zaznaczonego bloku (np. 14 dni urlopu `H`, tydzień `L4`, dni wolne `OFF`, dyżury `AM`/`PM`) jednym wciśnięciem klawisza lub Enter z buforem Type-Ahead.
+     - Pełna integracja z `onBatchUpdateShifts` i `ScheduleWriteThroughRepository` (zapis transakcyjny do SQLite i Outboxa Firestore).
+   - **Boczny Panel Split-Screen TOR (`TorSplitDrawer`)**:
+     - Wsuwany z prawej strony panel kwartalnego rozliczenia TOR bez konieczności opuszczania siatki miesięcznej.
+     - Podgląd norm kwartału Q1-Q4, godzin wypracowanych i salda per menedżer z możliwością przejścia do pełnego widoku TOR.
+   - **Asystent Kryzysowy L4 & Zastępstw Awaryjnych (`L4CrisisModal`)**:
+     - Narzędzie szybkiego reagowania na nagłe zwolnienie lekarskie menedżera.
+     - Automatyczny scoring i ranking zastępców: preferowanie osób na `OFF` z niedogodzinami w miesiącu, 100% tarcza Kodeksu Pracy (odpoczynek 11h/35h).
+     - 1-klikowe przypisanie zastępstwa (chory otrzymuje `L4`, zastępca dyżur na sali) oraz generator gotowej treści SMS do sąsiednich lokali w dystrykcie o wsparcie menedżerskie (SUP).
+   - **Asynchroniczny Batching AutoScheduler AI (Zero-Lag Solver)**:
+     - Zmniejszenie wielkości partii solvera z 100 do 50 iteracji z mikrozadaniami pętli zdarzeń, gwarantując 2-krotnie płynniejsze odświeżanie animacji i wskaźników UI podczas 2 000 prób symulacji.
+
 ---
 
-## 📝 22. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+## 📝 23. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
 Po każdej modyfikacji kodu źródłowego, algorytmów Kodeksu Pracy, AutoSchedulera AI, interfejsu grafiku lub schematu SQLite w Module 2:
 1. Natychmiast zaktualizuj niniejszy plik `AGENTS.md` (struktura plików, algorytmy, parametry solvera).
 2. Zarejestruj zmiany w historii modułu: `src/modules/managers-schedule/CHANGELOG.md`.

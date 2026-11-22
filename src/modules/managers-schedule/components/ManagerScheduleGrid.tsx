@@ -123,6 +123,132 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
   const [selectedCell, setSelectedCell] = useState<{ empId: number; day: number } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+  // Zaznaczanie blokowe (Range Selection) & Hurtowe wypełnianie (Shift + Strzałki / Klik)
+  const [rangeAnchor, setRangeAnchor] = useState<{ empId: number; day: number } | null>(null);
+  const [selectedRange, setSelectedRange] = useState<{
+    minEmpIdx: number;
+    maxEmpIdx: number;
+    minDay: number;
+    maxDay: number;
+  } | null>(null);
+
+  const updateRange = useCallback((anchor: { empId: number; day: number }, target: { empId: number; day: number }) => {
+    const anchorIdx = data.rows.findIndex(r => r.employee.id === anchor.empId);
+    const targetIdx = data.rows.findIndex(r => r.employee.id === target.empId);
+    if (anchorIdx === -1 || targetIdx === -1) return;
+
+    const minEmpIdx = Math.min(anchorIdx, targetIdx);
+    const maxEmpIdx = Math.max(anchorIdx, targetIdx);
+    const minDay = Math.min(anchor.day, target.day);
+    const maxDay = Math.max(anchor.day, target.day);
+
+    if (minEmpIdx === maxEmpIdx && minDay === maxDay) {
+      setSelectedRange(null);
+    } else {
+      setSelectedRange({ minEmpIdx, maxEmpIdx, minDay, maxDay });
+    }
+  }, [data.rows]);
+
+  const handleBatchFillRange = useCallback(async (codeToAssign: string) => {
+    if (isReadOnly || !selectedRange || !onBatchUpdateShifts) return;
+    const shiftsToSave: ManagerScheduleShift[] = [];
+
+    for (let rIdx = selectedRange.minEmpIdx; rIdx <= selectedRange.maxEmpIdx; rIdx++) {
+      const row = data.rows[rIdx];
+      if (!row) continue;
+
+      for (let d = selectedRange.minDay; d <= selectedRange.maxDay; d++) {
+        if (row.isProportionalNorm && row.proportionalStartDay && d < row.proportionalStartDay) {
+          continue;
+        }
+
+        const isSunday = new Date(data.year, data.month - 1, d).getDay() === 0;
+        let targetCode = codeToAssign;
+        if (isSunday && codeToAssign === 'AM' && data.shiftDefinitions.some(s => s.code === 'AMN')) targetCode = 'AMN';
+        if (isSunday && codeToAssign === 'PM' && data.shiftDefinitions.some(s => s.code === 'PMN')) targetCode = 'PMN';
+
+        const shiftDef = data.shiftDefinitions.find(s => s.code === targetCode);
+        const dow = new Date(data.year, data.month - 1, d).getDay();
+        const isWeekend = dow === 0 || dow === 6;
+
+        let hours = 8.0;
+        if (targetCode === 'OFF') {
+          hours = 0.0;
+        } else if (targetCode === 'H' || targetCode === 'L4') {
+          hours = isWeekend ? 0.0 : 8.0 * (row.employee.contract_hours_ratio || 1.0);
+        } else if (shiftDef?.hours !== undefined) {
+          hours = shiftDef.hours;
+        }
+
+        shiftsToSave.push({
+          employee_id: row.employee.id,
+          year: data.year,
+          month: data.month,
+          day: d,
+          date: `${data.year}-${String(data.month).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+          shift_code: targetCode,
+          hours,
+          custom_start_time: shiftDef?.start_time,
+          custom_end_time: shiftDef?.end_time,
+          disposition: row.shifts[d]?.disposition || 'FULL'
+        });
+      }
+    }
+
+    if (shiftsToSave.length > 0) {
+      await onBatchUpdateShifts(shiftsToSave);
+      setToastMessage({
+        type: 'success',
+        title: `Hurtowe wypełnienie (${codeToAssign})`,
+        message: `Zaktualizowano ${shiftsToSave.length} komórek w zaznaczonym zakresie.`
+      });
+    }
+
+    setSelectedRange(null);
+    setRangeAnchor(null);
+  }, [isReadOnly, selectedRange, onBatchUpdateShifts, data]);
+
+  // Bufor szybkiego wpisywania kodów zmian z klawiatury (Type-Ahead Buffer)
+  const [typeAheadBuffer, setTypeAheadBuffer] = useState<string>('');
+  const typeAheadTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setTypeAheadBuffer('');
+    if (typeAheadTimerRef.current) {
+      clearTimeout(typeAheadTimerRef.current);
+      typeAheadTimerRef.current = null;
+    }
+  }, [selectedCell]);
+
+  // Rozpoznawanie kodów zmian z bufora klawiaturowego (w tym kody wieloliterowe i aliasy)
+  const resolveShiftCodeFromBuffer = useCallback((buffer: string, isSunday: boolean): string | null => {
+    const clean = buffer.trim().toUpperCase();
+    if (!clean) return null;
+
+    // Bezpośrednie dopasowanie z listy definicji
+    const directMatch = data.shiftDefinitions.find(s => s.code.toUpperCase() === clean);
+    if (directMatch) return directMatch.code;
+
+    // Powszechne aliasy i skróty
+    if (clean === 'O' || clean === 'OF' || clean === 'OFF') return 'OFF';
+    if (clean === 'H') return 'H';
+    if (clean === 'L' || clean === 'L4') return 'L4';
+    if (clean === 'A') return isSunday ? 'AMN' : 'AM';
+    if (clean === 'P') return isSunday ? 'PMN' : 'PM';
+    if (clean === 'M') return 'MIB';
+    if (clean === 'S') return 'SUP';
+    if (clean === 'N') return 'NC';
+    if (clean === 'SA' || clean === 'SAM') return 'SAM';
+    if (clean === 'SP' || clean === 'SPM') return 'SPM';
+    if (clean === 'SU' || clean === 'SUP') return 'SUP';
+    if (clean === 'MI' || clean === 'MIB') return 'MIB';
+    if (clean === 'MID') return 'MID';
+    if (clean === 'AMN') return 'AMN';
+    if (clean === 'PMN') return 'PMN';
+
+    return null;
+  }, [data.shiftDefinitions]);
+
   // Schowek dla kopiowania zmian (Ctrl+C / Ctrl+V)
   const [copiedShift, setCopiedShift] = useState<{
     shiftCode: string;
@@ -409,35 +535,77 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
         return;
       }
 
-      // Nawigacja strzałkami
+      // Nawigacja strzałkami (z obsługą zaznaczania blokowego Shift + Strzałka)
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         if (currentEmpIndex > 0) {
-          setSelectedCell({ empId: data.rows[currentEmpIndex - 1].employee.id, day: selectedCell.day });
+          const nextTarget = { empId: data.rows[currentEmpIndex - 1].employee.id, day: selectedCell.day };
+          if (e.shiftKey) {
+            const anchor = rangeAnchor || selectedCell;
+            setRangeAnchor(anchor);
+            updateRange(anchor, nextTarget);
+          } else {
+            setRangeAnchor(null);
+            setSelectedRange(null);
+          }
+          setSelectedCell(nextTarget);
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (currentEmpIndex < totalEmployees - 1) {
-          setSelectedCell({ empId: data.rows[currentEmpIndex + 1].employee.id, day: selectedCell.day });
+          const nextTarget = { empId: data.rows[currentEmpIndex + 1].employee.id, day: selectedCell.day };
+          if (e.shiftKey) {
+            const anchor = rangeAnchor || selectedCell;
+            setRangeAnchor(anchor);
+            updateRange(anchor, nextTarget);
+          } else {
+            setRangeAnchor(null);
+            setSelectedRange(null);
+          }
+          setSelectedCell(nextTarget);
         }
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         if (selectedCell.day > 1) {
-          setSelectedCell({ empId: selectedCell.empId, day: selectedCell.day - 1 });
+          const nextTarget = { empId: selectedCell.empId, day: selectedCell.day - 1 };
+          if (e.shiftKey) {
+            const anchor = rangeAnchor || selectedCell;
+            setRangeAnchor(anchor);
+            updateRange(anchor, nextTarget);
+          } else {
+            setRangeAnchor(null);
+            setSelectedRange(null);
+          }
+          setSelectedCell(nextTarget);
         }
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         if (selectedCell.day < daysCount) {
-          setSelectedCell({ empId: selectedCell.empId, day: selectedCell.day + 1 });
+          const nextTarget = { empId: selectedCell.empId, day: selectedCell.day + 1 };
+          if (e.shiftKey) {
+            const anchor = rangeAnchor || selectedCell;
+            setRangeAnchor(anchor);
+            updateRange(anchor, nextTarget);
+          } else {
+            setRangeAnchor(null);
+            setSelectedRange(null);
+          }
+          setSelectedCell(nextTarget);
         }
       } else if (e.key === 'Home') {
         e.preventDefault();
         setSelectedCell({ empId: selectedCell.empId, day: 1 });
+        setRangeAnchor(null);
+        setSelectedRange(null);
       } else if (e.key === 'End') {
         e.preventDefault();
         setSelectedCell({ empId: selectedCell.empId, day: daysCount });
+        setRangeAnchor(null);
+        setSelectedRange(null);
       } else if (e.key === 'Tab') {
         e.preventDefault();
+        setRangeAnchor(null);
+        setSelectedRange(null);
         if (e.shiftKey) {
           if (selectedCell.day > 1) {
             setSelectedCell({ empId: selectedCell.empId, day: selectedCell.day - 1 });
@@ -453,9 +621,45 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        setSelectedCell(null);
+        if (selectedRange) {
+          setSelectedRange(null);
+          setRangeAnchor(null);
+        } else if (typeAheadBuffer) {
+          setTypeAheadBuffer('');
+          if (typeAheadTimerRef.current) clearTimeout(typeAheadTimerRef.current);
+        } else {
+          setSelectedCell(null);
+        }
       } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
+        if (selectedRange) {
+          if (typeAheadBuffer) {
+            if (typeAheadTimerRef.current) clearTimeout(typeAheadTimerRef.current);
+            const code = resolveShiftCodeFromBuffer(typeAheadBuffer, false);
+            setTypeAheadBuffer('');
+            if (code) {
+              handleBatchFillRange(code);
+            }
+          }
+          return;
+        }
+
+        if (typeAheadBuffer) {
+          if (typeAheadTimerRef.current) clearTimeout(typeAheadTimerRef.current);
+          const daySummary = data.daySummaries.find(d => d.day === selectedCell.day);
+          const isSunday = daySummary ? (daySummary.dayName === 'Nd' || new Date(data.year, data.month - 1, selectedCell.day).getDay() === 0) : false;
+          const code = resolveShiftCodeFromBuffer(typeAheadBuffer, isSunday);
+          setTypeAheadBuffer('');
+          if (code) {
+            handleKeyboardShiftAssign(code);
+            // Auto-advance do następnego dnia po Enter
+            if (selectedCell.day < daysCount) {
+              setSelectedCell({ empId: selectedCell.empId, day: selectedCell.day + 1 });
+            }
+          }
+          return;
+        }
+
         const row = data.rows[currentEmpIndex];
         const isCellBeforeStart = Boolean(row?.isProportionalNorm && row?.proportionalStartDay && selectedCell.day < row.proportionalStartDay);
         if (!isReadOnly && !isCellBeforeStart && row) {
@@ -471,33 +675,75 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
             currentDisposition: shift?.disposition || 'FULL'
           });
         }
-      } else if (!isReadOnly && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Skróty klawiszowe szybkiej edycji
-        const keyUpper = e.key.toUpperCase();
-        if (keyUpper === 'A') {
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!isReadOnly) {
           e.preventDefault();
-          handleKeyboardShiftAssign('AM');
-        } else if (keyUpper === 'P') {
-          e.preventDefault();
-          handleKeyboardShiftAssign('PM');
-        } else if (keyUpper === 'M') {
-          e.preventDefault();
-          handleKeyboardShiftAssign('MIB');
-        } else if (keyUpper === 'S') {
-          e.preventDefault();
-          handleKeyboardShiftAssign('SUP');
-        } else if (keyUpper === 'N') {
-          e.preventDefault();
-          handleKeyboardShiftAssign('NC');
-        } else if (keyUpper === 'O' || e.key === 'Delete' || e.key === 'Backspace') {
-          e.preventDefault();
-          handleKeyboardShiftAssign('OFF');
-        } else if (keyUpper === 'H') {
-          e.preventDefault();
-          handleKeyboardShiftAssign('H');
-        } else if (keyUpper === 'L') {
-          e.preventDefault();
-          handleKeyboardShiftAssign('L4');
+          if (selectedRange) {
+            handleBatchFillRange('OFF');
+            return;
+          }
+          if (typeAheadBuffer) {
+            if (typeAheadTimerRef.current) clearTimeout(typeAheadTimerRef.current);
+            const next = typeAheadBuffer.slice(0, -1);
+            setTypeAheadBuffer(next);
+            if (next.length > 0) {
+              typeAheadTimerRef.current = setTimeout(() => {
+                const daySummary = data.daySummaries.find(d => d.day === selectedCell.day);
+                const isSunday = daySummary ? (daySummary.dayName === 'Nd' || new Date(data.year, data.month - 1, selectedCell.day).getDay() === 0) : false;
+                const resolved = resolveShiftCodeFromBuffer(next, isSunday);
+                if (resolved) {
+                  handleKeyboardShiftAssign(resolved);
+                }
+                setTypeAheadBuffer('');
+              }, 600);
+            }
+          } else {
+            handleKeyboardShiftAssign('OFF');
+          }
+        }
+      } else if (!isReadOnly && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
+        // Szybkie wpisywanie kodów zmian wieloliterowych z buforem Type-Ahead (lub hurtowe dla zakresu)
+        e.preventDefault();
+        const nextChar = e.key.toUpperCase();
+        const nextBuffer = (typeAheadBuffer + nextChar).slice(0, 4);
+        setTypeAheadBuffer(nextBuffer);
+
+        if (typeAheadTimerRef.current) clearTimeout(typeAheadTimerRef.current);
+
+        const daySummary = data.daySummaries.find(d => d.day === selectedCell.day);
+        const isSunday = daySummary ? (daySummary.dayName === 'Nd' || new Date(data.year, data.month - 1, selectedCell.day).getDay() === 0) : false;
+
+        // Sprawdź czy mamy jednoznaczne i ostateczne dopasowanie kodu
+        const exact = data.shiftDefinitions.find(s => s.code.toUpperCase() === nextBuffer);
+        const hasLongerPrefix = data.shiftDefinitions.some(s => s.code.toUpperCase().startsWith(nextBuffer) && s.code.length > nextBuffer.length);
+
+        if (selectedRange) {
+          if (exact && !hasLongerPrefix) {
+            handleBatchFillRange(exact.code);
+            setTypeAheadBuffer('');
+          } else {
+            typeAheadTimerRef.current = setTimeout(() => {
+              const resolved = resolveShiftCodeFromBuffer(nextBuffer, false);
+              if (resolved) {
+                handleBatchFillRange(resolved);
+              }
+              setTypeAheadBuffer('');
+            }, 550);
+          }
+          return;
+        }
+
+        if (exact && !hasLongerPrefix) {
+          handleKeyboardShiftAssign(exact.code);
+          setTypeAheadBuffer('');
+        } else {
+          typeAheadTimerRef.current = setTimeout(() => {
+            const resolved = resolveShiftCodeFromBuffer(nextBuffer, isSunday);
+            if (resolved) {
+              handleKeyboardShiftAssign(resolved);
+            }
+            setTypeAheadBuffer('');
+          }, 550);
         }
       }
     };
@@ -506,7 +752,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedCell, data, isReadOnly, editingEventDay, violationPrompt, activePicker, copiedShift, handleKeyboardShiftAssign, handlePasteShift]);
+  }, [selectedCell, data, isReadOnly, editingEventDay, violationPrompt, activePicker, copiedShift, typeAheadBuffer, selectedRange, rangeAnchor, updateRange, handleBatchFillRange, resolveShiftCodeFromBuffer, handleKeyboardShiftAssign, handlePasteShift]);
 
   // Inteligentne przewijanie do aktywnej komórki (z pełnym uwzględnieniem 408px lewych kolumn sticky)
   useEffect(() => {
@@ -1158,11 +1404,28 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                       cellTitle += ` • Godziny: ${shiftStartTime} – ${shiftEndTime}`;
                     }
 
+                    const currentEmpIdx = data.rows.findIndex(r => r.employee.id === row.employee.id);
+                    const isInRange = Boolean(
+                      selectedRange &&
+                      currentEmpIdx >= selectedRange.minEmpIdx &&
+                      currentEmpIdx <= selectedRange.maxEmpIdx &&
+                      d.day >= selectedRange.minDay &&
+                      d.day <= selectedRange.maxDay
+                    );
+
                     return (
                       <td
                         id={`cell-${row.employee.id}-${d.day}`}
                         key={`cell-${row.employee.id}-${d.day}`}
-                        onClick={() => {
+                        onClick={(e) => {
+                          if (e.shiftKey && (selectedCell || rangeAnchor)) {
+                            const anchor = rangeAnchor || selectedCell!;
+                            updateRange(anchor, { empId: row.employee.id, day: d.day });
+                            setSelectedCell({ empId: row.employee.id, day: d.day });
+                            return;
+                          }
+                          setSelectedRange(null);
+                          setRangeAnchor({ empId: row.employee.id, day: d.day });
                           setSelectedCell({ empId: row.employee.id, day: d.day });
                           if (isReadOnly || isBeforeStart) return;
                           if (isSelected) {
@@ -1195,9 +1458,16 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                           isReadOnly || isBeforeStart ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-emerald-100/60'
                         } ${isBeforeStart ? 'bg-stone-100/90 text-stone-300 opacity-60' : cellBg} ${
                           isSelected ? 'ring-2 ring-[#006241] ring-offset-2 ring-offset-white z-10 shadow-md bg-emerald-100/80 font-bold' : ''
+                        } ${
+                          isInRange ? 'bg-emerald-200/90 ring-1 ring-emerald-600 font-bold z-10' : ''
                         }`}
                         title={cellTitle}
                       >
+                        {isSelected && typeAheadBuffer && (
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#1E3932] text-emerald-300 text-[10px] font-black px-1.5 py-0.2 rounded shadow-lg z-30 animate-pulse border border-emerald-400 whitespace-nowrap pointer-events-none">
+                            {typeAheadBuffer}…
+                          </div>
+                        )}
                         {isBeforeStart ? (
                           <div className="flex items-center justify-center text-stone-300 font-bold text-[10px] select-none py-1">
                             —
@@ -1746,19 +2016,69 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
             </div>
           )}
 
-          {selectedCell && (() => {
+          {selectedRange ? (
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-[#006241] bg-emerald-100/90 px-3 py-1.5 rounded-xl border border-emerald-300 shrink-0 shadow-xs animate-fade-in">
+              <span className="text-base">📦</span>
+              <strong className="text-[#1E3932]">
+                Zaznaczono blok: Dni {selectedRange.minDay}–{selectedRange.maxDay} ({selectedRange.maxDay - selectedRange.minDay + 1} dni)
+              </strong>
+              <span>•</span>
+              <span className="text-stone-700">
+                {selectedRange.maxEmpIdx - selectedRange.minEmpIdx + 1} {selectedRange.maxEmpIdx - selectedRange.minEmpIdx + 1 === 1 ? 'pracownik' : 'pracowników'}
+              </span>
+              <span className="text-stone-400">|</span>
+              <span className="text-emerald-950 font-black">
+                Wpisz kod (H, L4, OFF, AM, PM) aby wypełnić hurtowo
+              </span>
+              <button
+                type="button"
+                onClick={() => { setSelectedRange(null); setRangeAnchor(null); }}
+                className="ml-1 text-stone-500 hover:text-stone-800 text-[10px] underline cursor-pointer"
+              >
+                Odznacz (Esc)
+              </button>
+            </div>
+          ) : selectedCell && (() => {
             const selRow = data.rows.find(r => r.employee.id === selectedCell.empId);
             const selDaySummary = data.daySummaries.find(d => d.day === selectedCell.day);
             const selShift = selRow?.shifts[selectedCell.day];
             const code = selShift ? selShift.shift_code : 'OFF';
+            const totalHours = selRow?.totalWorkedHours || 0;
+            const nominal = selRow?.nominalHours || 160;
+            const delta = selRow?.balanceHours ?? (totalHours - nominal);
+            const dayHours = data.rows.reduce((sum, r) => sum + (r.shifts[selectedCell.day]?.hours || 0), 0);
+            const hasOpenClose = Boolean(selDaySummary?.hasOpeningCoverage && selDaySummary?.hasClosingCoverage);
+
             return (
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#006241] bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 shrink-0">
-                <span>Wybrana komórka:</span>
+              <div className="flex items-center gap-2 text-[11px] font-semibold text-[#006241] bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200 shrink-0 shadow-2xs">
+                <span>Wybrana:</span>
                 <strong className="text-[#1E3932]">{selRow?.employee.name}</strong>
                 <span>•</span>
                 <span>Dzień {selectedCell.day} ({selDaySummary?.dayName})</span>
                 <span>•</span>
                 <span className="px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-950 font-black">{code}</span>
+
+                {typeAheadBuffer && (
+                  <span className="px-2 py-0.5 rounded-md bg-[#1E3932] text-emerald-300 text-[10px] font-black border border-emerald-500 animate-pulse">
+                    Wpisywanie: {typeAheadBuffer} (Enter zatwierdza)
+                  </span>
+                )}
+
+                <span className="text-stone-300">|</span>
+
+                <span className="text-stone-600 text-[10px]">
+                  Miesiąc: <strong>{totalHours.toFixed(1)}h</strong> / {nominal}h
+                  <span className={`ml-1 font-bold ${Math.abs(delta) < 0.05 ? 'text-emerald-700' : delta > 0 ? 'text-amber-700' : 'text-rose-700'}`}>
+                    ({delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)}h)
+                  </span>
+                </span>
+
+                <span className="text-stone-300">|</span>
+
+                <span className="text-stone-600 text-[10px]">
+                  Dyżury d. {selectedCell.day}: <strong className={hasOpenClose ? 'text-emerald-700' : 'text-amber-700'}>{dayHours.toFixed(1)}h</strong> ({selDaySummary?.totalManagersWorking || 0} os.)
+                  {!hasOpenClose && <span className="ml-1 text-[9px] text-amber-700 font-bold">⚠️ Brak 1 AM/PM</span>}
+                </span>
               </div>
             );
           })()}
