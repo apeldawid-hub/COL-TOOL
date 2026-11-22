@@ -15,6 +15,10 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+
+## [v2.9.18] — 2026-11-22
+- Bieżąca synchronizacja i optymalizacje modułu.
+
 ## [v2.9.17] — 2026-11-21
 - Bieżąca synchronizacja i optymalizacje modułu.
 

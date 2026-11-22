@@ -70,6 +70,8 @@ src/modules/trainings/
    - `store_manager_name TEXT DEFAULT 'Dawid Apel'`
    - `sanepid_valid_until TEXT`
    - `bhp_completed_date TEXT`
+   - `partner_id TEXT` (Starbucks Global Partner ID)
+   - `email TEXT` (służbowy adres email)
    - `status TEXT DEFAULT 'in_progress'`
    - `notes TEXT`
 2. `training_shifts`:

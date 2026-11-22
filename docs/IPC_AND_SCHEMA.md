@@ -1,6 +1,6 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-21T21:43:21.189Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-22T12:21:19.794Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
@@ -288,6 +288,8 @@ CREATE TABLE IF NOT EXISTS manager_employees (
   contract_hours_ratio REAL NOT NULL,
   hourly_rate REAL DEFAULT 0.0,
   monthly_salary REAL DEFAULT 0.0,
+  partner_id TEXT,
+  email TEXT,
   sort_order INTEGER NOT NULL DEFAULT 1,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -424,6 +426,8 @@ CREATE TABLE IF NOT EXISTS manager_monthly_roster (
   contract_hours_ratio REAL NOT NULL,
   hourly_rate REAL DEFAULT 0.0,
   monthly_salary REAL DEFAULT 0.0,
+  partner_id TEXT,
+  email TEXT,
   sort_order INTEGER NOT NULL DEFAULT 1,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -443,6 +447,8 @@ CREATE TABLE IF NOT EXISTS training_partners (
   store_manager_name TEXT DEFAULT 'Dawid Apel',
   sanepid_valid_until TEXT,
   bhp_completed_date TEXT,
+  partner_id TEXT,
+  email TEXT,
   status TEXT NOT NULL DEFAULT 'in_progress',
   notes TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,

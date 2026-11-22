@@ -1864,7 +1864,8 @@ function setupIpcHandlers() {
     try {
       if (payload && !Array.isArray(payload) && payload.year && payload.month && Array.isArray(payload.employees)) {
         const propagate = payload.propagateToFuture !== undefined ? Boolean(payload.propagateToFuture) : true;
-        dbManager.saveMonthlyRoster(Number(payload.year), Number(payload.month), payload.employees, propagate);
+        const isMaster = Boolean(payload.isMaster);
+        dbManager.saveMonthlyRoster(Number(payload.year), Number(payload.month), payload.employees, propagate, isMaster);
       } else {
         // Wsteczna kompatybilność: bezpośrednia tablica pracowników
         const employees = Array.isArray(payload) ? payload : (payload?.employees || []);

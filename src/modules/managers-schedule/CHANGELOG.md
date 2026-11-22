@@ -11,7 +11,20 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
-## [v2.9.17] — 2026-11-21
+
+## [v2.9.18] — 2026-11-22
+- Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.17] — 2026-11-22
+- **Tarcza Integralności Historii i Usunięcia Przyszłe w Składzie Menedżerskim**:
+  - **Blokada usuwania wstecz**: Usunięcie pracownika ze składu w minionych miesiącach kalendarzowych zostało bezwzględnie zablokowane dla Store Managera (wymaga uprawnień konta Master/Fleet Master).
+  - **Kaskadowe usunięcie w przód**: Usunięcie pracownika z grafiku od wybranego miesiąca (np. grudzień) automatycznie czyści jego obecność we wszystkich kolejnych miesiącach (`manager_monthly_roster` oraz `manager_schedule_shifts`), pozostawiając miesiące wcześniejsze w 100% nienaruszone.
+  - **Wskaźnik w `ManagerTeamModal`**: Wyróżnienie miesięcy archiwalnych z kłódką `Lock` na akcji usuwania oraz informacyjnym banerem o ochronie historii.
+- **Globalny Rejestr Tożsamości Pracowników (Global Partner ID & Email)**:
+  - Wprowadzenie pól `partner_id` (Starbucks Partner ID) oraz `email` (służbowy adres email AmRest) w tabelach `manager_employees` oraz `manager_monthly_roster`.
+  - Powiązanie tożsamości globalnej dla Dawida Apela (`ID: 00106539`, `dawid.apel@amrest.eu`) we wszystkich bazach kawiarni (`store_${storeId}.db`).
+  - Rozszerzenie interfejsu `ManagerTeamModal` o dedykowany pasek tożsamości pracownika z plakietką zweryfikowanego Partnera Globalnego (*Fleet Master / Global ID*).
+  - Wzbogacenie parsera raportów MAPAL Fichajes o automatyczne dziedziczenie Partner ID i emaila.
 - **Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Firestore Kawiarni**:
   - Bezpośrednia synchronizacja 16 kanonicznych definicji zmian w `stores/{storeId}/meta/shift_configuration`.
   - Stały profil tygodniowy w chmurze `stores/{storeId}/meta/weekly_requirements` (2 MGR, Pn–So 07:00–22:30, Nd 08:00–21:00).

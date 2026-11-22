@@ -361,6 +361,8 @@ export interface ManagerEmployee {
   contract_hours_ratio: number; // 1.0, 0.75, 0.5, 0.25
   hourly_rate?: number; // Stawka godzinowa (PLN/h) - opcjonalna/kompatybilność wsteczna
   monthly_salary?: number; // Miesięczne wynagrodzenie zasadnicze brutto dla 1.0 etatu (PLN/mc)
+  partner_id?: string; // Globalny identyfikator pracownika (np. 00106539)
+  email?: string; // Służbowy adres email (np. dawid.apel@amrest.eu)
   sort_order: number;
   is_active: number; // 1 or 0
   activeMonths?: number[]; // Miesiące w których pracownik jest w składzie (np. [7, 8])

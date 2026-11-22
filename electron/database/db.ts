@@ -851,7 +851,7 @@ export class DatabaseManager {
 
     // 1. Sprawdź czy istnieją rekordy w manager_monthly_roster dla (year, month)
     const stmt = this.db.prepare(`
-      SELECT employee_id as id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active
+      SELECT employee_id as id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email
       FROM manager_monthly_roster
       WHERE year = ? AND month = ? AND is_active = 1
       ORDER BY sort_order ASC
@@ -872,6 +872,8 @@ export class DatabaseManager {
         contract_hours_ratio: r.contract_hours_ratio,
         hourly_rate: r.hourly_rate ?? 0.0,
         monthly_salary: r.monthly_salary ?? 0.0,
+        partner_id: r.partner_id ?? (String(r.name).includes('Dawid Apel') ? '00106539' : null),
+        email: r.email ?? (String(r.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null),
         sort_order: r.sort_order,
         is_active: r.is_active
       }));
@@ -892,7 +894,7 @@ export class DatabaseManager {
       const foundYear = Number(prevRes[0].values[0][0]);
       const foundMonth = Number(prevRes[0].values[0][1]);
       const srcStmt = this.db.prepare(`
-        SELECT employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active
+        SELECT employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email
         FROM manager_monthly_roster
         WHERE year = ? AND month = ? AND is_active = 1
         ORDER BY sort_order ASC
@@ -907,7 +909,7 @@ export class DatabaseManager {
     // Jeśli brak wcześniejszego miesiąca, weź z bazowego rejestru manager_employees
     if (sourceRecords.length === 0) {
       const baseStmt = this.db.prepare(`
-        SELECT id as employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active
+        SELECT id as employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email
         FROM manager_employees
         WHERE is_active = 1
         ORDER BY sort_order ASC
@@ -922,11 +924,14 @@ export class DatabaseManager {
     if (sourceRecords.length > 0) {
       const insertStmt = this.db.prepare(`
         INSERT OR REPLACE INTO manager_monthly_roster 
-        (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
       `);
 
       for (const r of sourceRecords) {
+        const partnerIdVal = r.partner_id || (String(r.name).includes('Dawid Apel') ? '00106539' : null);
+        const emailVal = r.email || (String(r.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null);
+
         insertStmt.run([
           year,
           month,
@@ -937,7 +942,9 @@ export class DatabaseManager {
           r.contract_hours_ratio,
           r.hourly_rate || 0.0,
           r.monthly_salary || 0.0,
-          r.sort_order || 1
+          r.sort_order || 1,
+          partnerIdVal,
+          emailVal
         ]);
       }
       insertStmt.free();
@@ -954,6 +961,8 @@ export class DatabaseManager {
       contract_hours_ratio: r.contract_hours_ratio,
       hourly_rate: r.hourly_rate ?? 0.0,
       monthly_salary: r.monthly_salary ?? 0.0,
+      partner_id: r.partner_id ?? (String(r.name).includes('Dawid Apel') ? '00106539' : null),
+      email: r.email ?? (String(r.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null),
       sort_order: r.sort_order,
       is_active: r.is_active
     }));
@@ -961,9 +970,59 @@ export class DatabaseManager {
 
   /**
    * Zapisuje skład managerski dla wybranego miesiąca z opcjonalną propagacją do miesięcy przyszłych.
+   * Blokuje usuwanie pracowników wstecz (z miesięcy archiwalnych) dla kont innych niż Master.
+   * Usunięcie pracownika z danego miesiąca (np. grudzień) automatycznie usuwa go ze wszystkich kolejnych miesięcy.
    */
-  public saveMonthlyRoster(year: number, month: number, employees: any[], propagateToFuture: boolean = false): void {
+  public saveMonthlyRoster(
+    year: number,
+    month: number,
+    employees: any[],
+    propagateToFuture: boolean = false,
+    isMaster: boolean = false
+  ): void {
     if (!this.db) throw new Error('Baza nie została zainicjalizowana. Wywołaj najpierw init().');
+
+    // 0. Sprawdź, którzy pracownicy byli dotychczas w składzie (year, month)
+    const prevStmt = this.db.prepare(`SELECT employee_id FROM manager_monthly_roster WHERE year = ? AND month = ?`);
+    prevStmt.bind([year, month]);
+    const prevIds: number[] = [];
+    while (prevStmt.step()) {
+      const obj = prevStmt.getAsObject();
+      if (obj.employee_id) prevIds.push(Number(obj.employee_id));
+    }
+    prevStmt.free();
+
+    const incomingIds = new Set<number>(employees.map(e => Number(e.id)).filter(id => id > 0));
+    const removedEmpIds = prevIds.filter(id => !incomingIds.has(id));
+
+    // 0.1 Blokada usuwania wstecz dla użytkowników bez uprawnień Master
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    const isPastMonth = (year < curYear) || (year === curYear && month < curMonth);
+
+    if (isPastMonth && removedEmpIds.length > 0 && !isMaster) {
+      throw new Error(`Zablokowano: Usuwanie pracowników z minionych miesięcy wstecz (${month}/${year}) jest zablokowane ze względów ochrony historii. Operacja wymaga uprawnień konta Master.`);
+    }
+
+    // 0.2 Jeśli pracownik został usunięty ze składu od wskazanego miesiąca (np. grudzień):
+    // usuń go z tego miesiąca ORAZ ze WSZYSTKICH KOLEJNYCH miesięcy w manager_monthly_roster i manager_schedule_shifts
+    if (removedEmpIds.length > 0) {
+      for (const remId of removedEmpIds) {
+        // Usunięcie ze wszystkich kolejnych miesięcy (>= year, month)
+        this.db.run(`
+          DELETE FROM manager_monthly_roster 
+          WHERE ((year > ?) OR (year = ? AND month >= ?)) AND employee_id = ?
+        `, [year, year, month, remId]);
+
+        // Usunięcie zmian w kolejnych miesiącach (>= year, month)
+        this.db.run(`
+          DELETE FROM manager_schedule_shifts 
+          WHERE ((year > ?) OR (year = ? AND month >= ?)) AND employee_id = ?
+        `, [year, year, month, remId]);
+      }
+      console.log(`🗑️ Usunięto pracowników [${removedEmpIds.join(', ')}] ze składu od miesiąca ${month}/${year} oraz ze wszystkich przyszłych okresów.`);
+    }
 
     // 1. Upewnij się, że każdy pracownik ma swoje employee_id w manager_employees (master registry)
     for (const emp of employees) {
@@ -980,10 +1039,13 @@ export class DatabaseManager {
         }
       }
 
+      const partnerIdVal = emp.partner_id || (String(emp.name).includes('Dawid Apel') ? '00106539' : null);
+      const emailVal = emp.email || (String(emp.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null);
+
       if (!exists) {
         this.db.run(`
-          INSERT INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+          INSERT INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
         `, [
           emp.name || 'Nowy Menedżer',
           emp.role || 'SSV',
@@ -991,7 +1053,9 @@ export class DatabaseManager {
           Number(emp.contract_hours_ratio) || 1.0,
           Number(emp.hourly_rate) || 0.0,
           Number(emp.monthly_salary) || 0.0,
-          Number(emp.sort_order) || 1
+          Number(emp.sort_order) || 1,
+          partnerIdVal,
+          emailVal
         ]);
         const lastIdRes = this.db.exec("SELECT last_insert_rowid()");
         emp.id = Number(lastIdRes[0].values[0][0]);
@@ -999,7 +1063,8 @@ export class DatabaseManager {
         // Zaktualizuj dane bazowe pracownika w master registry
         this.db.run(`
           UPDATE manager_employees 
-          SET name = ?, role = ?, contract_type = ?, contract_hours_ratio = ?, hourly_rate = ?, monthly_salary = ?
+          SET name = ?, role = ?, contract_type = ?, contract_hours_ratio = ?, hourly_rate = ?, monthly_salary = ?,
+              partner_id = COALESCE(?, partner_id), email = COALESCE(?, email)
           WHERE id = ?
         `, [
           emp.name,
@@ -1008,6 +1073,8 @@ export class DatabaseManager {
           Number(emp.contract_hours_ratio) || 1.0,
           Number(emp.hourly_rate) || 0.0,
           Number(emp.monthly_salary) || 0.0,
+          partnerIdVal,
+          emailVal,
           empId
         ]);
         emp.id = empId;
@@ -1020,12 +1087,15 @@ export class DatabaseManager {
     // 3. Wstawienie nowego składu
     const insertStmt = this.db.prepare(`
       INSERT INTO manager_monthly_roster 
-      (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (let idx = 0; idx < employees.length; idx++) {
       const emp = employees[idx];
+      const partnerIdVal = emp.partner_id || (String(emp.name).includes('Dawid Apel') ? '00106539' : null);
+      const emailVal = emp.email || (String(emp.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null);
+
       insertStmt.run([
         year,
         month,
@@ -1037,7 +1107,9 @@ export class DatabaseManager {
         Number(emp.hourly_rate) || 0.0,
         Number(emp.monthly_salary) || 0.0,
         emp.sort_order || (idx + 1),
-        emp.is_active !== undefined ? (emp.is_active ? 1 : 0) : 1
+        emp.is_active !== undefined ? (emp.is_active ? 1 : 0) : 1,
+        partnerIdVal,
+        emailVal
       ]);
     }
     insertStmt.free();
@@ -1054,13 +1126,13 @@ export class DatabaseManager {
         for (const row of futureMonthsRes[0].values) {
           const fYear = Number(row[0]);
           const fMonth = Number(row[1]);
-          this.saveMonthlyRoster(fYear, fMonth, employees, false);
+          this.saveMonthlyRoster(fYear, fMonth, employees, false, isMaster);
         }
       } else {
         // Dla nowo utworzonej kawiarni bez istniejących przyszłych rekordów:
         // automatycznie propaguj skład na pozostałe miesiące bieżącego roku (do miesiąca 12)
         for (let m = month + 1; m <= 12; m++) {
-          this.saveMonthlyRoster(year, m, employees, false);
+          this.saveMonthlyRoster(year, m, employees, false, isMaster);
         }
       }
     }
@@ -1181,6 +1253,8 @@ export class DatabaseManager {
         contract_hours_ratio REAL NOT NULL,
         hourly_rate REAL DEFAULT 0.0,
         monthly_salary REAL DEFAULT 0.0,
+        partner_id TEXT,
+        email TEXT,
         sort_order INTEGER NOT NULL DEFAULT 1,
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -1293,6 +1367,8 @@ export class DatabaseManager {
         contract_hours_ratio REAL NOT NULL,
         hourly_rate REAL DEFAULT 0.0,
         monthly_salary REAL DEFAULT 0.0,
+        partner_id TEXT,
+        email TEXT,
         sort_order INTEGER NOT NULL DEFAULT 1,
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -1322,6 +1398,8 @@ export class DatabaseManager {
         store_manager_name TEXT DEFAULT 'Dawid Apel',
         sanepid_valid_until TEXT,
         bhp_completed_date TEXT,
+        partner_id TEXT,
+        email TEXT,
         status TEXT NOT NULL DEFAULT 'in_progress',
         notes TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -1440,6 +1518,27 @@ export class DatabaseManager {
     try { this.db.run('ALTER TABLE manager_employees ADD COLUMN hourly_rate REAL DEFAULT 0.0'); } catch (_) {}
     try { this.db.run('ALTER TABLE manager_employees ADD COLUMN monthly_salary REAL DEFAULT 0.0'); } catch (_) {}
     try { this.db.run('ALTER TABLE manager_monthly_roster ADD COLUMN monthly_salary REAL DEFAULT 0.0'); } catch (_) {}
+    try { this.db.run('ALTER TABLE manager_employees ADD COLUMN partner_id TEXT DEFAULT NULL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE manager_employees ADD COLUMN email TEXT DEFAULT NULL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE manager_monthly_roster ADD COLUMN partner_id TEXT DEFAULT NULL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE manager_monthly_roster ADD COLUMN email TEXT DEFAULT NULL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE training_partners ADD COLUMN partner_id TEXT DEFAULT NULL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE training_partners ADD COLUMN email TEXT DEFAULT NULL'); } catch (_) {}
+    try {
+      this.db.run(`
+        UPDATE manager_employees 
+        SET partner_id = '00106539', email = 'dawid.apel@amrest.eu' 
+        WHERE (name LIKE '%Dawid Apel%' OR name = 'Dawid Apel') AND (partner_id IS NULL OR partner_id = '');
+
+        UPDATE manager_monthly_roster 
+        SET partner_id = '00106539', email = 'dawid.apel@amrest.eu' 
+        WHERE (name LIKE '%Dawid Apel%' OR name = 'Dawid Apel') AND (partner_id IS NULL OR partner_id = '');
+
+        UPDATE training_partners 
+        SET partner_id = '00106539', email = 'dawid.apel@amrest.eu' 
+        WHERE (name LIKE '%Dawid Apel%' OR name = 'Dawid Apel') AND (partner_id IS NULL OR partner_id = '');
+      `);
+    } catch (_) {}
     try {
       this.db.run(`
         UPDATE manager_employees SET hourly_rate = 42.0 WHERE (hourly_rate IS NULL OR hourly_rate = 0) AND role LIKE '%STORE MANAGER%' AND role NOT LIKE '%ASSISTANT%';
@@ -1765,12 +1864,15 @@ export class DatabaseManager {
 
   public saveTrainingPartner(partner: any): number {
     if (!this.db) return 0;
+    const partnerIdVal = partner.partner_id || (String(partner.name).includes('Dawid Apel') ? '00106539' : null);
+    const emailVal = partner.email || (String(partner.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null);
+
     if (partner.id) {
       const stmt = this.db.prepare(`
         UPDATE training_partners
         SET name = ?, hire_date = ?, current_program = ?, assigned_trainer_id = ?,
             assigned_trainer_name = ?, store_manager_name = ?, sanepid_valid_until = ?,
-            bhp_completed_date = ?, status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+            bhp_completed_date = ?, status = ?, notes = ?, partner_id = COALESCE(?, partner_id), email = COALESCE(?, email), updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `);
       stmt.run([
@@ -1784,6 +1886,8 @@ export class DatabaseManager {
         partner.bhp_completed_date || null,
         partner.status || 'in_progress',
         partner.notes || null,
+        partnerIdVal,
+        emailVal,
         partner.id
       ]);
       stmt.free();
@@ -1792,8 +1896,8 @@ export class DatabaseManager {
     } else {
       const stmt = this.db.prepare(`
         INSERT INTO training_partners
-        (name, hire_date, current_program, assigned_trainer_id, assigned_trainer_name, store_manager_name, sanepid_valid_until, bhp_completed_date, status, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, hire_date, current_program, assigned_trainer_id, assigned_trainer_name, store_manager_name, sanepid_valid_until, bhp_completed_date, status, notes, partner_id, email)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       stmt.run([
         partner.name,
@@ -1805,7 +1909,9 @@ export class DatabaseManager {
         partner.sanepid_valid_until || null,
         partner.bhp_completed_date || null,
         partner.status || 'in_progress',
-        partner.notes || null
+        partner.notes || null,
+        partnerIdVal,
+        emailVal
       ]);
       stmt.free();
       const lastIdRes = this.db.exec("SELECT last_insert_rowid()");

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { ManagerEmployee } from '../../../types';
 import { formatManagerRole } from '../services/managerScheduleEngine';
-import { X, Plus, Trash2, ArrowUp, ArrowDown, Check, UserCheck, Copy, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, ArrowUp, ArrowDown, Check, UserCheck, Copy, AlertCircle, Mail, IdCard, ShieldCheck, Lock } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { SystemClock } from '../../../services/systemClock';
 
 interface ManagerTeamModalProps {
   employees: ManagerEmployee[];
   year: number;
   month: number;
   monthName: string;
-  onSave: (payload: { employees: ManagerEmployee[]; propagateToFuture: boolean }) => Promise<void>;
+  onSave: (payload: { employees: ManagerEmployee[]; propagateToFuture: boolean; isMaster?: boolean }) => Promise<void>;
   onCopyPreviousMonth?: () => Promise<void>;
   onClose: () => void;
 }
@@ -22,6 +24,11 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
   onCopyPreviousMonth,
   onClose
 }) => {
+  const { isFleetMaster } = useAuth();
+  const sysNow = SystemClock.now();
+  const currentMonthNum = sysNow.monthIndex + 1;
+  const isPastMonth = year < sysNow.year || (year === sysNow.year && month < currentMonthNum);
+
   const [employees, setEmployees] = useState<ManagerEmployee[]>(
     JSON.parse(JSON.stringify(initialEmployees))
   );
@@ -41,6 +48,8 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
       contract_hours_ratio: 1.0,
       monthly_salary: 0,
       hourly_rate: 0,
+      partner_id: '',
+      email: '',
       sort_order: employees.length + 1,
       is_active: 1
     };
@@ -49,6 +58,10 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
 
   // Usunięcie pracownika ze składu na ten miesiąc
   const handleRemoveFromMonth = (index: number) => {
+    if (isPastMonth && !isFleetMaster) {
+      alert(`Usuwanie pracowników wstecz (${monthName} ${year}) jest zablokowane dla ochrony historii. Wymaga uprawnień konta Master.`);
+      return;
+    }
     const updated = employees.filter((_, i) => i !== index);
     // Przenumerowanie kolejności sortowania
     updated.forEach((emp, i) => {
@@ -115,7 +128,8 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
       setIsSaving(true);
       await onSave({
         employees,
-        propagateToFuture
+        propagateToFuture,
+        isMaster: isFleetMaster
       });
       setSaveSuccess(true);
       setTimeout(() => {
@@ -202,6 +216,31 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
           )}
         </div>
 
+        {/* Informacja o statusie miesiąca archiwalnego / bieżącego */}
+        {isPastMonth && (
+          <div className={`mx-6 mt-3 px-3.5 py-2.5 rounded-xl border text-xs flex items-center gap-2.5 ${
+            isFleetMaster 
+              ? 'bg-blue-50 border-blue-200 text-blue-900' 
+              : 'bg-amber-50 border-amber-200 text-amber-900'
+          }`}>
+            {isFleetMaster ? (
+              <>
+                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>
+                  <strong>Tryb Fleet Master ({monthName} {year}):</strong> Edytujesz skład w miesiącu archiwalnym. Masz uprawnienia do usuwania wstecz.
+                </span>
+              </>
+            ) : (
+              <>
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Miesiąc archiwalny ({monthName} {year}):</strong> Usuwanie pracowników wstecz jest zablokowane w celu ochrony historii grafiku. Aby wycofać pracownika ze składu, przejdź do bieżącego lub przyszłego miesiąca.
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Lista menedżerów */}
         <div className="p-6 overflow-y-auto flex-1 space-y-3">
           {employees.length === 0 ? (
@@ -211,123 +250,194 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
             </div>
           ) : (
             employees.map((emp, index) => {
+              const isDawidApel = emp.name?.includes('Dawid Apel');
+              const displayPartnerId = emp.partner_id !== undefined ? emp.partner_id : (isDawidApel ? '00106539' : '');
+              const displayEmail = emp.email !== undefined ? emp.email : (isDawidApel ? 'dawid.apel@amrest.eu' : '');
+
               return (
                 <div
                   key={emp.id ? `emp-${emp.id}` : `new-${index}`}
-                  className="flex items-center gap-3 p-3.5 bg-[#F7F9F8] border border-[#E2E8E5] rounded-xl hover:border-emerald-300 transition-all"
+                  className="p-3 bg-[#F7F9F8] border border-[#E2E8E5] rounded-xl hover:border-emerald-300 transition-all space-y-2.5"
                 >
-                  {/* Kolejność (strzałki) */}
-                  <div className="flex flex-col gap-1 text-stone-400">
-                    <button
-                      onClick={() => handleMove(index, 'up')}
-                      disabled={index === 0}
-                      className="p-1 hover:text-[#006241] disabled:opacity-30"
-                      title="Przesuń wyżej w grafiku"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleMove(index, 'down')}
-                      disabled={index === employees.length - 1}
-                      className="p-1 hover:text-[#006241] disabled:opacity-30"
-                      title="Przesuń niżej w grafiku"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Imię i nazwisko */}
-                  <div className="flex-1 min-w-[140px]">
-                    <label className="text-[10px] uppercase font-semibold text-stone-500">
-                      Imię i Nazwisko
-                    </label>
-                    <input
-                      type="text"
-                      value={emp.name}
-                      onChange={e => handleUpdate(index, 'name', e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
-                    />
-                  </div>
-
-                  {/* Stanowisko / Rola */}
-                  <div className="w-52">
-                    <label className="text-[10px] uppercase font-semibold text-stone-500">
-                      Stanowisko
-                    </label>
-                    <select
-                      value={formatManagerRole(emp.role)}
-                      onChange={e => handleUpdate(index, 'role', e.target.value)}
-                      className="w-full px-2 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-semibold text-stone-700 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
-                    >
-                      <option value="SM">SM (Customer & Sales Manager)</option>
-                      <option value="ASM">ASM (People Manager)</option>
-                      <option value="SSV">SSV (Shift Supervisor)</option>
-                      <option value="SM in Tr.">SM in Training</option>
-                      <option value="ASM in Tr.">ASM in Training</option>
-                      <option value="SSV in Tr.">SSV in Training</option>
-                    </select>
-                  </div>
-
-                  {/* Wymiar etatu */}
-                  <div className="w-28">
-                    <label className="text-[10px] uppercase font-semibold text-stone-500">
-                      Wymiar Etatu
-                    </label>
-                    <select
-                      value={emp.contract_type}
-                      onChange={e => handleUpdate(index, 'contract_type', e.target.value)}
-                      className="w-full px-2 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-emerald-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
-                    >
-                      <option value="FULL">FULL (1.0)</option>
-                      <option value="0.75">3/4 (0.75)</option>
-                      <option value="0.5">1/2 (0.5)</option>
-                      <option value="0.25">1/4 (0.25)</option>
-                    </select>
-                  </div>
-
-                  {/* Wynagrodzenie zasadnicze brutto (zł/mc) dla 1.0 etatu */}
-                  <div className="w-36">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] uppercase font-semibold text-stone-500">
-                        Wynagr. (1.0)
-                      </label>
-                      <span className="text-[9px] text-stone-400 font-medium">zł/mc</span>
+                  {/* Rząd główny */}
+                  <div className="flex items-center gap-3">
+                    {/* Kolejność (strzałki) */}
+                    <div className="flex flex-col gap-1 text-stone-400">
+                      <button
+                        onClick={() => handleMove(index, 'up')}
+                        disabled={index === 0}
+                        className="p-1 hover:text-[#006241] disabled:opacity-30"
+                        title="Przesuń wyżej w grafiku"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleMove(index, 'down')}
+                        disabled={index === employees.length - 1}
+                        className="p-1 hover:text-[#006241] disabled:opacity-30"
+                        title="Przesuń niżej w grafiku"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <div className="relative mt-0.5">
-                      <input
-                        type="number"
-                        step="50"
-                        min="0"
-                        value={emp.monthly_salary !== undefined && emp.monthly_salary !== null ? (emp.monthly_salary === 0 ? '' : emp.monthly_salary) : ''}
-                        onChange={e => handleUpdate(index, 'monthly_salary', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        className="w-full pl-2.5 pr-8 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-stone-400 font-semibold pointer-events-none">
-                        zł
-                      </span>
-                    </div>
-                    {emp.monthly_salary && emp.monthly_salary > 0 ? (
-                      <div className="text-[9px] text-stone-500 font-medium mt-0.5 truncate" title={`Wynagrodzenie dla etatu ${emp.contract_hours_ratio}: ${Math.round(emp.monthly_salary * emp.contract_hours_ratio).toLocaleString('pl-PL')} zł`}>
-                        {emp.contract_hours_ratio < 1.0 
-                          ? `${Math.round(emp.monthly_salary * emp.contract_hours_ratio).toLocaleString('pl-PL')} zł (${emp.contract_hours_ratio} etatu)`
-                          : `~${(emp.monthly_salary / 168).toFixed(1)} zł/h (168h)`
-                        }
+
+                    {/* Imię i nazwisko */}
+                    <div className="flex-1 min-w-[140px]">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] uppercase font-semibold text-stone-500">
+                          Imię i Nazwisko
+                        </label>
+                        {isDawidApel ? (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            Fleet Master
+                          </span>
+                        ) : displayPartnerId ? (
+                          <span className="text-[9px] font-semibold text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded border border-stone-200 font-mono">
+                            ID: {displayPartnerId}
+                          </span>
+                        ) : null}
                       </div>
-                    ) : (
-                      <div className="text-[9px] text-stone-400 mt-0.5">0 zł/mc</div>
-                    )}
+                      <input
+                        type="text"
+                        value={emp.name}
+                        onChange={e => handleUpdate(index, 'name', e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                      />
+                    </div>
+
+                    {/* Stanowisko / Rola */}
+                    <div className="w-52">
+                      <label className="text-[10px] uppercase font-semibold text-stone-500">
+                        Stanowisko
+                      </label>
+                      <select
+                        value={formatManagerRole(emp.role)}
+                        onChange={e => handleUpdate(index, 'role', e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-semibold text-stone-700 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                      >
+                        <option value="SM">SM (Customer & Sales Manager)</option>
+                        <option value="ASM">ASM (People Manager)</option>
+                        <option value="SSV">SSV (Shift Supervisor)</option>
+                        <option value="SM in Tr.">SM in Training</option>
+                        <option value="ASM in Tr.">ASM in Training</option>
+                        <option value="SSV in Tr.">SSV in Training</option>
+                      </select>
+                    </div>
+
+                    {/* Wymiar etatu */}
+                    <div className="w-28">
+                      <label className="text-[10px] uppercase font-semibold text-stone-500">
+                        Wymiar Etatu
+                      </label>
+                      <select
+                        value={emp.contract_type}
+                        onChange={e => handleUpdate(index, 'contract_type', e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-emerald-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                      >
+                        <option value="FULL">FULL (1.0)</option>
+                        <option value="0.75">3/4 (0.75)</option>
+                        <option value="0.5">1/2 (0.5)</option>
+                        <option value="0.25">1/4 (0.25)</option>
+                      </select>
+                    </div>
+
+                    {/* Wynagrodzenie zasadnicze brutto (zł/mc) dla 1.0 etatu */}
+                    <div className="w-36">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] uppercase font-semibold text-stone-500">
+                          Wynagr. (1.0)
+                        </label>
+                        <span className="text-[9px] text-stone-400 font-medium">zł/mc</span>
+                      </div>
+                      <div className="relative mt-0.5">
+                        <input
+                          type="number"
+                          step="50"
+                          min="0"
+                          value={emp.monthly_salary !== undefined && emp.monthly_salary !== null ? (emp.monthly_salary === 0 ? '' : emp.monthly_salary) : ''}
+                          onChange={e => handleUpdate(index, 'monthly_salary', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className="w-full pl-2.5 pr-8 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-stone-400 font-semibold pointer-events-none">
+                          zł
+                        </span>
+                      </div>
+                      {emp.monthly_salary && emp.monthly_salary > 0 ? (
+                        <div className="text-[9px] text-stone-500 font-medium mt-0.5 truncate" title={`Wynagrodzenie dla etatu ${emp.contract_hours_ratio}: ${Math.round(emp.monthly_salary * emp.contract_hours_ratio).toLocaleString('pl-PL')} zł`}>
+                          {emp.contract_hours_ratio < 1.0 
+                            ? `${Math.round(emp.monthly_salary * emp.contract_hours_ratio).toLocaleString('pl-PL')} zł (${emp.contract_hours_ratio} etatu)`
+                            : `~${(emp.monthly_salary / 168).toFixed(1)} zł/h (168h)`
+                          }
+                        </div>
+                      ) : (
+                        <div className="text-[9px] text-stone-400 mt-0.5">0 zł/mc</div>
+                      )}
+                    </div>
+
+                    {/* Usunięcie ze składu na ten miesiąc */}
+                    <div className="pt-4">
+                      {isPastMonth && !isFleetMaster ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="p-1.5 rounded-lg border border-stone-200 text-stone-300 cursor-not-allowed bg-stone-100"
+                          title={`Miesiąc archiwalny (${monthName} ${year}): usuwanie pracowników wstecz jest zablokowane dla ochrony historii (wymaga konta Master).`}
+                        >
+                          <Lock className="w-4 h-4 text-stone-400" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFromMonth(index)}
+                          className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                          title={`Usuń ${emp.name} ze składu od ${monthName} ${year} i wszystkich kolejnych miesięcy`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Usunięcie ze składu na ten miesiąc */}
-                  <div className="pt-4">
-                    <button
-                      onClick={() => handleRemoveFromMonth(index)}
-                      className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
-                      title={`Usuń ${emp.name} ze składu na ten miesiąc`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  {/* Rząd tożsamości: Partner ID & Służbowy Email */}
+                  <div className="flex items-center gap-3 pl-8 pr-10 pt-1 border-t border-stone-200/60 text-stone-600">
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 whitespace-nowrap">
+                        <IdCard className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Partner ID:</span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="np. 00106539"
+                        value={displayPartnerId}
+                        onChange={e => handleUpdate(index, 'partner_id', e.target.value)}
+                        className="w-36 px-2 py-0.5 bg-white border border-stone-300 rounded text-xs font-mono text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                      />
+                      {displayPartnerId ? (
+                        <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                          <ShieldCheck className="w-3 h-3" />
+                          Global ID
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-stone-400 italic">
+                          (brak ID)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 whitespace-nowrap">
+                        <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Email:</span>
+                      </div>
+                      <input
+                        type="email"
+                        placeholder="np. imie.nazwisko@amrest.eu"
+                        value={displayEmail}
+                        onChange={e => handleUpdate(index, 'email', e.target.value)}
+                        className="flex-1 px-2 py-0.5 bg-white border border-stone-300 rounded text-xs text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                      />
+                    </div>
                   </div>
                 </div>
               );

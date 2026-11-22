@@ -15,8 +15,15 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
-## [v2.9.17] — 2026-11-21
+
+## [v2.9.18] — 2026-11-22
 - Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.17] — 2026-11-22
+- **Globalny Rejestr Tożsamości Partnerów Szkoleniowych (Partner ID & Email)**:
+  - Dodanie kolumn `partner_id` oraz `email` do tabeli `training_partners` w SQLite.
+  - Rozszerzenie modala `PartnerEditModal` o formularz wprowadzania Partner ID i służbowego adresu email.
+  - Automatyczna migracja tożsamości globalnej dla Dawida Apela (`ID: 00106539`, `dawid.apel@amrest.eu`).
 
 ## [v2.9.16] — 2026-11-21
 - Bieżąca synchronizacja i optymalizacje modułu.

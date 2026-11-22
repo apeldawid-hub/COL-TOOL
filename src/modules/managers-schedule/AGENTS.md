@@ -221,8 +221,8 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
 
 ---
 
-- `manager_employees`: centralny rejestr menedżerów generujący unikalne ID pracowników (id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active).
-- `manager_monthly_roster`: autonomiczny skład zespołu per rok i miesiąc (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active).
+- `manager_employees`: centralny rejestr menedżerów generujący unikalne ID pracowników (id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, partner_id, email, sort_order, is_active).
+- `manager_monthly_roster`: autonomiczny skład zespołu per rok i miesiąc (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, partner_id, email, sort_order, is_active).
 - `shift_definitions`: słownik zmian i parametrów (code, name, start_time, end_time, hours, is_nc, is_absence, color_bg, category, is_sunday_only).
 - `manager_schedule_shifts`: przypisane zmiany (year, month, day, date, employee_id, shift_code, hours, notes).
 - `manager_schedule_events`: ważne wydarzenia per dzień (year, month, day, date, event_text).
@@ -399,9 +399,10 @@ Moduł automatycznie weryfikuje 4 kluczowe normy polskiego Kodeksu Pracy dla ka�
 - **Automatyczne Dziedziczenie Składu (Auto-Inheritance)**:
   - Przy pierwszym otwarciu nowego miesiąca (np. Październik 2026), jeśli w tabeli `manager_monthly_roster` brak wpisów dla tego okresu, system automatycznie klonuje strukturę z miesiąca poprzedniego ($M-1$).
   - Store Manager ma od razu gotowy skład, który może dowolnie zmodyfikować.
-- **Izolacja Modyfikacji i Propagacja w Przyszłość (`ManagerTeamModal`)**:
-  - Edycja składu (dodanie nowego menedżera, usunięcie ze składu na dany miesiąc, zmiana roli, etatu lub stawki) domyślnie dotyczy wyłącznie wybranego miesiąca.
-  - Opcjonalny przełącznik w oknie zarządzania zespołem: *"Zastosuj zmiany również do kolejnych miesięcy"* (`propagateToFuture`). Po zaznaczeniu zmiany propagują się do wszystkich kolejnych zaplanowanych miesięcy ($M+1, M+2 \dots$), ale **nigdy nie naruszają miesięcy przeszłych/archiwalnych**.
+- **Izolacja Modyfikacji, Blokada Wstecz i Propagacja w Przyszłość (`ManagerTeamModal`)**:
+  - **Blokada usuwania wstecz**: Usunięcie pracownika ze składu w minionych miesiącach kalendarzowych (`year < curYear || (year === curYear && month < curMonth)`) jest bezwzględnie zablokowane dla Store Managera (wymaga uprawnień konta Master). W interfejsie przycisk usuwania zastępowany jest kłódką `Lock` z ostrzeżeniem o ochronie historii.
+  - **Kaskadowe usunięcie w przód**: Gdy Store Manager usuwa pracownika ze składu od danego miesiąca (np. grudzień), silnik `saveMonthlyRoster` automatycznie czyści jego rekordy we wszystkich kolejnych miesiącach (`manager_monthly_roster` oraz `manager_schedule_shifts`), aż do ewentualnego ponownego dodania. Miesiące minione (wstecz) pozostają w 100% nienaruszone.
+  - Opcjonalny przełącznik w oknie zarządzania zespołem: *"Zastosuj zmiany również do kolejnych miesięcy"* (`propagateToFuture`). Po zaznaczeniu zmiany ról, stawek i etatów propagują się do wszystkich kolejnych zaplanowanych miesięcy ($M+1, M+2 \dots$), ale **nigdy nie naruszają miesięcy przeszłych/archiwalnych**.
   - Dedykowany przycisk *"Kopiuj z poprzedniego m-ca"* (`copyRosterFromPreviousMonth`) pozwala w dowolnym momencie zresetować i przywrócić strukturę z minionego okresu.
 - **Kalkulacja TOR (Trzymiesięczny Okres Rozliczeniowy) dla Częściowego Zatrudnienia**:
   - Silnik `TorEngine` i widok `TorView` pobierają skład menedżerów aktywnych w dowolnym z miesięcy kwartału (np. 8 osób w Q3 2026).

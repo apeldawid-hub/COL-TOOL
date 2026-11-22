@@ -25,6 +25,8 @@ export const PartnerEditModal: React.FC<PartnerEditModalProps> = ({
     store_manager_name: 'Dawid Apel',
     sanepid_valid_until: '',
     bhp_completed_date: new Date().toISOString().split('T')[0],
+    partner_id: '',
+    email: '',
     status: 'in_progress',
     notes: ''
   });
@@ -42,6 +44,8 @@ export const PartnerEditModal: React.FC<PartnerEditModalProps> = ({
         store_manager_name: partner.store_manager_name || 'Dawid Apel',
         sanepid_valid_until: partner.sanepid_valid_until || '',
         bhp_completed_date: partner.bhp_completed_date || '',
+        partner_id: partner.partner_id || (partner.name?.includes('Dawid Apel') ? '00106539' : ''),
+        email: partner.email || (partner.name?.includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : ''),
         status: partner.status,
         notes: partner.notes || ''
       });
@@ -54,6 +58,8 @@ export const PartnerEditModal: React.FC<PartnerEditModalProps> = ({
         store_manager_name: 'Dawid Apel',
         sanepid_valid_until: '',
         bhp_completed_date: new Date().toISOString().split('T')[0],
+        partner_id: '',
+        email: '',
         status: 'in_progress',
         notes: ''
       });
@@ -123,6 +129,33 @@ export const PartnerEditModal: React.FC<PartnerEditModalProps> = ({
               placeholder="np. Imię i Nazwisko"
               className="w-full p-2.5 bg-white border border-stone-300 rounded-lg font-medium text-stone-800 focus:border-emerald-600 focus:outline-hidden"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-stone-700 mb-1">
+                ID Partnera (Partner ID):
+              </label>
+              <input
+                type="text"
+                value={formData.partner_id || ''}
+                onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
+                placeholder="np. 00106539"
+                className="w-full p-2.5 bg-white border border-stone-300 rounded-lg font-mono text-stone-800 focus:border-emerald-600 focus:outline-hidden"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-stone-700 mb-1">
+                Służbowy Email:
+              </label>
+              <input
+                type="email"
+                value={formData.email || ''}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="np. dawid.apel@amrest.eu"
+                className="w-full p-2.5 bg-white border border-stone-300 rounded-lg text-stone-800 focus:border-emerald-600 focus:outline-hidden"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

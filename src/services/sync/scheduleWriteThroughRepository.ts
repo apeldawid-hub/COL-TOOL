@@ -61,6 +61,7 @@ export interface TeamSavePayload {
   month: number;
   employees: any[];
   propagateToFuture: boolean;
+  isMaster?: boolean;
 }
 
 export class ScheduleWriteThroughRepository {

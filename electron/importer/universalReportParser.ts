@@ -1200,21 +1200,27 @@ export class UniversalReportParser {
       const empMap: Record<string, number> = {};
 
       for (const emp of employees) {
-        db.run(`
-          INSERT OR IGNORE INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-        `, [emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, 0.0, emp.sortOrder]);
+        const isDawidApel = String(emp.name).includes('Dawid Apel');
+        const defaultPartnerId = isDawidApel ? '00106539' : null;
+        const defaultEmail = isDawidApel ? 'dawid.apel@amrest.eu' : null;
 
-        const res = db.exec(`SELECT id FROM manager_employees WHERE name = ?`, [emp.name]);
+        db.run(`
+          INSERT OR IGNORE INTO manager_employees (name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+        `, [emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, 0.0, emp.sortOrder, defaultPartnerId, defaultEmail]);
+
+        const res = db.exec(`SELECT id, partner_id, email FROM manager_employees WHERE name = ?`, [emp.name]);
         if (res.length > 0 && res[0].values.length > 0) {
           const empId = Number(res[0].values[0][0]);
+          const empPartnerId = (res[0].values[0][1] ? String(res[0].values[0][1]) : null) || defaultPartnerId;
+          const empEmail = (res[0].values[0][2] ? String(res[0].values[0][2]) : null) || defaultEmail;
           empMap[emp.name] = empId;
 
           db.run(`
             INSERT OR REPLACE INTO manager_monthly_roster
-            (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-          `, [year, month, empId, emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, 0.0, emp.sortOrder]);
+            (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+          `, [year, month, empId, emp.name, emp.role, emp.contractType, emp.contractHoursRatio, emp.hourlyRate, 0.0, emp.sortOrder, empPartnerId, empEmail]);
         }
       }
 

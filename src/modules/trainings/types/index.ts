@@ -26,6 +26,8 @@ export interface TrainingPartner {
   store_manager_name: string;
   sanepid_valid_until?: string | null; // YYYY-MM-DD
   bhp_completed_date?: string | null;  // YYYY-MM-DD
+  partner_id?: string | null;          // Globalny identyfikator pracownika (np. 00106539)
+  email?: string | null;               // Służbowy adres email (np. dawid.apel@amrest.eu)
   status: PartnerTrainingStatus;
   notes?: string | null;
   created_at?: string;

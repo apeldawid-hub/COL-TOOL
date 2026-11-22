@@ -5,6 +5,50 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.9.18] — 2026-11-22: Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku
+*Autor: Dawid Apel & Antigravity Agent Squad*
+
+### 🌟 Główne Atuty Wydania:
+- **Globalny Rejestr Tożsamości Pracowników: Wprowadzenie Starbucks Partner ID oraz służbowego adresu email w SQLite i chmurze Firestore.**
+- **Tarcza ochrony historii: Całkowita blokada usuwania pracowników wstecz w minionych miesiącach grafiku (dostępna wyłącznie z profilu Master/Fleet Master).**
+- **Kaskadowe wycofywanie w przód: Usunięcie pracownika ze składu od danego miesiąca (np. grudzień) automatycznie czyści jego obecność we wszystkich kolejnych miesiącach aż do ponownego dodania.**
+- **Autonomia składu: Miesiące przeszłe pozostają w 100% nienaruszone z pełną historią zmian, godzin i bilansów TOR.**
+- **Swoboda personelu: Każdy menedżer i barista może mieć własny Partner ID i email, zintegrowane w oknach ManagerTeamModal oraz PartnerEditModal.**
+
+### ✨ Nowe Funkcje (Features):
+- `[database]` Dodanie kolumn partner_id oraz email do tabel manager_employees, manager_monthly_roster oraz training_partners w bazach kawiarni.
+- `[managers_schedule]` Pasek tożsamości z indykatorem Global ID w oknie składu zespołu (ManagerTeamModal) oraz kłódka Lock w miesiącach archiwalnych.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[managers_schedule]` Kaskadowe czyszczenie usuniętych pracowników w manager_monthly_roster oraz manager_schedule_shifts dla wszystkich przyszłych okresów.
+- `[trainings]` Formularz wprowadzania Partner ID i adresu email w cyfrowym profilu baristy (PartnerEditModal w Module 3 Szkolenia).
+
+### 🛡️ Tarcza Kodeksu Pracy & Baza SQLite:
+- Blokada usuwania wstecz w saveMonthlyRoster dla minionych miesięcy kalendarzowych — ochrona historii rozliczeń przed modyfikacją przez Store Managera.
+
+---
+
+## [v2.9.17] — 2026-11-21: Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Chmury Firestore per Jednostka Floty
+*Autor: Dawid Apel & Antigravity Agent Squad*
+
+### 🌟 Główne Atuty Wydania:
+- **Gwarancja godzin zmian w chmurze: każda kawiarnia posiada bezpośrednio w swoim silosie Firestore definicje 16 zmian menedżerskich z czasem trwania i godzinami.**
+- **Profil tygodnia w chmurze: automatyczne przypisanie standardu 2 MGR (Pn–So 07:00–22:30, Nd 08:00–21:00) w stores/{storeId}/meta/weekly_requirements.**
+- **Automatyczna aprowizacja i samonaprawa (auto-heal) przy dodawaniu lokalu oraz w codziennym audycie integralności floty.**
+- **Pełna persystencja w bezpiecznym skarbcu chmurowym (Cloud Vault) oraz automatyczny seed w silniku wielolokalowym SQLite.**
+
+### ✨ Nowe Funkcje (Features):
+- Automatyczne tworzenie i weryfikacja dokumentów shift_configuration oraz weekly_requirements w silosie Firestore każdej kawiarni.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- Auto-heal w CloudIntegrityScheduler — wykrywanie i naprawa brakujących definicji zmian w codziennym audycie floty.
+
+### 🛡️ Tarcza Kodeksu Pracy & Baza SQLite:
+- Inicjalizacja domyślnego profilu tygodniowego 2 MGR (seedWeeklyRequirements) przy tworzeniu nowej bazy kawiarni w SQLite.
+- Włączenie tabel manager_day_requirements i manager_weekly_requirements do zaszyfrowanej paczki ScheduleVaultPayload.
+
+---
+
 ## [v2.9.15] — 2026-11-21: Standardowy Profil Tygodnia (Godziny & 2 MGR) oraz Wykluczenie Non-Coverage (NC / T) ze Zmian Prowadzących
 *Autor: Dawid Apel & Antigravity Agent Squad*
 

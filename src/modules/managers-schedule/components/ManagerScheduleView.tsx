@@ -269,13 +269,14 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   };
 
   // Zapis składu menedżerów
-  const handleSaveTeam = async (payload: { employees: ManagerEmployee[]; propagateToFuture: boolean }) => {
+  const handleSaveTeam = async (payload: { employees: ManagerEmployee[]; propagateToFuture: boolean; isMaster?: boolean }) => {
     try {
       await ScheduleWriteThroughRepository.saveTeam({
         year: selectedYear,
         month: selectedMonth,
         employees: payload.employees,
-        propagateToFuture: payload.propagateToFuture
+        propagateToFuture: payload.propagateToFuture,
+        isMaster: payload.isMaster
       });
       await loadScheduleData();
     } catch (err) {

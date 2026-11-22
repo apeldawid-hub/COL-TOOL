@@ -24,6 +24,47 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.18',
+    date: '2026-11-22',
+    title: 'Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Globalny Rejestr Tożsamości Pracowników: Wprowadzenie Starbucks Partner ID oraz służbowego adresu email w SQLite i chmurze Firestore.',
+      'Tarcza ochrony historii: Całkowita blokada usuwania pracowników wstecz w minionych miesiącach grafiku (dostępna wyłącznie z profilu Master/Fleet Master).',
+      'Kaskadowe wycofywanie w przód: Usunięcie pracownika ze składu od danego miesiąca (np. grudzień) automatycznie czyści jego obecność we wszystkich kolejnych miesiącach aż do ponownego dodania.',
+      'Autonomia składu: Miesiące przeszłe pozostają w 100% nienaruszone z pełną historią zmian, godzin i bilansów TOR.',
+      'Swoboda personelu: Każdy menedżer i barista może mieć własny Partner ID i email, zintegrowane w oknach ManagerTeamModal oraz PartnerEditModal.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Dodanie kolumn partner_id oraz email do tabel manager_employees, manager_monthly_roster oraz training_partners w bazach kawiarni.',
+        module: 'database'
+      },
+      {
+        type: 'compliance',
+        description: 'Blokada usuwania wstecz w saveMonthlyRoster dla minionych miesięcy kalendarzowych — ochrona historii rozliczeń przed modyfikacją przez Store Managera.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Kaskadowe czyszczenie usuniętych pracowników w manager_monthly_roster oraz manager_schedule_shifts dla wszystkich przyszłych okresów.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Pasek tożsamości z indykatorem Global ID w oknie składu zespołu (ManagerTeamModal) oraz kłódka Lock w miesiącach archiwalnych.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Formularz wprowadzania Partner ID i adresu email w cyfrowym profilu baristy (PartnerEditModal w Module 3 Szkolenia).',
+        module: 'trainings'
+      }
+    ]
+  },
+  {
     version: '2.9.17',
     date: '2026-11-21',
     title: 'Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Chmury Firestore per Jednostka Floty',
