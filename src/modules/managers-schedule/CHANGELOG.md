@@ -15,8 +15,21 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
-## [v2.9.23] — 2026-11-22
+
+## [v2.9.24] — 2026-11-22
 - Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.23] — 2026-11-22
+- **Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (`effective_from`, art. 130 KP)**:
+  - **Data objęcia stanowiska / zatrudnienia (`effective_from`)**: Możliwość wskazania konkretnego dnia rozpoczęcia pracy w oknie zarządzania zespołem (`ManagerTeamModal`) z natychmiastowym podglądem wyliczonej normy proporcjonalnej.
+  - **Kalkulacja normy art. 130 KP (`ManagerScheduleEngine.calculateProportionalNorm`)**: Precyzyjne wyliczenie dni roboczych (poniedziałek–piątek z wyłączeniem świąt) od dnia startu do końca miesiąca z uwzględnieniem wymiaru etatu.
+  - **Zabezpieczenie siatki grafiku (`ManagerScheduleGrid`)**: Dni przed dniem startu są wyszarzone (`—`), zablokowane przed edycją myszą i klawiaturą (`A`, `P`, `M`, `Enter`, `Delete`, wklejanie), z etykietą `Od {startDay}.{month}` w wierszu menedżera oraz bursztynową kropką w komórce normy.
+  - **AutoScheduler AI**: Solver turniejowy respektuje `startDay` pracownika i nie planuje żadnych dyżurów przed dniem objęcia stanowiska, dążąc do wyliczonej normy proporcjonalnej.
+  - **Integracja Kwartalna TOR (`TorEngine`, `TorView`)**:
+    - Miesiące nieaktywne przed dołączeniem menedżera mają normę 0.0h i bilans 0.0h (`—`), bez obciążania pracownika fałszywymi niedogodzinami.
+    - Miesiąc dołączenia rozlicza normę proporcjonalną (np. 88h od 16. listopada) z odznaką `od {startDay}.{month}` w komórce RCP.
+    - Bilans kwartału TOTAL sumuje wyłącznie okres rzeczywistej pracy.
+  - **Persystencja SQLite**: Kolumna `effective_from TEXT` w `manager_monthly_roster` z automatycznym resetowaniem do `null` przy propagacji na przyszłe miesiące (pełny etat 100% w kolejnych miesiącach).
 
 ## [v2.9.22] — 2026-11-22
 - **Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR**:

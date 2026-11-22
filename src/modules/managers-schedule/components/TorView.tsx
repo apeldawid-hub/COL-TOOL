@@ -413,6 +413,8 @@ export const TorView: React.FC<TorViewProps> = ({
                               ? "Pracownik nie był w składzie w tym miesiącu"
                               : m.hasCrossStoreShifts
                               ? "Godziny uwzględniają dyżury z innej kawiarni sieci (Cross-Store TOR)"
+                              : m.isProportionalNorm
+                              ? `Norma proporcjonalna: ${m.normHours}h (awans/zatrudnienie od ${m.startDay}.${m.month})`
                               : m.rcpMode === 'FULL_RCP'
                               ? "Godziny RCP zarejestrowane w systemie MAPAL (nieedytowalne)"
                               : m.rcpMode === 'ROLLING_PROJECTION'
@@ -427,6 +429,11 @@ export const TorView: React.FC<TorViewProps> = ({
                           ) : (
                             <div className="flex items-center justify-center gap-1">
                               <span>{m.rcpHours > 0 ? `${m.rcpHours}h` : '-'}</span>
+                              {m.isProportionalNorm && (
+                                <span className="px-1 py-0.2 rounded text-[8.5px] font-black bg-amber-100 text-amber-900 border border-amber-300" title={`Awans/zatrudnienie od ${m.startDay}.${m.month}`}>
+                                  od {m.startDay}.{m.month}
+                                </span>
+                              )}
                               {m.rcpMode === 'FULL_RCP' && (
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="Pełne zarejestrowane logowania w systemie MAPAL" />
                               )}
@@ -456,13 +463,16 @@ export const TorView: React.FC<TorViewProps> = ({
                               -
                             </span>
                           ) : (
-                            <span className={`px-1.5 py-0.5 rounded-md font-bold text-[10px] ${
-                              m.balanceHours > 0
-                                ? 'bg-blue-50 text-blue-700'
-                                : m.balanceHours < 0
-                                ? 'bg-rose-50 text-rose-700'
-                                : 'bg-stone-100 text-stone-600'
-                            }`}>
+                            <span 
+                              className={`px-1.5 py-0.5 rounded-md font-bold text-[10px] ${
+                                m.balanceHours > 0
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : m.balanceHours < 0
+                                  ? 'bg-rose-50 text-rose-700'
+                                  : 'bg-stone-100 text-stone-600'
+                              }`}
+                              title={m.isProportionalNorm ? `Bilans względem normy proporcjonalnej: ${m.totalHours}h / ${m.normHours}h (od dnia ${m.startDay})` : `Bilans: ${m.totalHours}h / ${m.normHours}h`}
+                            >
                               {m.balanceHours >= 0 ? `+${m.balanceHours}` : `${m.balanceHours}`}
                             </span>
                           )}
@@ -478,7 +488,10 @@ export const TorView: React.FC<TorViewProps> = ({
                     ))}
 
                     {/* Total Saldo */}
-                    <td className="px-3 py-2 text-center border-r border-stone-200 font-black text-xs bg-emerald-50/40">
+                    <td 
+                      className="px-3 py-2 text-center border-r border-stone-200 font-black text-xs bg-emerald-50/40"
+                      title={`Kwartalne rozliczenie TOR:\n${row.months.map(m => !m.isActiveInMonth ? `${m.monthName}: poza składem (-)` : `${m.monthName}: ${m.totalHours}h / ${m.normHours}h (${m.balanceHours >= 0 ? `+${m.balanceHours}` : m.balanceHours}h)${m.isProportionalNorm ? ` [od ${m.startDay}.${m.month}]` : ''}`).join('\n')}\nŁączna norma kwartału: ${row.months.reduce((acc, m) => acc + m.normHours, 0).toFixed(1)}h\nŁącznie wypracowane: ${row.months.reduce((acc, m) => acc + m.totalHours, 0).toFixed(1)}h`}
+                    >
                       <span className={`px-2 py-0.5 rounded-lg text-[11px] font-black ${
                         isOver
                           ? 'bg-blue-100 text-blue-800'

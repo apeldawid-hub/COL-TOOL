@@ -24,6 +24,47 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.23',
+    date: '2026-11-22',
+    title: 'Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (effective_from, art. 130 KP)',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Data objęcia funkcji / zatrudnienia (effective_from): Wskazanie konkretnego dnia rozpoczęcia pracy w oknie zespołu z natychmiastowym podglądem normy proporcjonalnej.',
+      'Kalkulacja normy art. 130 KP: Precyzyjne wyliczenie dni roboczych od dnia startu do końca miesiąca z uwzględnieniem wymiaru etatu.',
+      'Ochrona siatki grafiku: Dni przed startem są wyszarzone (—) i zablokowane przed edycją myszą i klawiaturą, z etykietą Od {startDay}.{month} oraz bursztynową kropką w komórce normy.',
+      'AutoScheduler AI: Solver turniejowy respektuje startDay pracownika i nie planuje żadnych dyżurów przed dniem objęcia stanowiska.',
+      'Integracja Kwartalna TOR: Miesiące nieaktywne przed dołączeniem mają normę 0h i bilans 0h (—) bez obciążania fałszywym debetem, a miesiąc dołączenia rozlicza normę proporcjonalną.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Wprowadzenie parametru effective_from i kalkulatora normy proporcjonalnej art. 130 KP w ManagerScheduleEngine.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Blokada dni przed objęciem funkcji na siatce grafiku ManagerScheduleGrid (mysz, popover, skróty klawiszowe, wklejanie).',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Obsługa normy proporcjonalnej w AutoScheduler AI zapobiegająca przydzielaniu dyżurów przed datą startu.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Pełna integracja kwartalna TOR w TorEngine i TorView z eliminacją sztucznych niedogodzin w miesiącach nieaktywnych.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'database',
+        description: 'Migracja SQLite: dodanie kolumny effective_from TEXT do tabeli manager_monthly_roster z resetem przy propagacji na przyszłe miesiące.',
+        module: 'database'
+      }
+    ]
+  },
+  {
     version: '2.9.22',
     date: '2026-11-22',
     title: 'Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR',

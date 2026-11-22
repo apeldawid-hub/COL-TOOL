@@ -368,6 +368,8 @@ export interface ManagerEmployee {
   activeMonths?: number[]; // Miesiące w których pracownik jest w składzie (np. [7, 8])
   monthlyRatios?: Record<number, number>; // Wymiar etatu w danym miesiącu
   monthlyRoles?: Record<number, string>; // Stanowisko w danym miesiącu
+  effective_from?: string | null; // Data objęcia funkcji / zatrudnienia w danym miesiącu (YYYY-MM-DD)
+  monthlyEffectiveFrom?: Record<number, string | null>; // Data startu w poszczególnych miesiącach kwartału
 }
 
 export interface ShiftDefinition {
@@ -435,6 +437,10 @@ export interface ManagerCalculatedRow {
   nominalHours: number;
   coveragePercent: number;
   balanceHours: number; // totalWorkedHours - nominalHours
+  isProportionalNorm?: boolean; // Czy norma w danym miesiącu jest proporcjonalna
+  proportionalStartDay?: number; // Dzień startu (1..31)
+  proportionalWorkingDays?: number; // Liczba dni roboczych od dnia startu
+  fullMonthNominalHours?: number; // Pełna norma miesiąca (dla porównania)
   violations: LaborLawViolation[];
   violationsByDay: Record<number, LaborLawViolation[]>;
 }
@@ -626,6 +632,10 @@ export interface TorMonthSummary {
   rcpMode?: TorRcpMode;  // Tryb zasilania godzin: pełne RCP, projekcja krocząca, niepełne RCP lub plan
   maxRcpDay?: number;    // Ostatni dzień z logowaniami w miesiącu
   isClosed?: boolean;    // Czy miesiąc jest miniony (zamknięty)
+  effectiveFrom?: string | null; // Data objęcia funkcji / zatrudnienia
+  isProportionalNorm?: boolean;  // Czy norma w tym miesiącu była proporcjonalna
+  startDay?: number;     // Dzień startu (1..31)
+  fullMonthNominalHours?: number; // Pełna norma 100% etatu dla porównania
 }
 
 export interface TorEmployeeRow {

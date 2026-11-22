@@ -204,6 +204,7 @@ interface PrecomputedContext {
 
   teamTargetNominalHours: number;
   empNominals: Map<number, number>;
+  empStartDays: Map<number, number>;
   prevMonthEmpStats: Map<number, {
     workedLastSaturday: boolean;
     workedLastSunday: boolean;
@@ -428,10 +429,13 @@ export class AutoSchedulerEngine {
 
     let teamTargetNominalHours = 0;
     const empNominals = new Map<number, number>();
+    const empStartDays = new Map<number, number>();
     employees.forEach(emp => {
       const empRatio = emp.contract_hours_ratio || 1.0;
-      const nom = Number((fullTimeNorm * empRatio).toFixed(1));
+      const propNorm = ManagerScheduleEngine.calculateProportionalNorm(year, month, emp.effective_from, empRatio);
+      const nom = propNorm.nominalHours;
       empNominals.set(emp.id, nom);
+      empStartDays.set(emp.id, propNorm.startDay);
       teamTargetNominalHours += nom;
     });
 
@@ -589,6 +593,7 @@ export class AutoSchedulerEngine {
       weekIdx,
       teamTargetNominalHours,
       empNominals,
+      empStartDays,
       prevMonthEmpStats,
       prevMonthLastDay,
       daySlotTemplates
@@ -803,6 +808,7 @@ export class AutoSchedulerEngine {
       isPeak,
       weekIdx,
       empNominals,
+      empStartDays,
       prevMonthEmpStats,
       prevMonthLastDay,
       daySlotTemplates
@@ -847,6 +853,9 @@ export class AutoSchedulerEngine {
       shiftCode: string,
       shiftHours: number
     ): boolean => {
+      const startDay = empStartDays.get(emp.id) || 1;
+      if (day < startDay) return false;
+
       const shiftDef = shiftMap.get(shiftCode);
       const isSun = isSunday[day];
       if (shiftDef?.is_sunday_only && !isSun) return false;

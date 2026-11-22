@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ManagerEmployee } from '../../../types';
-import { formatManagerRole } from '../services/managerScheduleEngine';
-import { X, Plus, Trash2, ArrowUp, ArrowDown, Check, UserCheck, Copy, AlertCircle, Mail, IdCard, ShieldCheck, Lock, Building2 } from 'lucide-react';
+import { formatManagerRole, ManagerScheduleEngine } from '../services/managerScheduleEngine';
+import { X, Plus, Trash2, ArrowUp, ArrowDown, Check, UserCheck, Copy, AlertCircle, Mail, IdCard, ShieldCheck, Lock, Building2, Calendar } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { SystemClock } from '../../../services/systemClock';
 
@@ -28,6 +28,7 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
   const sysNow = SystemClock.now();
   const currentMonthNum = sysNow.monthIndex + 1;
   const isPastMonth = year < sysNow.year || (year === sysNow.year && month < currentMonthNum);
+  const daysInMonth = new Date(year, month, 0).getDate();
 
   const [employees, setEmployees] = useState<ManagerEmployee[]>(
     JSON.parse(JSON.stringify(initialEmployees))
@@ -486,6 +487,54 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
                         className="flex-1 px-2 py-0.5 bg-white border border-stone-300 rounded text-xs text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
                       />
                     </div>
+                  </div>
+
+                  {/* Rząd 3: Data objęcia funkcji / awansu w trakcie miesiąca & Proporcjonalna norma */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pl-8 pr-10 pt-1.5 border-t border-stone-200/50 text-stone-600">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 whitespace-nowrap">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Awans / Zatrudnienie od:</span>
+                      </div>
+                      <select
+                        value={emp.effective_from ? parseInt(emp.effective_from.split('-')[2], 10) : 1}
+                        onChange={e => {
+                          const dayVal = parseInt(e.target.value, 10);
+                          if (dayVal <= 1) {
+                            handleUpdate(index, 'effective_from', null);
+                          } else {
+                            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayVal).padStart(2, '0')}`;
+                            handleUpdate(index, 'effective_from', dateStr);
+                          }
+                        }}
+                        className="px-2 py-0.5 bg-white border border-stone-300 rounded text-xs font-semibold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
+                      >
+                        <option value={1}>1 {monthName} (od początku miesiąca)</option>
+                        {Array.from({ length: daysInMonth - 1 }, (_, i) => i + 2).map(d => (
+                          <option key={d} value={d}>
+                            {d} {monthName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Wizualny wskaźnik proporcjonalnej normy */}
+                    {(() => {
+                      const propNorm = ManagerScheduleEngine.calculateProportionalNorm(year, month, emp.effective_from, emp.contract_hours_ratio || 1.0);
+                      if (propNorm.isProportional) {
+                        return (
+                          <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Norma proporcjonalna: {propNorm.nominalHours}h ({propNorm.workingDays} dni rob. zamiast {propNorm.fullMonthNominalHours}h)
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="text-[9.5px] text-stone-400 font-medium">
+                          Pełny miesiąc (norma: {Number((ManagerScheduleEngine.calculateMonthNorms(year, month).fullTimeNominalHours * (emp.contract_hours_ratio || 1.0)).toFixed(1))}h)
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               );

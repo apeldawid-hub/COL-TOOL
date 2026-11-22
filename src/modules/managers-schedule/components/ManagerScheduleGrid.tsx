@@ -213,6 +213,10 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
     const row = data.rows.find(r => r.employee.id === selectedCell.empId);
     if (!row) return;
 
+    if (row.isProportionalNorm && row.proportionalStartDay && selectedCell.day < row.proportionalStartDay) {
+      return; // Zablokowana edycja przed datą objęcia funkcji
+    }
+
     const daySummary = data.daySummaries.find(d => d.day === selectedCell.day);
     const isSunday = daySummary ? (daySummary.dayName === 'Nd' || new Date(data.year, data.month - 1, selectedCell.day).getDay() === 0) : false;
 
@@ -263,6 +267,10 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
     if (isReadOnly || !selectedCell) return;
     const row = data.rows.find(r => r.employee.id === selectedCell.empId);
     if (!row) return;
+
+    if (row.isProportionalNorm && row.proportionalStartDay && selectedCell.day < row.proportionalStartDay) {
+      return; // Zablokowana edycja przed datą objęcia funkcji
+    }
 
     const daySummary = data.daySummaries.find(d => d.day === selectedCell.day);
     const isSunday = daySummary ? (daySummary.dayName === 'Nd' || new Date(data.year, data.month - 1, selectedCell.day).getDay() === 0) : false;
@@ -448,8 +456,9 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
         setSelectedCell(null);
       } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        if (!isReadOnly) {
-          const row = data.rows[currentEmpIndex];
+        const row = data.rows[currentEmpIndex];
+        const isCellBeforeStart = Boolean(row?.isProportionalNorm && row?.proportionalStartDay && selectedCell.day < row.proportionalStartDay);
+        if (!isReadOnly && !isCellBeforeStart && row) {
           const shift = row.shifts[selectedCell.day];
           setActivePicker({
             empId: selectedCell.empId,
@@ -992,6 +1001,14 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                               </span>
                               <span>•</span>
                               <span>{row.employee.contract_type === 'FULL' ? '1.00' : (row.employee.contract_type === 'PART_3_4' ? '0.75' : '0.50')}</span>
+                              {row.isProportionalNorm && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-[9px] font-bold text-amber-800 bg-amber-100/90 border border-amber-300 px-1 py-0.2 rounded" title={`Awans / zatrudnienie od ${row.proportionalStartDay}.${data.month}.${data.year} (norma proporcjonalna: ${row.nominalHours}h zamiast ${row.fullMonthNominalHours}h)`}>
+                                    Od {row.proportionalStartDay}.{data.month}
+                                  </span>
+                                </>
+                              )}
                               {row.employee.monthly_salary && row.employee.monthly_salary > 0 ? (
                                 <>
                                   <span>•</span>
@@ -1133,7 +1150,11 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                     );
                     const isCustomDuration = shiftCode !== 'OFF' && shift?.hours !== undefined && shiftDef?.hours !== undefined && Math.abs(shift.hours - shiftDef.hours) > 0.05;
 
-                    if (shiftStartTime && shiftEndTime && shiftCode !== 'OFF') {
+                    const isBeforeStart = Boolean(row.isProportionalNorm && row.proportionalStartDay && d.day < row.proportionalStartDay);
+
+                    if (isBeforeStart) {
+                      cellTitle = `Pracownik objął stanowisko od ${row.employee.effective_from || `${row.proportionalStartDay}.${data.month}.${data.year}`} (przed objęciem funkcji / zatrudnieniem)`;
+                    } else if (shiftStartTime && shiftEndTime && shiftCode !== 'OFF') {
                       cellTitle += ` • Godziny: ${shiftStartTime} – ${shiftEndTime}`;
                     }
 
@@ -1143,7 +1164,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                         key={`cell-${row.employee.id}-${d.day}`}
                         onClick={() => {
                           setSelectedCell({ empId: row.employee.id, day: d.day });
-                          if (isReadOnly) return;
+                          if (isReadOnly || isBeforeStart) return;
                           if (isSelected) {
                             setActivePicker({
                               empId: row.employee.id,
@@ -1158,7 +1179,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                           }
                         }}
                         onDoubleClick={() => {
-                          if (isReadOnly) return;
+                          if (isReadOnly || isBeforeStart) return;
                           setActivePicker({
                             empId: row.employee.id,
                             empName: row.employee.name,
@@ -1171,13 +1192,18 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                           });
                         }}
                         className={`p-0.5 text-center border-r border-[#E2E8E5] transition-all select-none relative min-w-[30px] md:min-w-[33px] xl:min-w-[36px] ${
-                          isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-emerald-100/60'
-                        } ${cellBg} ${
+                          isReadOnly || isBeforeStart ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-emerald-100/60'
+                        } ${isBeforeStart ? 'bg-stone-100/90 text-stone-300 opacity-60' : cellBg} ${
                           isSelected ? 'ring-2 ring-[#006241] ring-offset-2 ring-offset-white z-10 shadow-md bg-emerald-100/80 font-bold' : ''
                         }`}
                         title={cellTitle}
                       >
-                        <div className="flex items-center justify-center gap-0.5">
+                        {isBeforeStart ? (
+                          <div className="flex items-center justify-center text-stone-300 font-bold text-[10px] select-none py-1">
+                            —
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-0.5">
                           {/* DYSPOZYCYJNOŚĆ INNA NIŻ DOMYŚLNA FULL: WYŚWIETLA SIĘ PO LEWEJ STRONIE KWADRATU */}
                           {hasDispo && (
                             <span
@@ -1263,6 +1289,7 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                             )}
                           </div>
                         </div>
+                        )}
                       </td>
                     );
                   })}
@@ -1285,8 +1312,16 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
                       </td>
 
                       {/* Podsumowanie: Norma */}
-                      <td className="px-1 py-1 text-center font-medium text-stone-600 border-r border-[#E2E8E5] bg-[#F7F9F8] text-[10px] min-w-[40px]">
-                        {row.nominalHours.toFixed(0)}h
+                      <td 
+                        className="px-1 py-1 text-center font-medium text-stone-600 border-r border-[#E2E8E5] bg-[#F7F9F8] text-[10px] min-w-[40px]"
+                        title={row.isProportionalNorm ? `Norma proporcjonalna: ${row.nominalHours}h (od dnia ${row.proportionalStartDay}, zamiast ${row.fullMonthNominalHours}h)` : `Norma miesięczna: ${row.nominalHours}h`}
+                      >
+                        <div className="flex items-center justify-center gap-0.5">
+                          <span>{row.nominalHours.toFixed(0)}h</span>
+                          {row.isProportionalNorm && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title={`Norma proporcjonalna od ${row.proportionalStartDay}.${data.month}`} />
+                          )}
+                        </div>
                       </td>
 
                       {/* Podsumowanie: % Realizacji */}

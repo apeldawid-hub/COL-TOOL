@@ -915,7 +915,7 @@ export class DatabaseManager {
 
     // 1. Sprawdź czy istnieją rekordy w manager_monthly_roster dla (year, month)
     const stmt = this.db.prepare(`
-      SELECT employee_id as id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email
+      SELECT employee_id as id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email, effective_from
       FROM manager_monthly_roster
       WHERE year = ? AND month = ? AND is_active = 1
       ORDER BY sort_order ASC
@@ -938,6 +938,7 @@ export class DatabaseManager {
         monthly_salary: r.monthly_salary ?? 0.0,
         partner_id: r.partner_id ?? (String(r.name).includes('Dawid Apel') ? '00106539' : null),
         email: r.email ?? (String(r.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null),
+        effective_from: r.effective_from ? String(r.effective_from) : null,
         sort_order: r.sort_order,
         is_active: r.is_active
       }));
@@ -1151,14 +1152,15 @@ export class DatabaseManager {
     // 3. Wstawienie nowego składu
     const insertStmt = this.db.prepare(`
       INSERT INTO manager_monthly_roster 
-      (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (year, month, employee_id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, sort_order, is_active, partner_id, email, effective_from)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (let idx = 0; idx < employees.length; idx++) {
       const emp = employees[idx];
       const partnerIdVal = emp.partner_id || (String(emp.name).includes('Dawid Apel') ? '00106539' : null);
       const emailVal = emp.email || (String(emp.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null);
+      const effectiveFromVal = emp.effective_from ? String(emp.effective_from) : null;
 
       insertStmt.run([
         year,
@@ -1173,13 +1175,17 @@ export class DatabaseManager {
         emp.sort_order || (idx + 1),
         emp.is_active !== undefined ? (emp.is_active ? 1 : 0) : 1,
         partnerIdVal,
-        emailVal
+        emailVal,
+        effectiveFromVal
       ]);
     }
     insertStmt.free();
 
     // 4. Jeśli włączono propagację do przyszłych miesięcy:
     if (propagateToFuture) {
+      // W kolejnych miesiącach pracownik pracuje już od 1. dnia, więc effective_from zeruje się do null
+      const propagatedEmployees = employees.map(e => ({ ...e, effective_from: null }));
+
       const futureMonthsRes = this.db.exec(`
         SELECT DISTINCT year, month 
         FROM manager_monthly_roster 
@@ -1190,13 +1196,13 @@ export class DatabaseManager {
         for (const row of futureMonthsRes[0].values) {
           const fYear = Number(row[0]);
           const fMonth = Number(row[1]);
-          this.saveMonthlyRoster(fYear, fMonth, employees, false, isMaster);
+          this.saveMonthlyRoster(fYear, fMonth, propagatedEmployees, false, isMaster);
         }
       } else {
         // Dla nowo utworzonej kawiarni bez istniejących przyszłych rekordów:
         // automatycznie propaguj skład na pozostałe miesiące bieżącego roku (do miesiąca 12)
         for (let m = month + 1; m <= 12; m++) {
-          this.saveMonthlyRoster(year, m, employees, false, isMaster);
+          this.saveMonthlyRoster(year, m, propagatedEmployees, false, isMaster);
         }
       }
     }
@@ -1701,6 +1707,7 @@ export class DatabaseManager {
         monthly_salary REAL DEFAULT 0.0,
         partner_id TEXT,
         email TEXT,
+        effective_from TEXT,
         sort_order INTEGER NOT NULL DEFAULT 1,
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -1854,6 +1861,7 @@ export class DatabaseManager {
     try { this.db.run('ALTER TABLE manager_employees ADD COLUMN email TEXT DEFAULT NULL'); } catch (_) {}
     try { this.db.run('ALTER TABLE manager_monthly_roster ADD COLUMN partner_id TEXT DEFAULT NULL'); } catch (_) {}
     try { this.db.run('ALTER TABLE manager_monthly_roster ADD COLUMN email TEXT DEFAULT NULL'); } catch (_) {}
+    try { this.db.run('ALTER TABLE manager_monthly_roster ADD COLUMN effective_from TEXT DEFAULT NULL'); } catch (_) {}
     try { this.db.run('ALTER TABLE training_partners ADD COLUMN partner_id TEXT DEFAULT NULL'); } catch (_) {}
     try { this.db.run('ALTER TABLE training_partners ADD COLUMN email TEXT DEFAULT NULL'); } catch (_) {}
     try {

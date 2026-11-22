@@ -581,7 +581,36 @@ Narzędzie umożliwia Store Managerowi wykonywanie precyzyjnych, bezkolizyjnych 
 
 ---
 
-## 📝 20. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
+## 📅 21. Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (`effective_from`, art. 130 KP)
+
+### 1. Geneza Biznesowa i Prawna:
+- W strukturze kawiarni pracownicy awansują na stanowiska kierownicze (np. Barista $\rightarrow$ SSV) lub są zatrudniani z zewnątrz niekoniecznie od 1. dnia kwartału lub miesiąca (np. awans od 16 listopada w 2. miesiącu Q4).
+- Zgodnie z art. 130 Kodeksu Pracy pracownik rozpoczynający pracę w trakcie okresu rozliczeniowego/miesiąca ma wyznaczaną normę czasu pracy proporcjonalnie do przepracowanego okresu:
+  $$\text{Norma Proporcjonalna} = \text{Dni Robocze od Dnia Startu} \times 8.0\text{h} \times \text{Wymiar Etatu}$$
+- **Ochrona TOR przed fałszywym deficytem**: Menedżer, który dołączył w 2. miesiącu, w miesiącu 1 ma status nieaktywny ($\text{Norma} = 0.0\text{h}$, $\text{Bilans} = 0.0\text{h}$, oznaczenie `—`). Podsumowanie kwartału TOR sumuje wyłącznie miesiące aktywne (np. $0.0\text{h} + \text{proporcjonalny M2} + \text{pełny M3}$), eliminując fałszywy debet godzinowy.
+
+### 2. Architektura Rozwiązania:
+1. **Model Danych i Persystencja SQLite (`manager_monthly_roster`)**:
+   - Kolumna `effective_from TEXT` (format ISO `YYYY-MM-DD` lub `null`).
+   - Przy propagacji składu na kolejne miesiące (`propagateToFuture = true`), `effective_from` jest automatycznie resetowane do `null`, aby w kolejnych miesiącach pracownik miał już pełną normę 100%.
+2. **Kalkulacja Normy Proporcjonalnej (`ManagerScheduleEngine.calculateProportionalNorm`)**:
+   - Zlicza dni robocze od `startDay` do końca miesiąca (poniedziałek–piątek z wyłączeniem świąt ustawowych).
+   - Zwraca `{ isProportional, startDay, workingDays, nominalHours, fullMonthNominalHours }`.
+3. **Zabezpieczenie Siatki Grafiku (`ManagerScheduleGrid`)**:
+   - Dni przed `startDay` są wyszarzone ze skośnym deseniem (`bg-stone-100/90 text-stone-300 opacity-60 cursor-not-allowed`) i symbolem `—`.
+   - Zablokowane kliknięcia, menu kontekstowe, skróty klawiszowe (`A`, `P`, `M`, `Enter`, `Delete`) oraz wklejanie.
+   - W kolumnie pracownika wyświetla się etykieta `Od {startDay}.{month}`, a przy normie bursztynowa kropka z tooltipem.
+4. **AutoScheduler AI (`autoSchedulerEngine.ts`)**:
+   - Solver turniejowy respektuje `startDay` i wylicza cel godzinowy z normy proporcjonalnej.
+   - Funkcja walidacji `isShiftLaborLawCompliant` bezwzględnie blokuje przydział dyżurów przed `startDay`.
+5. **Kwartalny TOR (`torEngine.ts`, `TorView.tsx`)**:
+   - Miesiące nieaktywne mają `normHours = 0.0` i `balanceHours = 0.0` (`—`).
+   - W komórce RCP miesiąca proporcjonalnego widnieje odznaka `od {startDay}.{month}`.
+   - Tooltipy bilansu i TOTAL prezentują szczegółowy rozkład norm i godzin aktywnego okresu.
+
+---
+
+## 📝 22. Reguła Bezwzględnej Synchronizacji Dokumentacji (Documentation Auto-Sync)
 Po każdej modyfikacji kodu źródłowego, algorytmów Kodeksu Pracy, AutoSchedulera AI, interfejsu grafiku lub schematu SQLite w Module 2:
 1. Natychmiast zaktualizuj niniejszy plik `AGENTS.md` (struktura plików, algorytmy, parametry solvera).
 2. Zarejestruj zmiany w historii modułu: `src/modules/managers-schedule/CHANGELOG.md`.

@@ -374,6 +374,123 @@ export class ManagerScheduleEngine {
   }
 
   /**
+   * Wylicza proporcjonalną normę czasu pracy (art. 130 KP) dla pracownika dołączającego w trakcie miesiąca
+   */
+  public static calculateProportionalNorm(
+    year: number,
+    month: number,
+    effectiveFromStr: string | null | undefined,
+    contractRatio: number = 1.0
+  ): {
+    isProportional: boolean;
+    startDay: number;
+    workingDays: number;
+    nominalHours: number;
+    fullMonthWorkingDays: number;
+    fullMonthNominalHours: number;
+  } {
+    const fullNorm = this.calculateMonthNorms(year, month);
+    const fullMonthNominalHours = Number((fullNorm.fullTimeNominalHours * contractRatio).toFixed(1));
+
+    if (!effectiveFromStr) {
+      return {
+        isProportional: false,
+        startDay: 1,
+        workingDays: fullNorm.workingDays,
+        nominalHours: fullMonthNominalHours,
+        fullMonthWorkingDays: fullNorm.workingDays,
+        fullMonthNominalHours
+      };
+    }
+
+    const parts = effectiveFromStr.split('-');
+    if (parts.length !== 3) {
+      return {
+        isProportional: false,
+        startDay: 1,
+        workingDays: fullNorm.workingDays,
+        nominalHours: fullMonthNominalHours,
+        fullMonthWorkingDays: fullNorm.workingDays,
+        fullMonthNominalHours
+      };
+    }
+
+    const fYear = parseInt(parts[0], 10);
+    const fMonth = parseInt(parts[1], 10);
+    const fDay = parseInt(parts[2], 10);
+
+    // Jeśli data przypada przed edytowanym miesiącem (pracownik już pracował):
+    if (fYear < year || (fYear === year && fMonth < month)) {
+      return {
+        isProportional: false,
+        startDay: 1,
+        workingDays: fullNorm.workingDays,
+        nominalHours: fullMonthNominalHours,
+        fullMonthWorkingDays: fullNorm.workingDays,
+        fullMonthNominalHours
+      };
+    }
+
+    // Jeśli data przypada po edytowanym miesiącu (pracownik jeszcze nie rozpoczął):
+    if (fYear > year || (fYear === year && fMonth > month)) {
+      return {
+        isProportional: true,
+        startDay: fullNorm.totalDays + 1,
+        workingDays: 0,
+        nominalHours: 0.0,
+        fullMonthWorkingDays: fullNorm.workingDays,
+        fullMonthNominalHours
+      };
+    }
+
+    // Jeśli data przypada na 1. dzień miesiąca: pełna norma
+    if (fDay <= 1) {
+      return {
+        isProportional: false,
+        startDay: 1,
+        workingDays: fullNorm.workingDays,
+        nominalHours: fullMonthNominalHours,
+        fullMonthWorkingDays: fullNorm.workingDays,
+        fullMonthNominalHours
+      };
+    }
+
+    const daysInMonth = fullNorm.totalDays;
+    const startDay = Math.min(fDay, daysInMonth);
+    const holidays = getPolishHolidays(year);
+
+    let workingDaysCount = 0;
+    let saturdayHolidays = 0;
+
+    for (let day = startDay; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dayOfWeek = date.getDay(); // 0 = Sun, 6 = Sat
+      const dateStr = formatDateIso(date);
+      const isHoliday = holidays.has(dateStr);
+
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        if (!isHoliday) {
+          workingDaysCount++;
+        }
+      } else if (dayOfWeek === 6 && isHoliday) {
+        saturdayHolidays++;
+      }
+    }
+
+    const effectiveWorkingDays = Math.max(0, workingDaysCount - saturdayHolidays);
+    const nominalHours = Number((effectiveWorkingDays * 8.0 * contractRatio).toFixed(1));
+
+    return {
+      isProportional: true,
+      startDay,
+      workingDays: effectiveWorkingDays,
+      nominalHours,
+      fullMonthWorkingDays: fullNorm.workingDays,
+      fullMonthNominalHours
+    };
+  }
+
+  /**
    * Weryfikacja 4 kluczowych norm polskiego Kodeksu Pracy:
    * 1. Min. 11h odpoczynku dobowego między zmianami (art. 132 KP)
    * 2. Co najmniej 35h nieprzerwanego odpoczynku tygodniowego (art. 133 KP)
@@ -850,7 +967,8 @@ export class ManagerScheduleEngine {
       }
 
       totalWorkedHours = Number(totalWorkedHours.toFixed(1));
-      const nominalHours = Number((norms.fullTimeNominalHours * empRatio).toFixed(1));
+      const propNorm = this.calculateProportionalNorm(year, month, emp.effective_from, empRatio);
+      const nominalHours = propNorm.nominalHours;
       const balanceHours = Number((totalWorkedHours - nominalHours).toFixed(1));
       const coveragePercent = nominalHours > 0
         ? Number(((totalWorkedHours / nominalHours) * 100).toFixed(1))
@@ -877,6 +995,10 @@ export class ManagerScheduleEngine {
         nominalHours,
         coveragePercent,
         balanceHours,
+        isProportionalNorm: propNorm.isProportional,
+        proportionalStartDay: propNorm.startDay,
+        proportionalWorkingDays: propNorm.workingDays,
+        fullMonthNominalHours: propNorm.fullMonthNominalHours,
         violations,
         violationsByDay
       };

@@ -1,6 +1,6 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-22T16:12:12.980Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-22T17:04:44.548Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
@@ -430,6 +430,7 @@ CREATE TABLE IF NOT EXISTS manager_monthly_roster (
   monthly_salary REAL DEFAULT 0.0,
   partner_id TEXT,
   email TEXT,
+  effective_from TEXT,
   sort_order INTEGER NOT NULL DEFAULT 1,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,

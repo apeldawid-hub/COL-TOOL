@@ -5,6 +5,29 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.9.23] — 2026-11-22: Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (effective_from, art. 130 KP)
+*Autor: Dawid Apel & Antigravity Agent Squad*
+
+### 🌟 Główne Atuty Wydania:
+- **Data objęcia funkcji / zatrudnienia (effective_from): Wskazanie konkretnego dnia rozpoczęcia pracy w oknie zespołu z natychmiastowym podglądem normy proporcjonalnej.**
+- **Kalkulacja normy art. 130 KP: Precyzyjne wyliczenie dni roboczych od dnia startu do końca miesiąca z uwzględnieniem wymiaru etatu.**
+- **Ochrona siatki grafiku: Dni przed startem są wyszarzone (—) i zablokowane przed edycją myszą i klawiaturą, z etykietą Od {startDay}.{month} oraz bursztynową kropką w komórce normy.**
+- **AutoScheduler AI: Solver turniejowy respektuje startDay pracownika i nie planuje żadnych dyżurów przed dniem objęcia stanowiska.**
+- **Integracja Kwartalna TOR: Miesiące nieaktywne przed dołączeniem mają normę 0h i bilans 0h (—) bez obciążania fałszywym debetem, a miesiąc dołączenia rozlicza normę proporcjonalną.**
+
+### ✨ Nowe Funkcje (Features):
+- `[managers_schedule]` Wprowadzenie parametru effective_from i kalkulatora normy proporcjonalnej art. 130 KP w ManagerScheduleEngine.
+- `[managers_schedule]` Pełna integracja kwartalna TOR w TorEngine i TorView z eliminacją sztucznych niedogodzin w miesiącach nieaktywnych.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[managers_schedule]` Blokada dni przed objęciem funkcji na siatce grafiku ManagerScheduleGrid (mysz, popover, skróty klawiszowe, wklejanie).
+- `[managers_schedule]` Obsługa normy proporcjonalnej w AutoScheduler AI zapobiegająca przydzielaniu dyżurów przed datą startu.
+
+### 🛡️ Tarcza Kodeksu Pracy & Baza SQLite:
+- Migracja SQLite: dodanie kolumny effective_from TEXT do tabeli manager_monthly_roster z resetem przy propagacji na przyszłe miesiące.
+
+---
+
 ## [v2.9.22] — 2026-11-22: Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR
 *Autor: Dawid Apel & Antigravity Agent Squad*
 

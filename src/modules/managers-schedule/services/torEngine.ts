@@ -130,7 +130,14 @@ export class TorEngine {
           : (emp.contract_hours_ratio || 1.0);
 
         const fullTimeHours = monthNorms[idx];
-        const normHours = isActiveInMonth ? Number((fullTimeHours * contractRatio).toFixed(1)) : 0.0;
+        const effectiveFromStr = (emp.monthlyEffectiveFrom && emp.monthlyEffectiveFrom[m] !== undefined)
+          ? emp.monthlyEffectiveFrom[m]
+          : (emp.effective_from || null);
+
+        const propNorm = ManagerScheduleEngine.calculateProportionalNorm(year, m, effectiveFromStr, contractRatio);
+        const normHours = isActiveInMonth
+          ? (propNorm.isProportional ? propNorm.nominalHours : Number((fullTimeHours * contractRatio).toFixed(1)))
+          : 0.0;
         const daysInMonth = monthStatus.daysInMonth;
 
         let rcpHoursFromAllShifts = 0;
@@ -143,6 +150,11 @@ export class TorEngine {
 
         if (isActiveInMonth) {
           for (let d = 1; d <= daysInMonth; d++) {
+            // Ignorujemy ewentualne omyłkowe zmiany przed dniem startu pracownika
+            if (propNorm.isProportional && d < propNorm.startDay) {
+              continue;
+            }
+
             const dayShifts = shiftsByEmpMonthDay.get(`${emp.id}_${m}_${d}`) || [];
             if (dayShifts.length === 0) continue;
 
@@ -229,7 +241,11 @@ export class TorEngine {
           hasCrossStoreShifts,
           rcpMode,
           maxRcpDay,
-          isClosed: isMonthClosed
+          isClosed: isMonthClosed,
+          effectiveFrom: effectiveFromStr,
+          isProportionalNorm: propNorm.isProportional,
+          startDay: propNorm.startDay,
+          fullMonthNominalHours: propNorm.fullMonthNominalHours
         };
       });
 

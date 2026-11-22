@@ -1164,7 +1164,8 @@ function setupIpcHandlers() {
             ...emp,
             activeMonths: [m],
             monthlyRatios: { [m]: emp.contract_hours_ratio },
-            monthlyRoles: { [m]: emp.role }
+            monthlyRoles: { [m]: emp.role },
+            monthlyEffectiveFrom: { [m]: emp.effective_from || null }
           });
         } else {
           const existing = employeeMap.get(emp.id);
@@ -1173,6 +1174,8 @@ function setupIpcHandlers() {
           }
           existing.monthlyRatios[m] = emp.contract_hours_ratio;
           existing.monthlyRoles[m] = emp.role;
+          if (!existing.monthlyEffectiveFrom) existing.monthlyEffectiveFrom = {};
+          existing.monthlyEffectiveFrom[m] = emp.effective_from || null;
         }
       }
     }
