@@ -24,6 +24,48 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.27',
+    date: '2026-11-22',
+    title: 'Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Wersjonowanie czasowe Shift Hours (effective_from_year, effective_from_month): Ustalanie profilu godzin i obsady kawiarni z określeniem okresu obowiązywania i pełną ochroną danych historycznych.',
+      'Konfiguracja długości zmian menedżerów (8h vs 9h): Możliwość określenia standardowego wymiaru dyżuru (8.0h, 8.5h, 9.0h) globalnie dla kawiarni z nadpisaniem per dzień tygodnia.',
+      'Kalkulacja i weryfikacja okna przekazania zmiany (Handover Overlap): Automatyczne wyliczanie zakładki menedżerów z podglądem na żywo oraz kontrolą minimalnego progu (min. 60 min).',
+      'AutoScheduler AI & Tarcza KP: Solver AI przypisuje zmiany AM od otwarcia i PM do zamknięcia z faktycznymi godzinami i precyzyjną weryfikacją 11h odpoczynku dobowego.',
+      'Zarządzanie Shift Hours z poziomu Floty (HQ): Dedykowany panel w FleetMasterDashboard umożliwiający centrali konfigurację godzin dla dowolnego lokalu.',
+      'Bezpieczna adaptacja szkicu (db:adapt-schedule-to-weekly-requirements): 1-klikowa aktualizacja istniejących zmian AM/PM w szkicu grafiku bez ryzyka modyfikacji danych historycznych.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Wersjonowanie czasowe profilu tygodnia w tabeli manager_weekly_requirements z kluczem (effective_from_year, effective_from_month, day_of_week).',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Konfiguracja standardowej długości zmian menedżerów (8h vs 9h) i kalkulacja okna przekazania zmiany (Handover Overlap) w WeeklyRequirementsModal.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Dedykowana integracja Shift Hours w panelu zarządzania flotą FleetMasterDashboard dla centrali HQ.',
+        module: 'system'
+      },
+      {
+        type: 'enhancement',
+        description: 'Integracja dynamicznych godzin Shift Hours z solverem AutoScheduler AI oraz pre-flight weryfikacją 11h odpoczynku dobowego KP.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Metoda IPC db:adapt-schedule-to-weekly-requirements do bezpiecznej aktualizacji szkicu grafiku do nowego profilu godzin kawiarni.',
+        module: 'managers_schedule'
+      }
+    ]
+  },
+  {
     version: '2.9.25',
     date: '2026-11-22',
     title: 'Faza I & II Rozwoju Modułu M2: Zaznaczanie Blokowe, Type-Ahead Buffer, Asystent Kryzysowy L4 i Split-Screen TOR',

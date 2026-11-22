@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.27](#v2.9.27--2026-11-22)** | 2026-11-22 | Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą | `patch` | 🚀 Aktywna |
 | **[v2.9.25](#v2.9.25--2026-11-22)** | 2026-11-22 | Faza I & II Rozwoju Modułu M2: Zaznaczanie Blokowe, Type-Ahead Buffer, Asystent Kryzysowy L4 i Split-Screen TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.23](#v2.9.23--2026-11-22)** | 2026-11-22 | Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (effective_from, art. 130 KP) | `patch` | 🚀 Opublikowana |
 | **[v2.9.22](#v2.9.22--2026-11-22)** | 2026-11-22 | Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR | `patch` | 🚀 Opublikowana |
@@ -50,6 +51,28 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.27] — 2026-11-22
+**Tytuł:** Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- **Wersjonowanie Czasowe Shift Hours (`effective_from_year`, `effective_from_month`)**:
+  - Konfiguracja godzin obecności menedżerów per kawiarnia z określeniem daty wejścia w życie (od wybranego miesiąca).
+  - Pełna odporność wsteczna: żadne modyfikacje w trakcie roku nie zmieniają danych historycznych i rozliczonych miesięcy przeszłych.
+- **Konfiguracja Długości Zmian (8.0h vs 9.0h)**:
+  - Wprowadzenie bazowej długości dyżurów kawiarni (`shift_length_hours`: 7.0h, 8.0h, 8.5h, 9.0h) z możliwością indywidualnego nadpisania per dzień tygodnia.
+  - Dynamiczne ramy czasowe: Otwarcie (AM) startuje o godzinie otwarcia kawiarni, a Zamknięcie (PM) kończy na godzinie zamknięcia lokalu.
+- **Okno Przekazania Zmiany (Handover Overlap)**:
+  - Wyliczanie nakładki obecności menedżerów na zmianie z podglądem na żywo w oknie profilu tygodnia (`WeeklyRequirementsModal`).
+  - Walidacja progu minimalnej zakładki (`min_handover_minutes`, np. min. 60 min) i sygnalizacja alertów w audycie grafiku.
+- **AutoScheduler AI & Tarcza KP**:
+  - Solver AI planuje dyżury z uwzględnieniem dokładnych godzin otwarcia i zamknięcia, przypisując `custom_start_time`, `custom_end_time` oraz `hours`.
+  - Weryfikacja normy 11h odpoczynku dobowego art. 132 KP bazuje na faktycznych godzinach z profilu lokalu.
+- **Panel Zarządzania Flotą (HQ Fleet Master Dashboard)**:
+  - Centrala HQ ma bezpośredni dostęp do konfiguracji Shift Hours dla dowolnej jednostki floty z poziomu katalogu kawiarni.
+- **Bezpieczna Synchronizacja Szkicu (`db:adapt-schedule-to-weekly-requirements`)**:
+  - Dedykowana akcja umożliwiająca 1-klikowe dopasowanie istniejącego szkicu do nowego profilu godzin bez ryzyka przypadkowej modyfikacji.
 
 ### [v2.9.25] — 2026-11-22
 **Tytuł:** Faza I & II Rozwoju Modułu M2: Zaznaczanie Blokowe, Type-Ahead Buffer, Asystent Kryzysowy L4 i Split-Screen TOR  

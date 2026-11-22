@@ -1117,6 +1117,39 @@ export class ManagerScheduleEngine {
         isCoverageMet = openingManagers.length > 0 && closingManagers.length > 0;
       }
 
+      // Weryfikacja zakładki przekazania zmiany (Handover Overlap)
+      let handoverMinutes: number | undefined = undefined;
+      let isHandoverMet: boolean | undefined = undefined;
+
+      if (openingManagers.length > 0 && closingManagers.length > 0) {
+        let maxAmEnd: number | null = null;
+        let minPmStart: number | null = null;
+
+        for (const row of rows) {
+          const shift = row.shifts[day];
+          if (!shift || shift.hours === 0 || shift.shift_code === 'OFF') continue;
+          const code = shift.shift_code;
+          const shiftDef = shiftDefMap.get(code);
+
+          if (openingShiftCodes.has(code)) {
+            const endH = parseTimeToHours(shift.custom_end_time || shiftDef?.end_time || '15:00');
+            if (endH !== null && (maxAmEnd === null || endH > maxAmEnd)) maxAmEnd = endH;
+          }
+          if (closingShiftCodes.has(code)) {
+            const startH = parseTimeToHours(shift.custom_start_time || shiftDef?.start_time || '14:30');
+            if (startH !== null && (minPmStart === null || startH < minPmStart)) minPmStart = startH;
+          }
+        }
+
+        if (maxAmEnd !== null && minPmStart !== null) {
+          handoverMinutes = Math.round((maxAmEnd - minPmStart) * 60);
+          const weeklyKey = isTradingSunday ? 7 : dayOfWeek;
+          const wReq = weeklyRequirementsMap.get(weeklyKey);
+          const requiredMin = wReq?.min_handover_minutes ?? 60;
+          isHandoverMet = handoverMinutes >= requiredMin;
+        }
+      }
+
       daySummaries.push({
         day,
         dayName,
@@ -1138,7 +1171,9 @@ export class ManagerScheduleEngine {
         eventText: eventsMap[day] || undefined,
         violationsCount: dayViolationsCount,
         requirement: req,
-        isCoverageMet
+        isCoverageMet,
+        handoverMinutes,
+        isHandoverMet
       });
     }
 

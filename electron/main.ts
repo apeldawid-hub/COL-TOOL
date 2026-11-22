@@ -1037,18 +1037,45 @@ function setupIpcHandlers() {
       // Tabela mogła jeszcze nie istnieć w starszej bazie
     }
 
-    // 5c. Standardowy profil tygodniowy kawiarni (dni tygodnia 0..7: domyślnie 2 MGR)
+    // 5c. Standardowy profil tygodniowy Shift Hours kawiarni z uwzględnieniem wersji historycznej dla (year, month)
     let weeklyRequirements: any[] = [];
     try {
       const wStmt = db.prepare(`
-        SELECT day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes
+        SELECT effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
         FROM manager_weekly_requirements
+        WHERE (effective_from_year, effective_from_month) = (
+          SELECT effective_from_year, effective_from_month
+          FROM manager_weekly_requirements
+          WHERE (effective_from_year < ? OR (effective_from_year = ? AND effective_from_month <= ?))
+          ORDER BY effective_from_year DESC, effective_from_month DESC
+          LIMIT 1
+        )
         ORDER BY CASE WHEN day_of_week = 0 THEN 7 WHEN day_of_week = 7 THEN 8 ELSE day_of_week END ASC
       `);
+      wStmt.bind([year, year, month]);
       while (wStmt.step()) {
         weeklyRequirements.push(wStmt.getAsObject());
       }
       wStmt.free();
+
+      // Fallback jeśli miesiąc jest wcześniejszy niż najstarszy zarejestrowany profil
+      if (weeklyRequirements.length === 0) {
+        const fallbackStmt = db.prepare(`
+          SELECT effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
+          FROM manager_weekly_requirements
+          WHERE (effective_from_year, effective_from_month) = (
+            SELECT effective_from_year, effective_from_month
+            FROM manager_weekly_requirements
+            ORDER BY effective_from_year ASC, effective_from_month ASC
+            LIMIT 1
+          )
+          ORDER BY CASE WHEN day_of_week = 0 THEN 7 WHEN day_of_week = 7 THEN 8 ELSE day_of_week END ASC
+        `);
+        while (fallbackStmt.step()) {
+          weeklyRequirements.push(fallbackStmt.getAsObject());
+        }
+        fallbackStmt.free();
+      }
     } catch (_) {
       // Tabela mogła jeszcze nie istnieć
     }
@@ -1792,14 +1819,65 @@ function setupIpcHandlers() {
     return true;
   });
 
-  // Pobranie profilu standardowego tygodnia (dni tygodnia 0..7)
-  ipcMain.handle('db:get-manager-weekly-requirements', () => {
+  // Pobranie profilu standardowego tygodnia (dni tygodnia 0..7) z uwzględnieniem roku i miesiąca
+  ipcMain.handle('db:get-manager-weekly-requirements', (_event, payload?: { year?: number; month?: number }) => {
+    const db = dbManager.getDb();
+    try {
+      const year = payload?.year || new Date().getFullYear();
+      const month = payload?.month || (new Date().getMonth() + 1);
+
+      const stmt = db.prepare(`
+        SELECT effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
+        FROM manager_weekly_requirements
+        WHERE (effective_from_year, effective_from_month) = (
+          SELECT effective_from_year, effective_from_month
+          FROM manager_weekly_requirements
+          WHERE (effective_from_year < ? OR (effective_from_year = ? AND effective_from_month <= ?))
+          ORDER BY effective_from_year DESC, effective_from_month DESC
+          LIMIT 1
+        )
+        ORDER BY CASE WHEN day_of_week = 0 THEN 7 WHEN day_of_week = 7 THEN 8 ELSE day_of_week END ASC
+      `);
+      stmt.bind([year, year, month]);
+      const list: any[] = [];
+      while (stmt.step()) {
+        list.push(stmt.getAsObject());
+      }
+      stmt.free();
+
+      if (list.length > 0) return list;
+
+      // Fallback
+      const fallbackStmt = db.prepare(`
+        SELECT effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
+        FROM manager_weekly_requirements
+        WHERE (effective_from_year, effective_from_month) = (
+          SELECT effective_from_year, effective_from_month
+          FROM manager_weekly_requirements
+          ORDER BY effective_from_year ASC, effective_from_month ASC
+          LIMIT 1
+        )
+        ORDER BY CASE WHEN day_of_week = 0 THEN 7 WHEN day_of_week = 7 THEN 8 ELSE day_of_week END ASC
+      `);
+      while (fallbackStmt.step()) {
+        list.push(fallbackStmt.getAsObject());
+      }
+      fallbackStmt.free();
+      return list;
+    } catch (e) {
+      console.error('Błąd pobierania manager_weekly_requirements:', e);
+      return [];
+    }
+  });
+
+  // Pobranie listy wszystkich zarejestrowanych profili historycznych Shift Hours
+  ipcMain.handle('db:get-all-manager-weekly-profiles', () => {
     const db = dbManager.getDb();
     try {
       const stmt = db.prepare(`
-        SELECT day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes
+        SELECT DISTINCT effective_from_year, effective_from_month
         FROM manager_weekly_requirements
-        ORDER BY CASE WHEN day_of_week = 0 THEN 7 WHEN day_of_week = 7 THEN 8 ELSE day_of_week END ASC
+        ORDER BY effective_from_year DESC, effective_from_month DESC
       `);
       const list: any[] = [];
       while (stmt.step()) {
@@ -1808,37 +1886,51 @@ function setupIpcHandlers() {
       stmt.free();
       return list;
     } catch (e) {
-      console.error('Błąd pobierania manager_weekly_requirements:', e);
+      console.error('Błąd pobierania historii profili:', e);
       return [];
     }
   });
 
-  // Zapis całego profilu standardowego tygodnia (wszystkie dni lub wybrane)
-  ipcMain.handle('db:save-manager-weekly-requirements', (_event, requirements: any[]) => {
+  // Zapis profilu standardowego tygodnia dla wybranego okresu obowiązywania (od wskazanego roku i miesiąca)
+  ipcMain.handle('db:save-manager-weekly-requirements', (_event, payload: any) => {
     const db = dbManager.getDb();
-    if (!Array.isArray(requirements)) return false;
+    const requirements = Array.isArray(payload) ? payload : (payload?.requirements || []);
+    if (!Array.isArray(requirements) || requirements.length === 0) return false;
+
+    const targetYear = Number(payload?.year || requirements[0]?.effective_from_year || 2026);
+    const targetMonth = Number(payload?.month || requirements[0]?.effective_from_month || 1);
+
     try {
       const stmt = db.prepare(`
-        INSERT INTO manager_weekly_requirements (day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(day_of_week) DO UPDATE SET
+        INSERT INTO manager_weekly_requirements (
+          effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(effective_from_year, effective_from_month, day_of_week) DO UPDATE SET
           day_name = excluded.day_name,
           is_open = excluded.is_open,
           manager_count = excluded.manager_count,
           start_time = excluded.start_time,
           end_time = excluded.end_time,
+          shift_length_hours = excluded.shift_length_hours,
+          min_handover_minutes = excluded.min_handover_minutes,
           required_hours = excluded.required_hours,
           notes = excluded.notes,
           updated_at = CURRENT_TIMESTAMP
       `);
+
       for (const req of requirements) {
         stmt.run([
+          targetYear,
+          targetMonth,
           Number(req.day_of_week),
           String(req.day_name),
           req.is_open !== undefined ? (req.is_open ? 1 : 0) : 1,
           req.manager_count !== undefined ? Number(req.manager_count) : 2,
           req.start_time ? String(req.start_time) : null,
           req.end_time ? String(req.end_time) : null,
+          req.shift_length_hours !== undefined ? Number(req.shift_length_hours) : 8.0,
+          req.min_handover_minutes !== undefined ? Number(req.min_handover_minutes) : 60,
           req.required_hours !== undefined ? Number(req.required_hours) : null,
           req.notes ? String(req.notes).trim() : null
         ]);
@@ -1852,6 +1944,100 @@ function setupIpcHandlers() {
     } catch (e) {
       console.error('Błąd zapisu manager_weekly_requirements:', e);
       return false;
+    }
+  });
+
+  // Dopasowanie istniejącego szkicu grafiku (niezamkniętego) do aktualnego profilu tygodniowego
+  ipcMain.handle('db:adapt-schedule-to-weekly-requirements', (_event, payload: { year: number; month: number }) => {
+    const db = dbManager.getDb();
+    const { year, month } = payload;
+    try {
+      // 1. Pobierz aktywny profil dla (year, month)
+      const wStmt = db.prepare(`
+        SELECT effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours
+        FROM manager_weekly_requirements
+        WHERE (effective_from_year, effective_from_month) = (
+          SELECT effective_from_year, effective_from_month
+          FROM manager_weekly_requirements
+          WHERE (effective_from_year < ? OR (effective_from_year = ? AND effective_from_month <= ?))
+          ORDER BY effective_from_year DESC, effective_from_month DESC
+          LIMIT 1
+        )
+      `);
+      wStmt.bind([year, year, month]);
+      const reqMap = new Map<number, any>();
+      while (wStmt.step()) {
+        const row = wStmt.getAsObject();
+        reqMap.set(Number(row.day_of_week), row);
+      }
+      wStmt.free();
+
+      if (reqMap.size === 0) return { success: false, updated: 0, message: 'Brak profilu dla tego miesiąca' };
+
+      // 2. Pobierz zmiany AM i PM z danego miesiąca
+      const shiftsStmt = db.prepare(`
+        SELECT id, day, shift_code
+        FROM manager_schedule_shifts
+        WHERE year = ? AND month = ? AND shift_code IN ('AM', 'PM', 'AMN', 'PMN')
+      `);
+      shiftsStmt.bind([year, month]);
+      const shiftsToUpdate: any[] = [];
+      while (shiftsStmt.step()) {
+        shiftsToUpdate.push(shiftsStmt.getAsObject());
+      }
+      shiftsStmt.free();
+
+      let updatedCount = 0;
+      const updateStmt = db.prepare(`
+        UPDATE manager_schedule_shifts
+        SET hours = ?, custom_start_time = ?, custom_end_time = ?
+        WHERE id = ?
+      `);
+
+      for (const s of shiftsToUpdate) {
+        const date = new Date(year, month - 1, s.day);
+        const dayOfWeek = date.getDay(); // 0=Nd, 1=Pn..
+        const isSun = dayOfWeek === 0;
+        const req = reqMap.get(dayOfWeek) || reqMap.get(isSun ? 0 : 1);
+        if (!req || !req.is_open) continue;
+
+        const shiftLen = Number(req.shift_length_hours) || 8.0;
+        const openTime = req.start_time || '07:00';
+        const closeTime = req.end_time || '22:30';
+
+        const parseH = (tStr: string) => {
+          const [h, m] = tStr.split(':').map(Number);
+          return (h || 0) + (m || 0) / 60;
+        };
+        const formatH = (val: number) => {
+          let normalized = val % 24;
+          if (normalized < 0) normalized += 24;
+          const h = Math.floor(normalized);
+          const m = Math.round((normalized - h) * 60);
+          return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        };
+
+        if (s.shift_code === 'AM' || s.shift_code === 'AMN') {
+          const sH = parseH(openTime);
+          const eH = sH + shiftLen;
+          updateStmt.run([shiftLen, openTime, formatH(eH), s.id]);
+          updatedCount++;
+        } else if (s.shift_code === 'PM' || s.shift_code === 'PMN') {
+          const eH = parseH(closeTime);
+          const sH = eH - shiftLen;
+          updateStmt.run([shiftLen, formatH(sH), closeTime, s.id]);
+          updatedCount++;
+        }
+      }
+      updateStmt.free();
+      dbManager.persist();
+      if (mainWindow) {
+        mainWindow.webContents.send('data:refreshed');
+      }
+      return { success: true, updated: updatedCount };
+    } catch (e: any) {
+      console.error('Błąd dopasowywania szkicu:', e);
+      return { success: false, updated: 0, error: e?.message };
     }
   });
 

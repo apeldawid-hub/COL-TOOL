@@ -248,24 +248,34 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
 - `manager_schedule_versions`: rejestr wersji grafiku i publikacji (id, year, month, version_num, version_type, title, description, shifts_json, events_json, is_published, created_at).
 - `manager_monthly_norms`: oficjalne normy miesięczne na -10 i +10 lat (lata 2016–2036, 252 miesiące) z możliwością manualnego override (`year, month, working_days, off_days, full_time_hours, is_custom, notes, updated_at`).
 - `manager_day_requirements`: niestandardowe wymogi obecności menedżera per dzień (`year, month, day, date, is_open, manager_count, start_time, end_time, required_hours, notes`) — np. Wigilia 1 MGR 07:00-16:00 (9.0h), Boże Narodzenie 0 MGR (0h).
-- `manager_weekly_requirements`: stały wzorzec tygodniowy godzin i obsady (`day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes`) — standardowo 2 MGR (otwarcie + zamknięcie), godziny obecności menedżerów.
+- `manager_weekly_requirements`: wzorzec tygodniowy godzin i obsady kawiarni z wersjonowaniem czasowym (`effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes`). Klucz główny: `(effective_from_year, effective_from_month, day_of_week)`.
 
 ---
 
-### Algorytm 9: Standardowy Profil Tygodnia (Godziny Obecności & Standard 2 MGR) oraz Wykluczenie Non-Coverage (NC / T)
-1. **Domyślny Wzorzec 2 MGR dla Kawiarni**:
-   - Tabela `manager_weekly_requirements` przechowuje stałe godziny i obsadę dla 8 wariantów dni tygodnia (Pn–So 1..6, Nd wolna 0, Nd handlowa 7).
-   - Domyślny profil sieci Starbucks:
-     - Pn–So: 07:00–22:30 (16.0h), 2 MGR (otwarcie + zamknięcie).
-     - Niedziela wolna od handlu: 08:00–21:00 (14.0h), 2 MGR.
-     - Niedziela Handlowa: 08:00–21:00 (16.0h), 2 MGR.
-   - Każdy dzień w kalendarzu automatycznie dziedziczy ten wzorzec jako bazę. Ręczny wyjątek w `manager_day_requirements` (np. Wigilia 24.12) ma pierwszeństwo nad wzorcem tygodnia.
-2. **Bezwzględne Wykluczenie Non-Coverage (NC, Administracja, Szkolenia T) ze Zmian Prowadzących**:
+### Algorytm 9: Standardowy Profil Tygodnia (Shift Hours & Standard 2 MGR), Wersjonowanie Czasowe i Przekazanie Zmiany (Handover)
+1. **Wzorzec 2 MGR dla Kawiarni z Wersjonowaniem Czasowym (Effective From RRRR-MM)**:
+   - Tabela `manager_weekly_requirements` przechowuje profile godzin i obsady dla 8 wariantów dni tygodnia (Pn–So 1..6, Nd wolna 0, Nd handlowa 7) z przypisaniem do roku i miesiąca wejścia w życie.
+   - Zapytanie do bazy (`db:get-manager-weekly-requirements`) wybiera najświeższy profil obowiązujący na lub przed wybranym miesiącem `(effective_from_year, effective_from_month) <= (year, month)`.
+   - Zmiany profilu w trakcie roku (np. od kwietnia) nie nadpisują miesięcy przeszłych (styczeń–marzec), gwarantując pełną odporność wsteczną danych historycznych.
+2. **Długość Zmian Menedżerów (8h vs 9h)**:
+   - Konfigurowalny bazowy wymiar dyżuru menedżera (`shift_length_hours`: 7.0h, 8.0h, 8.5h, 9.0h).
+   - Otwarcie (AM): startuje o godzinie otwarcia obecności menedżera (`start_time`), kończy o $\text{start} + \text{shift\_length}$.
+   - Zamknięcie (PM): kończy o godzinie zamknięcia obecności menedżera (`end_time`), rozpoczyna o $\text{end} - \text{shift\_length}$.
+3. **Okno Przekazania Zmiany (Handover Overlap)**:
+   - Czas nakładania się zmian menedżerskich: $\text{Zakładka} = T_{\text{end}}^{AM} - T_{\text{start}}^{PM}$.
+   - System weryfikuje minimalną wymaganą zakładkę (`min_handover_minutes`, standardowo min. 60 min).
+   - W przypadku luki menedżerskiej ($\le 0$ min) lub zbyt krótkiego okna solver AutoScheduler AI oraz audytor grafiku generują ostrzeżenie operacyjne.
+4. **Dopasowanie Szkicu (`db:adapt-schedule-to-weekly-requirements`)**:
+   - Bezpieczna synchronizacja: zmiana godzin nie nadpisuje automatycznie istniejących szkiców grafiku.
+   - Dedykowana akcja w oknie modala pozwala jednym kliknięciem zaktualizować nieopublikowane dyżury AM/PM do nowego profilu.
+5. **Zarządzanie z Poziomu Floty (HQ Fleet Master Dashboard)**:
+   - Dedykowany przycisk konfiguracji Shift Hours dla każdej kawiarni we flocie z możliwością ustalania profilu i propagacji zmian przez centralę HQ.
+6. **Bezwzględne Wykluczenie Non-Coverage (NC, Administracja, Szkolenia T) ze Zmian Prowadzących**:
    - Zmiany `NC` (Store Manager Admin), `T`, `TAM`, `TPM`, `BT`, `PRE`, `MEE`, `RET` liczą się do etatu pracownika, ale **nie stanowią osoby prowadzącej zmianę na sali (Coverage)**.
    - Wskaźnik obsady sali (`totalManagersWorking`) zlicza wyłącznie zmiany operacyjne na miejscu (`AM`, `PM`, `AMN`, `PMN`, `MIB`, `AMB`, `PMB`, `MID`, `MI4`).
    - Menedżer na `NC` lub szkoleniu `T` nie zalicza wymogu 2 MGR — sala wciąż wymaga 2 menedżerów na zmianach otwarcia/zamknięcia.
    - Wiersz „Obsada (Dziennie)” prezentuje odrębną fioletową odznakę `+X NC` dla pełnej przejrzystości podziału Floor vs Non-Coverage.
-3. **Masowe Zastosowanie z Poziomu Dnia (`db:apply-day-requirement-to-weekday`)**:
+7. **Masowe Zastosowanie z Poziomu Dnia (`db:apply-day-requirement-to-weekday`)**:
    - W oknie `DayRequirementsModal` użytkownik może zaznaczyć opcję *„Zastosuj te godziny dla wszystkich dni [Dzień] w tym miesiącu”*, co automatycznie propaguje skonfigurowane godziny na cały miesiąc.
 - Indeksy: `idx_mgr_roster_ym`, `idx_mgr_roster_emp`, `idx_mgr_shifts_ym`, `idx_mgr_shifts_emp`, `idx_mgr_events_ym`, `idx_mgr_versions_ym`, `idx_mgr_day_req_ym`.
 

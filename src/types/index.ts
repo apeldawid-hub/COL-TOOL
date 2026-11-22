@@ -460,12 +460,16 @@ export interface ManagerDayRequirement {
 }
 
 export interface ManagerWeeklyRequirement {
+  effective_from_year?: number;  // Rok wejścia w życie (np. 2026)
+  effective_from_month?: number; // Miesiąc wejścia w życie (1..12, np. 1=Styczeń, 4=Kwiecień)
   day_of_week: number;         // 0=Niedziela, 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 7=Niedziela Handlowa
   day_name: string;            // np. 'Poniedziałek', 'Niedziela Handlowa'
   is_open: boolean;            // czy kawiarnia wymaga obecności menedżera
   manager_count: number;       // standardowo 2 menedżerów (lub 1, lub 0)
-  start_time: string;          // np. '07:00'
-  end_time: string;            // np. '22:30'
+  start_time: string;          // np. '07:00' - otwarcie obecności menedżera
+  end_time: string;            // np. '22:30' - zamknięcie obecności menedżera
+  shift_length_hours?: number; // standardowa długość zmiany menedżera (np. 8.0, 8.5, 9.0)
+  min_handover_minutes?: number; // minimalna wymagana zakładka przekazania zmiany w minutach (np. 60)
   required_hours: number;      // wyliczone godziny dyżuru
   notes?: string;
 }
@@ -492,6 +496,8 @@ export interface DayCoverageSummary {
   violationsCount: number;
   requirement?: ManagerDayRequirement; // Niestandardowy wymóg obecności menedżera (np. Wigilia 1 MGR 07:00-16:00)
   isCoverageMet?: boolean;             // Czy spełniono wymóg obecności menedżera
+  handoverMinutes?: number;            // Czas zakładki przekazania zmiany w minutach
+  isHandoverMet?: boolean;             // Czy spełniono wymóg minimalnej zakładki przekazania
 }
 
 export interface MonthlyNormRecord {

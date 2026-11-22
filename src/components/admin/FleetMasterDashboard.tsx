@@ -60,6 +60,8 @@ import { useStore } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { APP_VERSION } from '../../version';
 import { QrCodeSvg } from './fleet/QrCodeSvg';
+import { WeeklyRequirementsModal } from '../../modules/managers-schedule/components/WeeklyRequirementsModal';
+import { ManagerWeeklyRequirement } from '../../types';
 import type {
   FleetStoreRecord,
   FleetSummaryStats,
@@ -123,6 +125,23 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
   const [ksCustomDetails, setKsCustomDetails] = useState<string>('');
   const [ksChallengeInput, setKsChallengeInput] = useState<string>('');
   const [ksError, setKsError] = useState<string | null>(null);
+
+  // Modal konfiguracji Shift Hours dla wybranej kawiarni floty
+  const [shiftHoursModalStore, setShiftHoursModalStore] = useState<FleetStoreRecord | null>(null);
+  const [shiftHoursStoreReqs, setShiftHoursStoreReqs] = useState<ManagerWeeklyRequirement[] | null>(null);
+
+  const handleOpenStoreShiftHours = async (store: FleetStoreRecord) => {
+    setShiftHoursModalStore(store);
+    try {
+      await switchStore(store.id);
+      if ((window as any).api?.getManagerWeeklyRequirements) {
+        const reqs = await (window as any).api.getManagerWeeklyRequirements();
+        setShiftHoursStoreReqs(reqs);
+      }
+    } catch (e) {
+      console.error('Błąd otwierania godzin kawiarni we flocie:', e);
+    }
+  };
 
   // Modal dodawania nowej kawiarni do floty
   const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState<boolean>(false);
@@ -850,6 +869,15 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
                         </td>
                         <td className="py-2.5 px-3 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
+                            {/* Shift Hours & Profil Kawiarni */}
+                            <button
+                              onClick={() => handleOpenStoreShiftHours(store)}
+                              title="Konfiguruj standardowe godziny pracy i profil menedżerów (Shift Hours)"
+                              className="p-1.5 rounded-lg text-amber-700 hover:text-amber-950 hover:bg-amber-50 transition-colors cursor-pointer"
+                            >
+                              <Clock className="w-3.5 h-3.5" />
+                            </button>
+
                             {/* Przełącz na ten lokal */}
                             <button
                               onClick={() => handleInspectStore(store.id)}
@@ -1888,6 +1916,31 @@ export const FleetMasterDashboard: React.FC<FleetMasterDashboardProps> = ({ onNa
             </form>
           </div>
         </div>
+      )}
+
+      {/* MODAL SHIFT HOURS PER KAWIARNIA FLOTY */}
+      {shiftHoursModalStore && (
+        <WeeklyRequirementsModal
+          isOpen={Boolean(shiftHoursModalStore)}
+          storeName={shiftHoursModalStore.shortName || shiftHoursModalStore.name}
+          storeId={shiftHoursModalStore.id}
+          initialRequirements={shiftHoursStoreReqs || undefined}
+          onSave={async (reqs, options) => {
+            if ((window as any).api?.saveManagerWeeklyRequirements) {
+              await (window as any).api.saveManagerWeeklyRequirements({
+                requirements: reqs,
+                year: options?.year,
+                month: options?.month
+              });
+              setToastMessage(`Pomyślnie zaktualizowano godziny zmian dla kawiarni ${shiftHoursModalStore.name}.`);
+              setTimeout(() => setToastMessage(null), 4000);
+            }
+          }}
+          onClose={() => {
+            setShiftHoursModalStore(null);
+            setShiftHoursStoreReqs(null);
+          }}
+        />
       )}
 
       {/* FLOATING TOAST NOTIFICATION */}

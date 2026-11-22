@@ -1683,15 +1683,20 @@ export class DatabaseManager {
       );
 
       CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
-        day_of_week INTEGER PRIMARY KEY, -- 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 0=Nd, 7=Nd Handlowa
+        effective_from_year INTEGER NOT NULL DEFAULT 2026,
+        effective_from_month INTEGER NOT NULL DEFAULT 1,
+        day_of_week INTEGER NOT NULL, -- 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 0=Nd, 7=Nd Handlowa
         day_name TEXT NOT NULL,
         is_open INTEGER DEFAULT 1,
         manager_count INTEGER DEFAULT 2,
         start_time TEXT DEFAULT '07:00',
         end_time TEXT DEFAULT '22:30',
+        shift_length_hours REAL DEFAULT 8.0,
+        min_handover_minutes INTEGER DEFAULT 60,
         required_hours REAL DEFAULT 16.0,
         notes TEXT,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
       );
 
       CREATE TABLE IF NOT EXISTS manager_monthly_roster (
@@ -1903,6 +1908,51 @@ export class DatabaseManager {
       `);
     } catch (_) {}
 
+    // Migracja manager_weekly_requirements do wersji z wersjonowaniem roczno-miesięcznym
+    try {
+      const tableInfo = this.db.exec("PRAGMA table_info(manager_weekly_requirements)");
+      if (tableInfo.length > 0 && tableInfo[0].values.length > 0) {
+        const cols = tableInfo[0].values.map((v: any[]) => String(v[1]));
+        if (!cols.includes('effective_from_year')) {
+          this.db.run(`
+            CREATE TABLE IF NOT EXISTS manager_weekly_requirements_v2 (
+              effective_from_year INTEGER NOT NULL DEFAULT 2026,
+              effective_from_month INTEGER NOT NULL DEFAULT 1,
+              day_of_week INTEGER NOT NULL,
+              day_name TEXT NOT NULL,
+              is_open INTEGER DEFAULT 1,
+              manager_count INTEGER DEFAULT 2,
+              start_time TEXT DEFAULT '07:00',
+              end_time TEXT DEFAULT '22:30',
+              shift_length_hours REAL DEFAULT 8.0,
+              min_handover_minutes INTEGER DEFAULT 60,
+              required_hours REAL DEFAULT 16.0,
+              notes TEXT,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
+            );
+            INSERT OR IGNORE INTO manager_weekly_requirements_v2 (
+              effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes, updated_at
+            )
+            SELECT
+              2026, 1, day_of_week, day_name, is_open, manager_count, start_time, end_time, 8.0, 60, required_hours, notes, updated_at
+            FROM manager_weekly_requirements;
+            DROP TABLE manager_weekly_requirements;
+            ALTER TABLE manager_weekly_requirements_v2 RENAME TO manager_weekly_requirements;
+          `);
+        } else {
+          if (!cols.includes('shift_length_hours')) {
+            try { this.db.run('ALTER TABLE manager_weekly_requirements ADD COLUMN shift_length_hours REAL DEFAULT 8.0'); } catch (_) {}
+          }
+          if (!cols.includes('min_handover_minutes')) {
+            try { this.db.run('ALTER TABLE manager_weekly_requirements ADD COLUMN min_handover_minutes INTEGER DEFAULT 60'); } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Migracja manager_weekly_requirements:', e);
+    }
+
     // Inicjalizacja domyślnych reguł Floor Hours
     this.db.run(`
       INSERT OR IGNORE INTO floor_rules (day_id, day_name, shifts_count, hours_per_shift, total_day_hours) VALUES
@@ -2002,15 +2052,20 @@ export class DatabaseManager {
     try {
       this.db.run(`
         CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
-          day_of_week INTEGER PRIMARY KEY,
+          effective_from_year INTEGER NOT NULL DEFAULT 2026,
+          effective_from_month INTEGER NOT NULL DEFAULT 1,
+          day_of_week INTEGER NOT NULL,
           day_name TEXT NOT NULL,
           is_open INTEGER DEFAULT 1,
           manager_count INTEGER DEFAULT 2,
           start_time TEXT DEFAULT '07:00',
           end_time TEXT DEFAULT '22:30',
+          shift_length_hours REAL DEFAULT 8.0,
+          min_handover_minutes INTEGER DEFAULT 60,
           required_hours REAL DEFAULT 16.0,
           notes TEXT,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
         );
       `);
 
@@ -2018,24 +2073,24 @@ export class DatabaseManager {
       const count = res.length > 0 && res[0].values.length > 0 ? Number(res[0].values[0][0]) : 0;
       if (count === 0) {
         const defaults = [
-          [1, 'Poniedziałek', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
-          [2, 'Wtorek', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
-          [3, 'Środa', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
-          [4, 'Czwartek', 1, 2, '07:00', '22:30', 16.0, 'Standard Pn–Czw (2 MGR)'],
-          [5, 'Piątek', 1, 2, '07:00', '22:30', 16.0, 'Standard Piątek (2 MGR)'],
-          [6, 'Sobota', 1, 2, '07:00', '22:30', 16.0, 'Standard Sobota (2 MGR)'],
-          [0, 'Niedziela', 1, 2, '08:00', '21:00', 14.0, 'Niedziela Wolna od Handlu (2 MGR)'],
-          [7, 'Niedziela Handlowa', 1, 2, '08:00', '21:00', 16.0, 'Niedziela Handlowa (2 MGR)']
+          [2026, 1, 1, 'Poniedziałek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 2, 'Wtorek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 3, 'Środa', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 4, 'Czwartek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 5, 'Piątek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Piątek (2 MGR)'],
+          [2026, 1, 6, 'Sobota', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Sobota (2 MGR)'],
+          [2026, 1, 0, 'Niedziela', 1, 2, '08:00', '21:00', 7.0, 60, 14.0, 'Niedziela Wolna od Handlu (2 MGR)'],
+          [2026, 1, 7, 'Niedziela Handlowa', 1, 2, '08:00', '21:00', 8.0, 60, 16.0, 'Niedziela Handlowa (2 MGR)']
         ];
         const stmt = this.db.prepare(`
-          INSERT INTO manager_weekly_requirements (day_of_week, day_name, is_open, manager_count, start_time, end_time, required_hours, notes)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO manager_weekly_requirements (effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         for (const row of defaults) {
           stmt.run(row);
         }
         stmt.free();
-        console.log(`✅ Zaseedowano standardowy profil tygodniowy (2 MGR) dla kawiarni.`);
+        console.log(`✅ Zaseedowano standardowy profil tygodniowy Shift Hours (2 MGR) dla kawiarni.`);
       }
     } catch (e) {
       console.error('Błąd seedowania manager_weekly_requirements:', e);

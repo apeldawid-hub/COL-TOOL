@@ -447,10 +447,17 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   };
 
   // Zapis stałego wzorca tygodnia kawiarni (standardowo 2 MGR)
-  const handleSaveWeeklyRequirements = async (reqs: import('../../../types').ManagerWeeklyRequirement[]) => {
+  const handleSaveWeeklyRequirements = async (
+    reqs: import('../../../types').ManagerWeeklyRequirement[],
+    options?: { year: number; month: number; storeId?: string }
+  ) => {
     try {
       if ((window as any).api?.saveManagerWeeklyRequirements) {
-        await (window as any).api.saveManagerWeeklyRequirements(reqs);
+        await (window as any).api.saveManagerWeeklyRequirements({
+          requirements: reqs,
+          year: options?.year || selectedYear,
+          month: options?.month || selectedMonth
+        });
         await loadScheduleData();
       }
     } catch (err) {
@@ -940,13 +947,25 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
         />
       )}
 
-      {/* MODAL STAŁEGO WZORCA TYGODNIA (2 MGR) */}
+      {/* MODAL STAŁEGO WZORCA TYGODNIA & SHIFT HOURS (2 MGR) */}
       {showWeeklyRequirementsModal && scheduleData && (
         <WeeklyRequirementsModal
           isOpen={showWeeklyRequirementsModal}
           initialRequirements={scheduleData.weeklyRequirements}
+          year={selectedYear}
+          month={selectedMonth}
+          storeName={StoreService.getCurrentStore()?.name}
+          storeId={StoreService.getCurrentStore()?.id}
           isReadOnly={isClosed}
           onSave={handleSaveWeeklyRequirements}
+          onAdaptDraft={async ({ year, month }) => {
+            if ((window as any).api?.adaptScheduleToWeeklyRequirements) {
+              const res = await (window as any).api.adaptScheduleToWeeklyRequirements({ year, month });
+              await loadScheduleData();
+              return res;
+            }
+            return { success: false, updated: 0 };
+          }}
           onClose={() => setShowWeeklyRequirementsModal(false)}
         />
       )}

@@ -1,11 +1,11 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-22T17:49:42.324Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-22T18:42:33.638Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
 ## 📡 1. Kontrakty Mostu IPC (`window.api.*` — `IElectronAPI`)
-Łącznie wykrytych metod IPC w `electron/preload.ts`: **151**.
+Łącznie wykrytych metod IPC w `electron/preload.ts`: **153**.
 
 | Metoda IPC | Opcjonalna | Podpis Typu | Kategoria / Uwagi |
 | :--- | :---: | :--- | :--- |
@@ -69,8 +69,10 @@
 | `window.api.saveManagerEvent` | Nie | `(event: any) => Promise<boolean>` | — |
 | `window.api.saveManagerDayRequirement` | Nie | `(req: any) => Promise<boolean>` | — |
 | `window.api.deleteManagerDayRequirement` | Nie | `(year: number, month: number, day: number) => Promise<boolean>` | — |
-| `window.api.getManagerWeeklyRequirements` | Nie | `() => Promise<any[]>` | — |
-| `window.api.saveManagerWeeklyRequirements` | Nie | `(requirements: any[]) => Promise<boolean>` | — |
+| `window.api.getManagerWeeklyRequirements` | Nie | `(payload?: { year?: number; month?: number }) => Promise<any[]>` | — |
+| `window.api.getAllManagerWeeklyProfiles` | Nie | `() => Promise<any[]>` | — |
+| `window.api.saveManagerWeeklyRequirements` | Nie | `(payload: any) => Promise<boolean>` | — |
+| `window.api.adaptScheduleToWeeklyRequirements` | Nie | `(payload: { year: number; month: number }) => Promise<{ success: boolean; updated: number; error?: string }>` | — |
 | `window.api.applyDayRequirementToWeekday` | Nie | `(payload: { year: number; month: number; dayOfWeek: number; requirement: any }) => Promise<boolean>` | — |
 | `window.api.manageEmployees` | Nie | `(payload: any) => Promise<boolean>` | — |
 | `window.api.saveManagerEmployees` | Tak | `(payload: any) => Promise<boolean>` | — |
@@ -164,7 +166,7 @@
 ---
 
 ## 🗄️ 2. Schemat Tabel Bazy SQLite (`store_${safeId}.db`)
-Łącznie wykrytych tabel w `electron/database/db.ts`: **22**.
+Łącznie wykrytych tabel w `electron/database/db.ts`: **23**.
 
 ### Tabela: `app_settings`
 ```sql
@@ -403,15 +405,20 @@ CREATE TABLE IF NOT EXISTS manager_day_requirements (
 ### Tabela: `manager_weekly_requirements`
 ```sql
 CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
-  day_of_week INTEGER PRIMARY KEY, -- 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 0=Nd, 7=Nd Handlowa,
+  effective_from_year INTEGER NOT NULL DEFAULT 2026,
+  effective_from_month INTEGER NOT NULL DEFAULT 1,
+  day_of_week INTEGER NOT NULL, -- 1=Pn, 2=Wt, 3=Śr, 4=Czw, 5=Pt, 6=So, 0=Nd, 7=Nd Handlowa,
   day_name TEXT NOT NULL,
   is_open INTEGER DEFAULT 1,
   manager_count INTEGER DEFAULT 2,
   start_time TEXT DEFAULT '07:00',
   end_time TEXT DEFAULT '22:30',
+  shift_length_hours REAL DEFAULT 8.0,
+  min_handover_minutes INTEGER DEFAULT 60,
   required_hours REAL DEFAULT 16.0,
   notes TEXT,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
 );
 ```
 
@@ -518,18 +525,43 @@ CREATE TABLE IF NOT EXISTS daily_kpi_actuals_log (
 );
 ```
 
-### Tabela: `manager_weekly_requirements`
+### Tabela: `manager_weekly_requirements_v2`
 ```sql
-CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
-  day_of_week INTEGER PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS manager_weekly_requirements_v2 (
+  effective_from_year INTEGER NOT NULL DEFAULT 2026,
+  effective_from_month INTEGER NOT NULL DEFAULT 1,
+  day_of_week INTEGER NOT NULL,
   day_name TEXT NOT NULL,
   is_open INTEGER DEFAULT 1,
   manager_count INTEGER DEFAULT 2,
   start_time TEXT DEFAULT '07:00',
   end_time TEXT DEFAULT '22:30',
+  shift_length_hours REAL DEFAULT 8.0,
+  min_handover_minutes INTEGER DEFAULT 60,
   required_hours REAL DEFAULT 16.0,
   notes TEXT,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
+);
+```
+
+### Tabela: `manager_weekly_requirements`
+```sql
+CREATE TABLE IF NOT EXISTS manager_weekly_requirements (
+  effective_from_year INTEGER NOT NULL DEFAULT 2026,
+  effective_from_month INTEGER NOT NULL DEFAULT 1,
+  day_of_week INTEGER NOT NULL,
+  day_name TEXT NOT NULL,
+  is_open INTEGER DEFAULT 1,
+  manager_count INTEGER DEFAULT 2,
+  start_time TEXT DEFAULT '07:00',
+  end_time TEXT DEFAULT '22:30',
+  shift_length_hours REAL DEFAULT 8.0,
+  min_handover_minutes INTEGER DEFAULT 60,
+  required_hours REAL DEFAULT 16.0,
+  notes TEXT,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
 );
 ```
 

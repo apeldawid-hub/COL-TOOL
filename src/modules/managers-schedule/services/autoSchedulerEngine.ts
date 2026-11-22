@@ -2,7 +2,8 @@ import {
   ManagerEmployee,
   ShiftDefinition,
   ManagerScheduleShift,
-  LaborLawViolation
+  LaborLawViolation,
+  ManagerDayRequirement
 } from '../../../types/index';
 import {
   getPolishHolidays,
@@ -222,6 +223,9 @@ interface PrecomputedContext {
     neededOpening: boolean;
     neededClosing: boolean;
     neededMid: boolean;
+    req?: ManagerDayRequirement;
+    shiftLength?: number;
+    minHandover?: number;
   }[];
 }
 
@@ -481,22 +485,29 @@ export class AutoSchedulerEngine {
       });
 
       let req = options.dayRequirements?.[day];
-      if (!req && options.weeklyRequirements && options.weeklyRequirements.length > 0) {
+      let shiftLength = isSunday[day] ? 7.0 : 8.0;
+      let minHandover = 60;
+
+      if (options.weeklyRequirements && options.weeklyRequirements.length > 0) {
         const weeklyKey = isTradingSunday[day] ? 7 : dayOfWeek[day];
         const w = options.weeklyRequirements.find(item => item.day_of_week === weeklyKey);
         if (w) {
-          req = {
-            year,
-            month,
-            day,
-            date: '',
-            is_open: Boolean(w.is_open),
-            manager_count: w.manager_count,
-            start_time: w.start_time,
-            end_time: w.end_time,
-            required_hours: w.required_hours,
-            notes: w.notes
-          };
+          if (w.shift_length_hours) shiftLength = Number(w.shift_length_hours);
+          if (w.min_handover_minutes) minHandover = Number(w.min_handover_minutes);
+          if (!req) {
+            req = {
+              year,
+              month,
+              day,
+              date: '',
+              is_open: Boolean(w.is_open),
+              manager_count: w.manager_count,
+              start_time: w.start_time,
+              end_time: w.end_time,
+              required_hours: w.required_hours,
+              notes: w.notes
+            };
+          }
         }
       }
       let neededOpening = !hasOpening;
@@ -519,7 +530,10 @@ export class AutoSchedulerEngine {
         dayOfWeek: dayOfWeek[day],
         neededOpening,
         neededClosing,
-        neededMid: false
+        neededMid: false,
+        req,
+        shiftLength,
+        minHandover
       });
     }
 
@@ -872,7 +886,9 @@ export class AutoSchedulerEngine {
       emp: ManagerEmployee,
       day: number,
       shiftCode: string,
-      shiftHours: number
+      shiftHours: number,
+      customStartTime?: string,
+      customEndTime?: string
     ): boolean => {
       const startDay = empStartDays.get(emp.id) || 1;
       if (day < startDay) return false;
@@ -913,7 +929,9 @@ export class AutoSchedulerEngine {
         date: ctx.dateStr[day],
         employee_id: emp.id,
         shift_code: shiftCode,
-        hours: shiftHours
+        hours: shiftHours,
+        custom_start_time: customStartTime,
+        custom_end_time: customEndTime
       };
 
       const resolved = resolveEffectiveShiftTimes(tempShift, shiftDef, prevEndHour, nextStartHour);
@@ -1115,14 +1133,26 @@ export class AutoSchedulerEngine {
       if (slot.neededOpening) {
         const shiftCode = isSun ? 'AMN' : 'AM';
         const shiftDef = shiftMap.get(shiftCode);
-        const shiftHours = shiftDef?.hours || (isSun ? 6.0 : 8.0);
+        const shiftLen = slot.shiftLength || (isSun ? 7.0 : 8.0);
+        let shiftHours = shiftLen;
+        let customStartTime = slot.req?.start_time || shiftDef?.start_time || (isSun ? '08:00' : '07:00');
+        let customEndTime: string | undefined = undefined;
+
+        if (slot.req && slot.req.manager_count === 1 && slot.req.required_hours) {
+          shiftHours = slot.req.required_hours;
+          customStartTime = slot.req.start_time || customStartTime;
+          customEndTime = slot.req.end_time;
+        } else if (customStartTime) {
+          const sH = parseTimeToHours(customStartTime) ?? (isSun ? 8.0 : 7.0);
+          customEndTime = formatHoursToTimeString(sH + shiftHours);
+        }
 
         let candidates = coverageEmployees.filter(emp => {
           const key = `${emp.id}_${day}`;
           if (lockedCells.has(key)) return false;
           const s = workingSchedule.get(key);
           if (s && s.hours > 0 && s.shift_code !== 'OFF') return false;
-          return isShiftLaborLawCompliant(emp, day, shiftCode, shiftHours);
+          return isShiftLaborLawCompliant(emp, day, shiftCode, shiftHours, customStartTime, customEndTime);
         });
 
         // Priorytet 1: Kandydaci bez prośby o OFF i z preferencją AM
@@ -1162,7 +1192,9 @@ export class AutoSchedulerEngine {
           workingSchedule.set(key, {
             ...current,
             shift_code: shiftCode,
-            hours: shiftHours
+            hours: shiftHours,
+            custom_start_time: customStartTime,
+            custom_end_time: customEndTime
           });
           slot.neededOpening = false;
         } else {
@@ -1174,14 +1206,22 @@ export class AutoSchedulerEngine {
       if (slot.neededClosing) {
         const shiftCode = isSun ? 'PMN' : 'PM';
         const shiftDef = shiftMap.get(shiftCode);
-        const shiftHours = shiftDef?.hours || (isSun ? 7.0 : 8.0);
+        const shiftLen = slot.shiftLength || (isSun ? 7.0 : 8.0);
+        let shiftHours = shiftLen;
+        let customEndTime = slot.req?.end_time || shiftDef?.end_time || (isSun ? '21:00' : '22:30');
+        let customStartTime: string | undefined = undefined;
+
+        if (customEndTime) {
+          const eH = parseTimeToHours(customEndTime) ?? (isSun ? 21.0 : 22.5);
+          customStartTime = formatHoursToTimeString(eH - shiftHours);
+        }
 
         let candidates = coverageEmployees.filter(emp => {
           const key = `${emp.id}_${day}`;
           if (lockedCells.has(key)) return false;
           const s = workingSchedule.get(key);
           if (s && s.hours > 0 && s.shift_code !== 'OFF') return false;
-          return isShiftLaborLawCompliant(emp, day, shiftCode, shiftHours);
+          return isShiftLaborLawCompliant(emp, day, shiftCode, shiftHours, customStartTime, customEndTime);
         });
 
         // Priorytet 1: Kandydaci bez prośby o OFF i z preferencją PM
@@ -1221,7 +1261,9 @@ export class AutoSchedulerEngine {
           workingSchedule.set(key, {
             ...current,
             shift_code: shiftCode,
-            hours: shiftHours
+            hours: shiftHours,
+            custom_start_time: customStartTime,
+            custom_end_time: customEndTime
           });
           slot.neededClosing = false;
         } else {
@@ -1758,7 +1800,8 @@ export class AutoSchedulerEngine {
       lockedCells,
       dayOfWeek,
       empNominals,
-      prevMonthLastDay
+      prevMonthLastDay,
+      daySlotTemplates
     } = ctx;
 
     const pinned = options.pinnedCells || new Set<string>();
@@ -1935,6 +1978,35 @@ export class AutoSchedulerEngine {
 
     const conflictInsights: ConflictInsight[] = [];
     const compromisesList: string[] = [...compromises];
+
+    // Weryfikacja zakładki przekazania zmiany menedżerów (Handover Overlap)
+    for (const slot of daySlotTemplates) {
+      const d = slot.day;
+      let amEnd: number | null = null;
+      let pmStart: number | null = null;
+      employees.forEach(emp => {
+        const s = workingSchedule.get(`${emp.id}_${d}`);
+        if (!s || s.hours === 0 || s.shift_code === 'OFF') return;
+        const code = s.shift_code;
+        if (code === 'AM' || code === 'AMN') {
+          amEnd = parseTimeToHours(s.custom_end_time || shiftMap.get(code)?.end_time || '15:00');
+        } else if (code === 'PM' || code === 'PMN') {
+          pmStart = parseTimeToHours(s.custom_start_time || shiftMap.get(code)?.start_time || '14:30');
+        }
+      });
+      if (amEnd !== null && pmStart !== null) {
+        const overlapHours = amEnd - pmStart;
+        const overlapMinutes = Math.round(overlapHours * 60);
+        const requiredMin = slot.minHandover ?? 60;
+        if (overlapMinutes < requiredMin) {
+          if (overlapMinutes <= 0) {
+            compromisesList.push(`Dzień ${d}.${month}: Brak zakładki przekazania zmiany (luka menedżerska ${Math.abs(overlapMinutes)} min).`);
+          } else {
+            compromisesList.push(`Dzień ${d}.${month}: Zbyt krótka zakładka przekazania zmiany (${overlapMinutes} min, wymagane min. ${requiredMin} min).`);
+          }
+        }
+      }
+    }
 
     employees.forEach(emp => {
       for (let d = 1; d <= totalDays; d++) {

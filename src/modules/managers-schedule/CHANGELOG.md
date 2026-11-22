@@ -17,8 +17,24 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
-## [v2.9.26] — 2026-11-22
-- Bieżąca synchronizacja i optymalizacje modułu.
+## [v2.9.27] — 2026-11-22
+- **Dopracowanie Funkcji Shift Hours, Wersjonowanie Czasowe i Przekazanie Zmiany (Handover Overlap)**:
+  - **Wersjonowanie Czasowe Shift Hours (`effective_from_year`, `effective_from_month`)**:
+    - Ustalanie profilu godzin i obsady kawiarni per rok z możliwością aktualizacji w trakcie roku (od wybranego miesiąca).
+    - Ochrona wsteczna: przeszłe i zamknięte miesiące zachowują nienaruszone dane historyczne i oryginalne godziny dyżurów.
+  - **Standardowa Długość Zmian Menedżerów (8h vs 9h)**:
+    - Globalny i per-dzień parametr `shift_length_hours` określający nominalny czas trwania zmiany (8.0h, 8.5h, 9.0h).
+    - Dynamiczne godziny: AM rozpoczyna się od otwarcia (`start_time`), a PM kończy na zamknięciu (`end_time`).
+  - **Okno Przekazania Zmiany (Handover Overlap)**:
+    - Automatyczne wyliczanie zakładki menedżerskiej pomiędzy końcem AM a początkiem PM wraz z podglądem na żywo w `WeeklyRequirementsModal`.
+    - Weryfikacja minimalnej wymaganej zakładki (`min_handover_minutes`, domyślnie min. 60 min) z alertami w audycie grafiku i solverze AI.
+  - **AutoScheduler AI & Tarcza Kodeksu Pracy**:
+    - Generator AI przypisuje precyzyjne `custom_start_time`, `custom_end_time` oraz `hours` bazując na aktywnym profilu danego miesiąca.
+    - Weryfikacja 11h odpoczynku dobowego uwzględnia faktyczne godziny otwarcia i zamknięcia.
+  - **Panel Zarządzania Flotą (HQ Fleet Master Dashboard)**:
+    - Centrala HQ ma bezpośredni dostęp do konfiguracji Shift Hours dla każdej kawiarni sieci w tabeli katalogu lokali.
+  - **Akcja Dopasowania Szkicu (`db:adapt-schedule-to-weekly-requirements`)**:
+    - Bezpieczna synchronizacja: zmiana profilu nie modyfikuje automatycznie zaplanowanych dyżurów bez zgody użytkownika; wprowadzono przycisk masowej adaptacji szkicu.
 
 ## [v2.9.25] — 2026-11-22
 - **Faza II Rozwoju M2 (Core Enhancements): Zaznaczanie Blokowe, Boczny Panel TOR i Asystent Kryzysowy L4**:
