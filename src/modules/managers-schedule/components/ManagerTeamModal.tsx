@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ManagerEmployee } from '../../../types';
 import { formatManagerRole } from '../services/managerScheduleEngine';
-import { X, Plus, Trash2, ArrowUp, ArrowDown, Check, UserCheck, Copy, AlertCircle, Mail, IdCard, ShieldCheck, Lock } from 'lucide-react';
+import { X, Plus, Trash2, ArrowUp, ArrowDown, Check, UserCheck, Copy, AlertCircle, Mail, IdCard, ShieldCheck, Lock, Building2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { SystemClock } from '../../../services/systemClock';
 
@@ -32,11 +32,26 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
   const [employees, setEmployees] = useState<ManagerEmployee[]>(
     JSON.parse(JSON.stringify(initialEmployees))
   );
+  const [globalEmployees, setGlobalEmployees] = useState<any[]>([]);
   const [propagateToFuture, setPropagateToFuture] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [confirmCopy, setConfirmCopy] = useState(false);
+
+  useEffect(() => {
+    const loadGlobal = async () => {
+      try {
+        if ((window as any).api?.getGlobalEmployees) {
+          const list = await (window as any).api.getGlobalEmployees();
+          setGlobalEmployees(list || []);
+        }
+      } catch (err) {
+        console.warn('Błąd pobierania globalnego rejestru pracowników:', err);
+      }
+    };
+    loadGlobal();
+  }, []);
 
   // Dodawanie nowego pracownika do składu
   const handleAddEmployee = () => {
@@ -50,6 +65,26 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
       hourly_rate: 0,
       partner_id: '',
       email: '',
+      sort_order: employees.length + 1,
+      is_active: 1
+    };
+    setEmployees([...employees, newEmp]);
+  };
+
+  // Dodanie pracownika z globalnego rejestru sieci Starbucks
+  const handleAddFromGlobal = (partnerName: string) => {
+    const g = globalEmployees.find(item => item.name === partnerName);
+    if (!g) return;
+    const newEmp: ManagerEmployee = {
+      id: 0,
+      name: g.name,
+      role: g.role || 'SSV',
+      contract_type: g.contract_type || 'FULL',
+      contract_hours_ratio: g.contract_hours_ratio || 1.0,
+      monthly_salary: g.monthly_salary || 0,
+      hourly_rate: g.hourly_rate || 0,
+      partner_id: g.partner_id || '',
+      email: g.email || '',
       sort_order: employees.length + 1,
       is_active: 1
     };
@@ -73,6 +108,18 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
   const handleUpdate = (index: number, field: keyof ManagerEmployee, value: any) => {
     const updated = [...employees];
     updated[index] = { ...updated[index], [field]: value };
+
+    if (field === 'name') {
+      const trimmed = String(value).trim();
+      const matchGlobal = globalEmployees.find(g => g.name.toLowerCase() === trimmed.toLowerCase());
+      if (matchGlobal) {
+        if (!updated[index].partner_id && matchGlobal.partner_id) updated[index].partner_id = matchGlobal.partner_id;
+        if (!updated[index].email && matchGlobal.email) updated[index].email = matchGlobal.email;
+        if (matchGlobal.role && (!updated[index].role || updated[index].role === 'SSV')) updated[index].role = matchGlobal.role;
+        if (matchGlobal.contract_type) updated[index].contract_type = matchGlobal.contract_type;
+        if (matchGlobal.contract_hours_ratio) updated[index].contract_hours_ratio = matchGlobal.contract_hours_ratio;
+      }
+    }
 
     // Aktualizacja proporcji jeśli zmieniono contract_type
     if (field === 'contract_type') {
@@ -251,8 +298,8 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
           ) : (
             employees.map((emp, index) => {
               const isDawidApel = emp.name?.includes('Dawid Apel');
-              const displayPartnerId = emp.partner_id !== undefined ? emp.partner_id : (isDawidApel ? '00106539' : '');
-              const displayEmail = emp.email !== undefined ? emp.email : (isDawidApel ? 'dawid.apel@amrest.eu' : '');
+              const displayPartnerId = emp.partner_id || (isDawidApel ? '00106539' : '');
+              const displayEmail = emp.email || (isDawidApel ? 'dawid.apel@amrest.eu' : '');
 
               return (
                 <div
@@ -292,7 +339,7 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
                             Fleet Master
                           </span>
                         ) : displayPartnerId ? (
-                          <span className="text-[9px] font-semibold text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded border border-stone-200 font-mono">
+                          <span className="text-[9px] font-semibold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-300 font-mono">
                             ID: {displayPartnerId}
                           </span>
                         ) : null}
@@ -300,6 +347,7 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
                       <input
                         type="text"
                         value={emp.name}
+                        list="global-partners-list"
                         onChange={e => handleUpdate(index, 'name', e.target.value)}
                         className="w-full px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-1 focus:ring-[#006241]"
                       />
@@ -444,12 +492,52 @@ export const ManagerTeamModal: React.FC<ManagerTeamModalProps> = ({
             })
           )}
 
+          {/* Datalist podpowiedzi z rejestru sieci */}
+          <datalist id="global-partners-list">
+            {globalEmployees.map((g, idx) => (
+              <option key={`g-${idx}`} value={g.name}>
+                {g.partner_id ? `[${g.partner_id}] ` : ''}{g.role ? `${g.role} • ` : ''}{g.knownStores?.length ? `Kawiarnie: ${g.knownStores.join(', ')}` : ''}
+              </option>
+            ))}
+          </datalist>
+
+          {/* Szybki wybór menedżera z innej kawiarni sieci */}
+          {globalEmployees.filter(g => !employees.some(e => e.name.toLowerCase() === g.name.toLowerCase())).length > 0 && (
+            <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-xl flex items-center gap-3">
+              <Building2 className="w-5 h-5 text-emerald-700 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-bold text-emerald-900 uppercase tracking-wide">
+                  Dodaj pracownika z innej kawiarni sieci Starbucks:
+                </div>
+                <select
+                  onChange={e => {
+                    if (e.target.value) {
+                      handleAddFromGlobal(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                  className="w-full mt-1 bg-white border border-emerald-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-emerald-950 focus:outline-hidden focus:ring-1 focus:ring-emerald-600 cursor-pointer"
+                >
+                  <option value="" disabled>Wybierz z rejestru globalnego...</option>
+                  {globalEmployees
+                    .filter(g => !employees.some(e => e.name.toLowerCase() === g.name.toLowerCase()))
+                    .map((g, idx) => (
+                      <option key={`opt-${idx}`} value={g.name}>
+                        {g.name} ({g.role}) {g.partner_id ? `• ID: ${g.partner_id}` : ''} [Kawiarnie: {g.knownStores.join(', ')}]
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleAddEmployee}
             className="w-full py-2.5 border-2 border-dashed border-stone-300 hover:border-[#006241] text-stone-600 hover:text-[#006241] rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>Dodaj Menedżera do Składu ({monthName} {year})</span>
+            <span>Dodaj Nowego Menedżera do Składu ({monthName} {year})</span>
           </button>
         </div>
 

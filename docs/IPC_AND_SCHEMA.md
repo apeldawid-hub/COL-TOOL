@@ -1,11 +1,11 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-22T15:37:51.495Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-22T15:45:46.539Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
 ## 📡 1. Kontrakty Mostu IPC (`window.api.*` — `IElectronAPI`)
-Łącznie wykrytych metod IPC w `electron/preload.ts`: **149**.
+Łącznie wykrytych metod IPC w `electron/preload.ts`: **150**.
 
 | Metoda IPC | Opcjonalna | Podpis Typu | Kategoria / Uwagi |
 | :--- | :---: | :--- | :--- |
@@ -90,6 +90,7 @@
 | `window.api.months` | Nie | `number[]` | — |
 | `window.api.actualRcpByMonth` | Tak | `Record<number, Record<number, number>>` | — |
 | `window.api.hasActualRcpByMonth` | Tak | `Record<number, boolean>` | — |
+| `window.api.getGlobalEmployees` | Nie | `() => Promise<any[]>` | — |
 | `window.api.createDatabaseBackup` | Nie | `(reason?: string, explicitStoreId?: string) => Promise<{ success: boolean; filename: string; filePath: string; sizeBytes: number; timestamp: string; reason: string; message: string; storeId?: string; sha256?: string }>` | Backupy bazy danych SQLite |
 | `window.api.getDatabaseBackups` | Nie | `(filterStoreId?: string) => Promise<Array<{ filename: string; filePath: string; sizeBytes: number; timestamp: string; formattedDate: string; reason: string; storeId?: string; sha256?: string; isLegacy?: boolean }>>` | — |
 | `window.api.restoreDatabaseBackup` | Nie | `(filename: string, forceRestore?: boolean) => Promise<{ success: boolean; message: string; inspection?: any }>` | — |

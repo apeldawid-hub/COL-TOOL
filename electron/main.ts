@@ -1914,6 +1914,11 @@ function setupIpcHandlers() {
     return roster;
   });
 
+  // Globalny rejestr pracowników ze wszystkich kawiarni sieci
+  ipcMain.handle('db:get-global-employees', () => {
+    return dbManager.getGlobalEmployeesRegistry();
+  });
+
   // Pobranie katalogu zmian Starbucks
   ipcMain.handle('db:get-shift-definitions', () => {
     dbManager.ensureShiftDefinitions();

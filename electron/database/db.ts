@@ -332,7 +332,16 @@ export const matchesEmployeeIdentity = (
   const tokensA = normalizeEmployeeTokens(empA.name);
   const tokensB = normalizeEmployeeTokens(empB.name);
   if (tokensA.length === 0 || tokensB.length === 0) return false;
-  return tokensB.every(t => tokensA.includes(t)) || tokensA.every(t => tokensB.includes(t));
+
+  // Jeśli oba mają co najmniej 2 człony (imię + nazwisko):
+  if (tokensA.length >= 2 && tokensB.length >= 2) {
+    return tokensB.every(t => tokensA.includes(t)) || tokensA.every(t => tokensB.includes(t));
+  }
+  // Jeśli oba mają dokładnie 1 człon (np. samo unikalne imię/pseudonim):
+  if (tokensA.length === 1 && tokensB.length === 1) {
+    return tokensA[0] === tokensB[0];
+  }
+  return false;
 };
 
 export class DatabaseManager {
@@ -1203,6 +1212,110 @@ export class DatabaseManager {
     this.db.run(`DELETE FROM manager_monthly_roster WHERE year = ? AND month = ?`, [year, month]);
     this.persist();
     return this.getMonthlyRoster(year, month);
+  }
+
+  /**
+   * Zwraca globalny rejestr wszystkich pracowników zarejestrowanych we wszystkich kawiarniach floty.
+   * Agreguje unikalne osoby z baz store_*.db wg Partner ID lub spójnego imienia i nazwiska.
+   */
+  public getGlobalEmployeesRegistry(): Array<{
+    name: string;
+    partner_id?: string | null;
+    email?: string | null;
+    role?: string;
+    contract_type?: string;
+    contract_hours_ratio?: number;
+    hourly_rate?: number;
+    monthly_salary?: number;
+    knownStores: string[];
+  }> {
+    const registry: Array<{
+      name: string;
+      partner_id?: string | null;
+      email?: string | null;
+      role?: string;
+      contract_type?: string;
+      contract_hours_ratio?: number;
+      hourly_rate?: number;
+      monthly_salary?: number;
+      knownStores: string[];
+    }> = [];
+
+    if (!fs.existsSync(this.storageDir)) return registry;
+
+    try {
+      const dbFiles = fs.readdirSync(this.storageDir).filter(f => f.startsWith('store_') && f.endsWith('.db'));
+
+      for (const file of dbFiles) {
+        const fullPath = path.resolve(path.join(this.storageDir, file));
+        const match = file.match(/^store_(.+)\.db$/);
+        const storeId = match ? match[1] : file;
+
+        let dbInstance: Database | null = null;
+        let shouldClose = false;
+
+        try {
+          if (this.currentStoreId && this.computeDbFilePath(this.currentStoreId) === fullPath && this.db) {
+            dbInstance = this.db;
+          } else if (this.pool.has(storeId)) {
+            dbInstance = this.pool.get(storeId);
+          } else if (this.SQL && fs.existsSync(fullPath)) {
+            const buf = fs.readFileSync(fullPath);
+            dbInstance = new this.SQL.Database(buf);
+            shouldClose = true;
+          }
+
+          if (!dbInstance) continue;
+
+          const stmt = dbInstance.prepare(`
+            SELECT id, name, role, contract_type, contract_hours_ratio, hourly_rate, monthly_salary, partner_id, email
+            FROM manager_employees
+          `);
+          while (stmt.step()) {
+            const row = stmt.getAsObject() as any;
+            const empName = String(row.name || '').trim();
+            if (!empName) continue;
+
+            const partnerId = row.partner_id ? String(row.partner_id) : (empName.includes('Dawid Apel') ? '00106539' : null);
+            const email = row.email ? String(row.email) : (empName.includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null);
+
+            const existing = registry.find(r => matchesEmployeeIdentity(r, {
+              name: empName,
+              partner_id: partnerId,
+              email: email
+            }));
+
+            if (existing) {
+              if (!existing.partner_id && partnerId) existing.partner_id = partnerId;
+              if (!existing.email && email) existing.email = email;
+              if (!existing.knownStores.includes(storeId)) existing.knownStores.push(storeId);
+            } else {
+              registry.push({
+                name: empName,
+                partner_id: partnerId,
+                email: email,
+                role: row.role ? String(row.role) : 'SSV',
+                contract_type: row.contract_type ? String(row.contract_type) : 'FULL',
+                contract_hours_ratio: Number(row.contract_hours_ratio) || 1.0,
+                hourly_rate: Number(row.hourly_rate) || 0,
+                monthly_salary: Number(row.monthly_salary) || 0,
+                knownStores: [storeId]
+              });
+            }
+          }
+          stmt.free();
+        } catch (_) {
+        } finally {
+          if (shouldClose && dbInstance) {
+            try { dbInstance.close(); } catch (_) {}
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[getGlobalEmployeesRegistry] Błąd:', err);
+    }
+
+    return registry.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**

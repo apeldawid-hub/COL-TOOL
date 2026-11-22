@@ -466,7 +466,7 @@
   },
   "DatabaseManager": {
     "file": "electron/database/db.ts",
-    "line": 338,
+    "line": 347,
     "kind": "class"
   },
   "DatabaseOptimizationResult": {

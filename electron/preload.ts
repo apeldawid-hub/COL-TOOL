@@ -86,6 +86,7 @@ export interface IElectronAPI {
     actualRcpByMonth?: Record<number, Record<number, number>>;
     hasActualRcpByMonth?: Record<number, boolean>;
   }>;
+  getGlobalEmployees: () => Promise<any[]>;
   // Backupy bazy danych SQLite
   createDatabaseBackup: (reason?: string, explicitStoreId?: string) => Promise<{ success: boolean; filename: string; filePath: string; sizeBytes: number; timestamp: string; reason: string; message: string; storeId?: string; sha256?: string }>;
   getDatabaseBackups: (filterStoreId?: string) => Promise<Array<{ filename: string; filePath: string; sizeBytes: number; timestamp: string; formattedDate: string; reason: string; storeId?: string; sha256?: string; isLegacy?: boolean }>>;
@@ -234,6 +235,7 @@ const api: IElectronAPI = {
   saveMonthlyNorm: (norm) => ipcRenderer.invoke('db:save-monthly-norm', norm),
   resetMonthlyNorm: (year, month) => ipcRenderer.invoke('db:reset-monthly-norm', year, month),
   getTorQuarterData: (year, quarter) => ipcRenderer.invoke('db:get-tor-quarter-data', year, quarter),
+  getGlobalEmployees: () => ipcRenderer.invoke('db:get-global-employees'),
   // Backupy bazy danych SQLite
   createDatabaseBackup: (reason, explicitStoreId) => ipcRenderer.invoke('db:create-backup', reason, explicitStoreId),
   getDatabaseBackups: (filterStoreId) => ipcRenderer.invoke('db:list-backups', filterStoreId),
