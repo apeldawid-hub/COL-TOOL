@@ -24,6 +24,36 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.19',
+    date: '2026-11-22',
+    title: 'Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Cross-Store TOR Aggregation: Automatyczna agregacja dyżurów z innych kawiarni (np. Kalisz w listopadzie) w kwartalnym rozliczeniu TOR w Zakopanem.',
+      'Globalna identyfikacja menedżerów: Powiązanie pracowników w bazach store_*.db wg Global Partner ID, firmowego emaila lub znormalizowanego imienia i nazwiska.',
+      'Obsługa wielokrotnych dyżurów: Elastyczne sumowanie zmian i wsparć międzykawiarnianych w obrębie jednego dnia w silniku TorEngine.',
+      'Wskaźnik w widoku TOR: Odznaka [Sieć] w komórkach z godzinami wypracowanymi w innej kawiarni z czytelnym dymkiem informacyjnym.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Implementacja getCrossStoreTorData w DatabaseManager skanującej wszystkie lokalne bazy kawiarni i mapującej dyżury na ID w bieżącym lokalu.',
+        module: 'database'
+      },
+      {
+        type: 'feature',
+        description: 'Rozszerzenie silnika TorEngine o tablicowe indeksowanie zmian dziennych i sumowanie godzin dyżurów cross-store oraz wsparć.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Wskaźnik [Sieć] i informacyjny tooltip w tabeli TorView informujący o uwzględnieniu dyżurów z innych kawiarni w saldzie miesiąca.',
+        module: 'managers_schedule'
+      }
+    ]
+  },
+  {
     version: '2.9.18',
     date: '2026-11-22',
     title: 'Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku',

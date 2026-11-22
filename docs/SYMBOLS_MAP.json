@@ -56,7 +56,7 @@
   },
   "AppModule": {
     "file": "src/types/index.ts",
-    "line": 636,
+    "line": 637,
     "kind": "type"
   },
   "AppRuntimeMode": {
@@ -461,17 +461,17 @@
   },
   "DatabaseHealthStatus": {
     "file": "src/types/index.ts",
-    "line": 656,
+    "line": 657,
     "kind": "interface"
   },
   "DatabaseManager": {
     "file": "electron/database/db.ts",
-    "line": 283,
+    "line": 338,
     "kind": "class"
   },
   "DatabaseOptimizationResult": {
     "file": "src/types/index.ts",
-    "line": 681,
+    "line": 682,
     "kind": "interface"
   },
   "DatabaseStatus": {
@@ -481,7 +481,7 @@
   },
   "DatabaseTableStat": {
     "file": "src/types/index.ts",
-    "line": 650,
+    "line": 651,
     "kind": "interface"
   },
   "DayCoverageSummary": {
@@ -1571,7 +1571,7 @@
   },
   "TorEmployeeRow": {
     "file": "src/types/index.ts",
-    "line": 615,
+    "line": 616,
     "kind": "interface"
   },
   "TorEngine": {
@@ -1586,7 +1586,7 @@
   },
   "TorQuarterData": {
     "file": "src/types/index.ts",
-    "line": 622,
+    "line": 623,
     "kind": "interface"
   },
   "TorView": {
@@ -1861,7 +1861,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 1208,
+    "line": 1238,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1876,7 +1876,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 1193,
+    "line": 1223,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1891,7 +1891,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 1200,
+    "line": 1230,
     "kind": "function"
   },
   "isManagerInTraining": {
@@ -1919,10 +1919,20 @@
     "line": 439,
     "kind": "const"
   },
+  "matchesEmployeeIdentity": {
+    "file": "electron/database/db.ts",
+    "line": 315,
+    "kind": "const"
+  },
   "normalizeDiacritics": {
     "file": "src/constants/starbucksStores.ts",
     "line": 21,
     "kind": "function"
+  },
+  "normalizeEmployeeTokens": {
+    "file": "electron/database/db.ts",
+    "line": 303,
+    "kind": "const"
   },
   "parseEnvelope": {
     "file": "src/services/security/encryptionService.ts",

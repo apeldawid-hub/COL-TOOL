@@ -610,6 +610,7 @@ export interface TorMonthSummary {
   balanceHours: number;  // totalHours - normHours
   isRcpFromActuals?: boolean; // true jeśli rcpHours pochodzi z zarejestrowanych logowań MAPAL
   isActiveInMonth?: boolean; // false jeśli pracownik nie był w składzie managerskim w tym miesiącu
+  hasCrossStoreShifts?: boolean; // true jeśli miesiąc zawiera dyżury z innej kawiarni (Cross-Store TOR)
 }
 
 export interface TorEmployeeRow {

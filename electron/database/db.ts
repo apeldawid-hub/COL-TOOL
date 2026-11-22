@@ -280,6 +280,61 @@ function calculateOfficialMonthNorm(year: number, month: number): { workingDays:
   return { workingDays: effectiveWorkingDays, offDays, fullTimeHours };
 }
 
+const NICKNAME_MAP: Record<string, string> = {
+  ola: 'aleksandra',
+  olek: 'aleksander',
+  kuba: 'jakub',
+  magda: 'magdalena',
+  kasia: 'katarzyna',
+  ania: 'anna',
+  gosia: 'malgorzata',
+  agnieszka: 'agnieszka',
+  aga: 'agnieszka',
+  bartek: 'bartosz',
+  tomek: 'tomasz',
+  lukasz: 'lukasz',
+  michal: 'michal',
+  patrycja: 'patrycja',
+  pati: 'patrycja',
+  natalka: 'natalia',
+  nati: 'natalia'
+};
+
+export const normalizeEmployeeTokens = (str: string): string[] => {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[,.-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(token => NICKNAME_MAP[token] || token)
+    .sort();
+};
+
+export const matchesEmployeeIdentity = (
+  empA: { name: string; partner_id?: string | null; email?: string | null },
+  empB: { name: string; partner_id?: string | null; email?: string | null }
+): boolean => {
+  // 1. Priorytet: Global Partner ID
+  if (empA.partner_id && empB.partner_id) {
+    const pA = String(empA.partner_id).trim();
+    const pB = String(empB.partner_id).trim();
+    if (pA && pB) return pA === pB;
+  }
+  // 2. Email firmowy
+  if (empA.email && empB.email) {
+    const eA = String(empA.email).trim().toLowerCase();
+    const eB = String(empB.email).trim().toLowerCase();
+    if (eA && eB) return eA === eB;
+  }
+  // 3. Imię i nazwisko (z uwzględnieniem zdrobnień i kolejności Imie/Nazwisko vs Nazwisko/Imie)
+  const tokensA = normalizeEmployeeTokens(empA.name);
+  const tokensB = normalizeEmployeeTokens(empB.name);
+  if (tokensA.length === 0 || tokensB.length === 0) return false;
+  return tokensB.every(t => tokensA.includes(t)) || tokensA.every(t => tokensB.includes(t));
+};
+
 export class DatabaseManager {
   private static instance: DatabaseManager;
   private db: Database | null = null;
@@ -1148,6 +1203,170 @@ export class DatabaseManager {
     this.db.run(`DELETE FROM manager_monthly_roster WHERE year = ? AND month = ?`, [year, month]);
     this.persist();
     return this.getMonthlyRoster(year, month);
+  }
+
+  /**
+   * Cross-Store TOR Aggregation:
+   * Pobiera zmiany (manager_schedule_shifts) oraz logowania rzeczywiste (labor_actuals_log)
+   * ze wszystkich pozostałych kawiarni sieci (pliki store_*.db w katalogu danych) dla pracowników z bieżącego składu.
+   * Mapuje zmiany na identyfikator pracownika w bieżącej kawiarni.
+   */
+  public getCrossStoreTorData(
+    year: number,
+    months: number[],
+    currentStoreEmployees: Array<{ id: number; name: string; partner_id?: string | null; email?: string | null }>
+  ): { shifts: any[]; actualRcpByMonth: Record<number, Record<number, number>> } {
+    const crossStoreShifts: any[] = [];
+    const crossStoreRcp: Record<number, Record<number, number>> = {};
+
+    if (!fs.existsSync(this.storageDir) || !currentStoreEmployees.length || !months.length) {
+      return { shifts: crossStoreShifts, actualRcpByMonth: crossStoreRcp };
+    }
+
+    const currentNormalizedPath = this.dbFilePath ? path.resolve(this.dbFilePath) : '';
+
+    try {
+      const dbFiles = fs.readdirSync(this.storageDir).filter(f => f.startsWith('store_') && f.endsWith('.db'));
+
+      for (const file of dbFiles) {
+        const fullPath = path.resolve(path.join(this.storageDir, file));
+        if (fullPath === currentNormalizedPath) {
+          continue; // Pomijamy bieżący plik aktywnej kawiarni
+        }
+
+        const match = file.match(/^store_(.+)\.db$/);
+        const otherStoreId = match ? match[1] : file;
+
+        let otherDb: Database | null = null;
+        let shouldCloseDb = false;
+
+        try {
+          if (this.pool.has(otherStoreId)) {
+            otherDb = this.pool.get(otherStoreId);
+          } else if (this.SQL && fs.existsSync(fullPath)) {
+            const buf = fs.readFileSync(fullPath);
+            otherDb = new this.SQL.Database(buf);
+            shouldCloseDb = true;
+          }
+
+          if (!otherDb) continue;
+
+          // Pobierz pracowników z innej kawiarni (z manager_employees oraz z manager_monthly_roster)
+          const otherEmployeesMap = new Map<number, { id: number; name: string; partner_id?: string | null; email?: string | null }>();
+          try {
+            const empStmt = otherDb.prepare('SELECT id, name, partner_id, email FROM manager_employees');
+            while (empStmt.step()) {
+              const row = empStmt.getAsObject() as any;
+              otherEmployeesMap.set(Number(row.id), {
+                id: Number(row.id),
+                name: String(row.name || ''),
+                partner_id: row.partner_id ? String(row.partner_id) : (String(row.name).includes('Dawid Apel') ? '00106539' : null),
+                email: row.email ? String(row.email) : (String(row.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null)
+              });
+            }
+            empStmt.free();
+          } catch (_) {}
+
+          try {
+            const rStmt = otherDb.prepare(`
+              SELECT employee_id as id, name, partner_id, email 
+              FROM manager_monthly_roster 
+              WHERE year = ? AND month IN (${months.join(',')})
+            `);
+            rStmt.bind([year]);
+            while (rStmt.step()) {
+              const row = rStmt.getAsObject() as any;
+              const existing = otherEmployeesMap.get(Number(row.id));
+              if (existing) {
+                if (!existing.partner_id && row.partner_id) existing.partner_id = String(row.partner_id);
+                if (!existing.email && row.email) existing.email = String(row.email);
+              } else {
+                otherEmployeesMap.set(Number(row.id), {
+                  id: Number(row.id),
+                  name: String(row.name || ''),
+                  partner_id: row.partner_id ? String(row.partner_id) : (String(row.name).includes('Dawid Apel') ? '00106539' : null),
+                  email: row.email ? String(row.email) : (String(row.name).includes('Dawid Apel') ? 'dawid.apel@amrest.eu' : null)
+                });
+              }
+            }
+            rStmt.free();
+          } catch (_) {}
+
+          const otherEmployees = Array.from(otherEmployeesMap.values());
+
+          for (const otherEmp of otherEmployees) {
+            const matchedCurrentEmp = currentStoreEmployees.find(curr => matchesEmployeeIdentity(curr, otherEmp));
+            if (!matchedCurrentEmp) continue;
+
+            const localEmpId = matchedCurrentEmp.id;
+
+            // Pobierz grafiki dyżurów z innej kawiarni
+            try {
+              const shiftsStmt = otherDb.prepare(`
+                SELECT id, year, month, day, date, employee_id, shift_code, hours, notes, disposition, custom_start_time, custom_end_time
+                FROM manager_schedule_shifts
+                WHERE year = ? AND month IN (${months.join(',')}) AND employee_id = ?
+                ORDER BY month ASC, day ASC
+              `);
+              shiftsStmt.bind([year, otherEmp.id]);
+
+              while (shiftsStmt.step()) {
+                const s = shiftsStmt.getAsObject() as any;
+                crossStoreShifts.push({
+                  ...s,
+                  employee_id: localEmpId, // Kluczowe: mapowanie na ID w bieżącej kawiarni!
+                  is_cross_store: true,
+                  origin_store_id: otherStoreId,
+                  notes: s.notes ? `${s.notes} [${otherStoreId}]` : `[Dyżur: ${otherStoreId}]`
+                });
+              }
+              shiftsStmt.free();
+            } catch (_) {}
+
+            // Pobierz ewentualne rzeczywiste logowania RCP z labor_actuals_log
+            try {
+              for (const m of months) {
+                const dPrefix = `${year}-${String(m).padStart(2, '0')}-%`;
+                const rcpStmt = otherDb.prepare(`
+                  SELECT computable_time
+                  FROM labor_actuals_log
+                  WHERE date LIKE ? AND (
+                    employee LIKE ? OR employee LIKE ?
+                  )
+                `);
+                const nameTokens = normalizeEmployeeTokens(otherEmp.name);
+                const firstName = nameTokens[0] || '';
+                rcpStmt.bind([dPrefix, `%${otherEmp.name}%`, `%${firstName}%`]);
+
+                let extRcpHours = 0;
+                while (rcpStmt.step()) {
+                  const r = rcpStmt.getAsObject() as any;
+                  extRcpHours += Number(r.computable_time || 0);
+                }
+                rcpStmt.free();
+
+                if (extRcpHours > 0) {
+                  if (!crossStoreRcp[localEmpId]) crossStoreRcp[localEmpId] = {};
+                  crossStoreRcp[localEmpId][m] = Number(((crossStoreRcp[localEmpId][m] || 0) + extRcpHours).toFixed(1));
+                }
+              }
+            } catch (_) {}
+          }
+        } catch (err) {
+          console.warn(`[getCrossStoreTorData] Błąd odczytu bazy ${file}:`, err);
+        } finally {
+          if (shouldCloseDb && otherDb) {
+            try {
+              otherDb.close();
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[getCrossStoreTorData] Błąd skanowania katalogu baz:', err);
+    }
+
+    return { shifts: crossStoreShifts, actualRcpByMonth: crossStoreRcp };
   }
 
   private createSchema(): void {

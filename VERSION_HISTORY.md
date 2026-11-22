@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.19](#v2.9.19--2026-11-22)** | 2026-11-22 | Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.18](#v2.9.18--2026-11-22)** | 2026-11-22 | Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku | `patch` | 🚀 Opublikowana |
 | **[v2.9.17](#v2.9.17--2026-11-21)** | 2026-11-21 | Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Chmury Firestore per Jednostka Floty | `patch` | 🚀 Opublikowana |
 | **[v2.9.15](#v2.9.15--2026-11-21)** | 2026-11-21 | Standardowy Profil Tygodnia (Godziny & 2 MGR) oraz Wykluczenie Non-Coverage (NC / T) ze Zmian Prowadzących | `patch` | 🚀 Opublikowana |
@@ -46,6 +47,22 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.19] — 2026-11-22
+**Tytuł:** Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- **Rozwiązanie problemu rozliczania menedżerów pracujących w wielu kawiarniach**: Grafik wprowadzony w Kaliszu (lub dowolnej innej kawiarni) automatycznie zaciąga się do Trzymiesięcznego Okresu Rozliczeniowego (TOR) w Zakopanem (i na odwrót).
+- **Automatyczna agregacja międzykawiarniana (Cross-Store TOR Aggregation)**:
+  - Silnik `DatabaseManager.getCrossStoreTorData` automatycznie skanuje wszystkie bazy lokalne kawiarni (`store_*.db`) w katalogu aplikacji.
+  - Identyfikuje pracowników wg spójnego identyfikatora: Global Partner ID (`partner_id`), firmowego adresu email (`email`) lub spójnego imienia i nazwiska (`matchesEmployeeIdentity`).
+  - Przepisuje zmiany na lokalne ID pracownika w kawiarni bieżącej i oznacza je flagą `is_cross_store: true`.
+- **Wielokrotne zmiany i wsparcia międzykawiarniane w jednym dniu**:
+  - Silnik `TorEngine` grupuje zmiany tablicowo per dzień (`shiftsByEmpMonthDay`).
+  - Poprawnie sumuje godziny dyżurów, wsparcia międzykawiarniane i nadpisuje puste/wolne dni `OFF` dyżurami wypracowanymi w obcym lokalu.
+- **Wskaźnik w widoku TOR (`TorView`)**:
+  - Kolumny godzinowe zawierające dyżury z innej kawiarni prezentują dyskretną odznakę `Sieć` oraz dedykowany tooltip informacyjny.
 
 ### [v2.9.18] — 2026-11-22
 **Tytuł:** Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku  

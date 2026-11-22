@@ -133,22 +133,30 @@ Tarcza Kodeksu Pracy weryfikuje ciągłość norm na granicy miesięcy ($M-1 \ri
 
 Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze, Q3: Lip-Wrz, Q4: Paź-Gru) zgodnie z referencyjnym arkuszem `TOR`:
 ### Algorytm 5: Trzymiesięczny Okres Rozliczeniowy (TOR) i 3 Kolumny Godzinowe (`RCP`, `H`, `L4`)
-1. **Reguła pierwszeństwa L4 nad H (art. 166 KP)**:
+1. **Cross-Store TOR Aggregation (Agregacja Międzykawiarniana)**:
+   - W sieci Starbucks menedżerowie (SM, ASM, SSV) pełnią dyżury lub prowadzą kawiarnię w różnych lokalizacjach (np. dyżury w Kaliszu w listopadzie, a rozliczenie TOR w Zakopanem).
+   - Metoda `dbManager.getCrossStoreTorData(year, months, currentEmployees)` automatycznie skanuje wszystkie bazy lokalne kawiarni (`store_*.db` w katalogu aplikacji), identyfikuje pracowników wg:
+     1. Unikalnego identyfikatora **Starbucks Partner ID** (`partner_id`),
+     2. Firmowego adresu email (`email`),
+     3. Spójnego kanonicznego imienia i nazwiska (`matchesEmployeeIdentity`).
+   - Pobrane z obcych baz zmiany (`manager_schedule_shifts`) są automatycznie mapowane na identyfikator pracownika w bieżącej kawiarni (`employee_id = localEmpId`) i oznaczane flagą `is_cross_store: true`.
+   - Silnik `TorEngine` grupuje zmiany tablicowo per dzień (`shiftsByEmpMonthDay`), sumując godziny dyżurów (w tym wsparcia międzykawiarniane i zastępstwa dni wolnych `OFF`), a w interfejsie `TorView` wyświetla odznakę `Sieć` z tooltipem informacyjnym.
+2. **Reguła pierwszeństwa L4 nad H (art. 166 KP)**:
    - Czasowa niezdolność do pracy wskutek choroby przerywa bieg urlopu wypoczynkowego.
    - Jeśli pracownik w danym dniu choruje (`L4`), godziny zaliczane są wyłącznie do kolumny `L4`, a kolumna `H` dla tego dnia wynosi $0.0\text{ h}$.
-2. **Czysty układ 3 kolumn godzinowych per miesiąc**:
+3. **Czysty układ 3 kolumn godzinowych per miesiąc**:
    - Kolumna `ETAT` występuje jednorazowo przy danych menedżera.
    - W każdym z 3 miesięcy kwartału (Q1–Q4) prezentowane są wyłącznie 3 sumaryczne kolumny godzinowe:
      - `RCP (h)`: wypracowane godziny dyżurów operacyjnych na sali (oraz support/NC),
      - `H (h)`: godziny płatnego urlopu wypoczynkowego w dniach roboczych ($8\text{h} \times \text{etat}$),
      - `L4 (h)`: godziny usprawiedliwionej nieobecności chorobowej w dniach roboczych ($8\text{h} \times \text{etat}$),
      - `BILANS`: różnica między sumą wypracowanych godzin ($\text{RCP} + \text{H} + \text{L4}$) a normą miesiąca dla danego etatu.
-3. **Saldo kwartału**: Suma bilansów z 3 miesięcy danego kwartału.
-4. **Status kwartalny**:
+4. **Saldo kwartału**: Suma bilansów z 3 miesięcy danego kwartału.
+5. **Status kwartalny**:
    - $\text{Saldo} > 0.1\text{ h} \rightarrow$ **Nadgodziny** (do wypłaty lub odbioru w kolejnym okresie).
    - $\text{Saldo} < -0.1\text{ h} \rightarrow$ **Niedogodziny** (niedopracowanie wymiaru).
    - $\text{Saldo} \in [-0.1, 0.1]\text{ h} \rightarrow$ **OK** (idealne zrównoważenie czasu pracy).
-5. **Eksport Excel**: Generator pliku `.xlsx` odwzorowujący arkusz `TOR` z 3-kolumnowym układem miesięcy i podsumowaniem zespołu.
+6. **Eksport Excel**: Generator pliku `.xlsx` odwzorowujący arkusz `TOR` z 3-kolumnowym układem miesięcy i podsumowaniem zespołu.
 
 ### Algorytm 6: Blokada Edycji Zamkniętych Miesięcy (`isMonthClosed`)
 1. **Status zamknięcia miesiąca**:

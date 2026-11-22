@@ -12,6 +12,18 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+
+## [v2.9.20] — 2026-11-22
+- Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.19] — 2026-11-22
+- **Cross-Store TOR Aggregation (Automatyczna Agregacja Międzykawiarniana w TOR)**:
+  - Rozwiązano problem braku zaciągania grafików wprowadzonych w innej kawiarni (np. Kalisz w listopadzie) do kwartalnego rozliczenia TOR w innej lokalizacji (np. Zakopane).
+  - Wdrożenie metody `getCrossStoreTorData` w `DatabaseManager` i obsługa w kanale IPC `db:get-tor-quarter-data`.
+  - Automatyczne powiązanie pracownika we wszystkich bazach kawiarni (`store_*.db`) wg Global Partner ID, adresu email lub spójnego imienia i nazwiska (`matchesEmployeeIdentity`).
+  - Przepisywanie identyfikatora na ID w bieżącej kawiarni i sumowanie godzin dyżurów w silniku `TorEngine` z obsługą wielokrotnych zmian w jednym dniu.
+  - Dodanie odznaki `Sieć` i dedykowanego tooltipa w widoku `TorView` informującego o uwzględnieniu dyżurów z pozostałych lokali.
+
 ## [v2.9.18] — 2026-11-22
 - Bieżąca synchronizacja i optymalizacje modułu.
 

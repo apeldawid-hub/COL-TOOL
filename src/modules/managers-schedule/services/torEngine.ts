@@ -71,10 +71,13 @@ export class TorEngine {
       monthlyNorms[months[2]]?.full_time_hours ?? ManagerScheduleEngine.calculateMonthNorms(year, months[2]).fullTimeNominalHours
     ];
 
-    // Indeksowanie zmian po kluczu: `${employee_id}_${month}_${day}`
-    const shiftMap = new Map<string, ManagerScheduleShift>();
+    // Indeksowanie zmian po kluczu: `${employee_id}_${month}_${day}` -> tablica zmian
+    const shiftsByEmpMonthDay = new Map<string, ManagerScheduleShift[]>();
     for (const s of shifts) {
-      shiftMap.set(`${s.employee_id}_${s.month}_${s.day}`, s);
+      const key = `${s.employee_id}_${s.month}_${s.day}`;
+      const list = shiftsByEmpMonthDay.get(key) || [];
+      list.push(s);
+      shiftsByEmpMonthDay.set(key, list);
     }
 
     // Aktywne i posortowane osoby w zespole
@@ -96,11 +99,12 @@ export class TorEngine {
         let hHours = 0;
         let l4Days = 0;
         let l4Hours = 0;
+        let hasCrossStoreShifts = false;
 
         if (isActiveInMonth) {
           for (let d = 1; d <= daysInMonth; d++) {
-            const s = shiftMap.get(`${emp.id}_${m}_${d}`);
-            if (!s) continue;
+            const dayShifts = shiftsByEmpMonthDay.get(`${emp.id}_${m}_${d}`) || [];
+            if (dayShifts.length === 0) continue;
 
             const date = new Date(year, m - 1, d);
             const dayOfWeek = date.getDay();
@@ -109,19 +113,29 @@ export class TorEngine {
             const isHoliday = holidays.has(dateStr);
             const isNonWorkingDay = isWeekend || isHoliday;
 
-            const code = s.shift_code;
-            if (code === 'H') {
+            const hasH = dayShifts.some(s => s.shift_code === 'H');
+            const hasL4 = dayShifts.some(s => s.shift_code === 'L4');
+
+            if (hasH) {
               hDays++;
               // Urlop wlicza się ściśle wg wymiaru etatu w dni robocze (8h * etat, 0h w weekendy i święta)
               const dayH = isNonWorkingDay ? 0.0 : Number((8.0 * contractRatio).toFixed(1));
               hHours += dayH;
-            } else if (code === 'L4') {
+            } else if (hasL4) {
               l4Days++;
               // L4 wlicza się ściśle wg wymiaru etatu w dni robocze (8h * etat, 0h w weekendy i święta)
               const dayL4 = isNonWorkingDay ? 0.0 : Number((8.0 * contractRatio).toFixed(1));
               l4Hours += dayL4;
-            } else if (s.hours > 0 && !['OFF', 'M', 'Z', 'FULL'].includes(code)) {
-              rcpHours += s.hours;
+            }
+
+            for (const s of dayShifts) {
+              if ((s as any).is_cross_store) {
+                hasCrossStoreShifts = true;
+              }
+              const code = s.shift_code;
+              if (s.hours > 0 && !['OFF', 'M', 'Z', 'FULL', 'H', 'L4'].includes(code)) {
+                rcpHours += s.hours;
+              }
             }
           }
         }
@@ -159,7 +173,8 @@ export class TorEngine {
           normHours,
           balanceHours,
           isRcpFromActuals: hasActualRcp,
-          isActiveInMonth
+          isActiveInMonth,
+          hasCrossStoreShifts
         };
       });
 

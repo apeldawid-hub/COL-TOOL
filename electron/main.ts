@@ -1242,6 +1242,28 @@ function setupIpcHandlers() {
       hasActualRcpByMonth[m] = mRcpDays.has(daysInM) || (mRcpDays.size >= 15);
     }
 
+    // Cross-Store TOR Aggregation: pobranie zmian i godzin z pozostałych kawiarni sieci dla pracowników składu
+    try {
+      const crossStore = dbManager.getCrossStoreTorData(y, months, employees);
+      if (crossStore.shifts && crossStore.shifts.length > 0) {
+        shifts.push(...crossStore.shifts);
+      }
+      if (crossStore.actualRcpByMonth) {
+        for (const empIdStr of Object.keys(crossStore.actualRcpByMonth)) {
+          const empId = Number(empIdStr);
+          if (!actualRcpByMonth[empId]) actualRcpByMonth[empId] = {};
+          for (const m of months) {
+            if (crossStore.actualRcpByMonth[empId][m]) {
+              const prev = actualRcpByMonth[empId][m] || 0;
+              actualRcpByMonth[empId][m] = Number((prev + crossStore.actualRcpByMonth[empId][m]).toFixed(1));
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Błąd agregacji Cross-Store TOR:', err);
+    }
+
     return { employees, shifts, monthlyNorms, months, actualRcpByMonth, hasActualRcpByMonth };
   });
 

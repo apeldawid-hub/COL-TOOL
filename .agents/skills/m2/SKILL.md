@@ -14,4 +14,5 @@ Gdy użytkownik wywołuje `/m2`:
    - AutoScheduler AI operuje na 2 000 prób (`2k`) z wczesnym zatrzymaniem.
    - Smart Swap Assistant & AI Row Re-roll (`smartSwapEngine.ts`) realizują bezkolizyjne korekty parzyste (Same-Day & Cross-Day) z bilansem $\Delta = 0.0$h w TOR.
    - Wsparcia międzykawiarniane (`interStoreSupportEngine.ts`) rozliczają 3 scenariusze.
+   - Cross-Store TOR Aggregation (`getCrossStoreTorData`): automatyczna agregacja dyżurów z innych kawiarni sieci dla pracowników o spójnej tożsamości globalnej.
 4. Po modyfikacji kodu zaktualizuj `src/modules/managers-schedule/AGENTS.md` oraz zarejestruj wpis w `src/modules/managers-schedule/CHANGELOG.md`.
