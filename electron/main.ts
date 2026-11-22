@@ -962,6 +962,7 @@ function setupIpcHandlers() {
   ipcMain.handle('db:get-manager-schedule-data', (_event, year: number, month: number) => {
     dbManager.reloadFromDisk();
     const db = dbManager.getDb();
+    DatabaseManager.ensureSchemaIntegrity(db);
 
     // 1. Pracownicy (menedżerowie) dla wybranego miesiąca ze struktury manager_monthly_roster
     const employees = dbManager.getMonthlyRoster(year, month);
@@ -1368,6 +1369,7 @@ function setupIpcHandlers() {
   // Zapis pojedynczej zmiany menedżera z opcjonalną rejestracją modyfikacji po publikacji
   ipcMain.handle('db:save-manager-shift', (_event, shift: any) => {
     const db = dbManager.getDb();
+    DatabaseManager.ensureSchemaIntegrity(db);
     
     // Sprawdzenie czy grafik jest w fazie opublikowanej (mniej niż 7 dni do startu miesiąca lub w trakcie)
     const year = Number(shift.year);
@@ -1526,6 +1528,7 @@ function setupIpcHandlers() {
     }>;
   }) => {
     const db = dbManager.getDb();
+    DatabaseManager.ensureSchemaIntegrity(db);
     const year = Number(payload.year);
     const month = Number(payload.month);
     const shifts = payload.shifts || [];
@@ -1820,9 +1823,27 @@ function setupIpcHandlers() {
   });
 
   // Pobranie profilu standardowego tygodnia (dni tygodnia 0..7) z uwzględnieniem roku i miesiąca
-  ipcMain.handle('db:get-manager-weekly-requirements', (_event, payload?: { year?: number; month?: number }) => {
-    const db = dbManager.getDb();
+  ipcMain.handle('db:get-manager-weekly-requirements', (_event, payload?: { year?: number; month?: number; storeId?: string }) => {
+    let db = dbManager.getDb();
+    const targetStoreId = payload?.storeId;
+    let customDb: any = null;
+
+    if (targetStoreId && targetStoreId !== dbManager.getCurrentStoreId()) {
+      const poolDb = dbManager.getConnectionPool().get(targetStoreId);
+      if (poolDb) {
+        db = poolDb;
+      } else {
+        const storeDbPath = dbManager.computeDbFilePath(targetStoreId);
+        if (fs.existsSync(storeDbPath)) {
+          const buf = fs.readFileSync(storeDbPath);
+          customDb = new (dbManager as any).SQL.Database(buf);
+          db = customDb;
+        }
+      }
+    }
+
     try {
+      DatabaseManager.ensureSchemaIntegrity(db);
       const year = payload?.year || new Date().getFullYear();
       const month = payload?.month || (new Date().getMonth() + 1);
 
@@ -1874,6 +1895,7 @@ function setupIpcHandlers() {
   ipcMain.handle('db:get-all-manager-weekly-profiles', () => {
     const db = dbManager.getDb();
     try {
+      DatabaseManager.ensureSchemaIntegrity(db);
       const stmt = db.prepare(`
         SELECT DISTINCT effective_from_year, effective_from_month
         FROM manager_weekly_requirements
@@ -1893,14 +1915,41 @@ function setupIpcHandlers() {
 
   // Zapis profilu standardowego tygodnia dla wybranego okresu obowiązywania (od wskazanego roku i miesiąca)
   ipcMain.handle('db:save-manager-weekly-requirements', (_event, payload: any) => {
-    const db = dbManager.getDb();
+    let db = dbManager.getDb();
     const requirements = Array.isArray(payload) ? payload : (payload?.requirements || []);
-    if (!Array.isArray(requirements) || requirements.length === 0) return false;
+    if (!Array.isArray(requirements) || requirements.length === 0) {
+      console.warn('db:save-manager-weekly-requirements: Otrzymano pustą listę wymogów.');
+      return false;
+    }
+
+    const targetStoreId = payload?.storeId;
+    let customDbFileToPersist: string | null = null;
+    let customDb: any = null;
+
+    if (targetStoreId && targetStoreId !== dbManager.getCurrentStoreId()) {
+      const poolDb = dbManager.getConnectionPool().get(targetStoreId);
+      if (poolDb) {
+        db = poolDb;
+      } else {
+        const storeDbPath = dbManager.computeDbFilePath(targetStoreId);
+        if (fs.existsSync(storeDbPath)) {
+          const buf = fs.readFileSync(storeDbPath);
+          customDb = new (dbManager as any).SQL.Database(buf);
+          db = customDb;
+          customDbFileToPersist = storeDbPath;
+        }
+      }
+    }
 
     const targetYear = Number(payload?.year || requirements[0]?.effective_from_year || 2026);
     const targetMonth = Number(payload?.month || requirements[0]?.effective_from_month || 1);
 
     try {
+      // 1. Zapewnij integralność schematu tabeli przed zapisem
+      DatabaseManager.ensureSchemaIntegrity(db);
+
+      db.run('BEGIN TRANSACTION;');
+
       const stmt = db.prepare(`
         INSERT INTO manager_weekly_requirements (
           effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
@@ -1936,20 +1985,33 @@ function setupIpcHandlers() {
         ]);
       }
       stmt.free();
-      dbManager.persist();
+
+      db.run('COMMIT;');
+
+      // 2. Trwały zapis na dysk
+      if (customDbFileToPersist && customDb) {
+        const bin = Buffer.from(customDb.export());
+        fs.writeFileSync(customDbFileToPersist, bin);
+        console.log(`💾 [Shift Hours] Zapisano profil kawiarni ${targetStoreId} do pliku: ${customDbFileToPersist}`);
+      } else {
+        dbManager.persist();
+      }
+
       if (mainWindow) {
         mainWindow.webContents.send('data:refreshed');
       }
       return true;
-    } catch (e) {
-      console.error('Błąd zapisu manager_weekly_requirements:', e);
-      return false;
+    } catch (e: any) {
+      try { db.run('ROLLBACK;'); } catch (_) {}
+      console.error('Błąd zapisu manager_weekly_requirements w SQLite:', e);
+      throw new Error(`Nie udało się zapisać profilu tygodniowego: ${e?.message || String(e)}`);
     }
   });
 
   // Dopasowanie istniejącego szkicu grafiku (niezamkniętego) do aktualnego profilu tygodniowego
   ipcMain.handle('db:adapt-schedule-to-weekly-requirements', (_event, payload: { year: number; month: number }) => {
     const db = dbManager.getDb();
+    DatabaseManager.ensureSchemaIntegrity(db);
     const { year, month } = payload;
     try {
       // 1. Pobierz aktywny profil dla (year, month)

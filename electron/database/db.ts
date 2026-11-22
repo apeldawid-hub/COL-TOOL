@@ -1488,6 +1488,136 @@ export class DatabaseManager {
     return { shifts: crossStoreShifts, actualRcpByMonth: crossStoreRcp };
   }
 
+  public static ensureSchemaIntegrity(db: Database): void {
+    if (!db) return;
+
+    // 1. Upewnij się o obecności kolumn w manager_schedule_shifts
+    try {
+      const shiftInfo = db.exec("PRAGMA table_info(manager_schedule_shifts)");
+      if (shiftInfo.length > 0 && shiftInfo[0].values.length > 0) {
+        const cols = shiftInfo[0].values.map((v: any[]) => String(v[1]));
+        if (!cols.includes('disposition')) {
+          try { db.run("ALTER TABLE manager_schedule_shifts ADD COLUMN disposition TEXT DEFAULT ''"); } catch (_) {}
+        }
+        if (!cols.includes('custom_start_time')) {
+          try { db.run("ALTER TABLE manager_schedule_shifts ADD COLUMN custom_start_time TEXT"); } catch (_) {}
+        }
+        if (!cols.includes('custom_end_time')) {
+          try { db.run("ALTER TABLE manager_schedule_shifts ADD COLUMN custom_end_time TEXT"); } catch (_) {}
+        }
+      }
+    } catch (e) {
+      console.warn('[SchemaIntegrity] Błąd weryfikacji manager_schedule_shifts:', e);
+    }
+
+    // 2. Samonaprawa tabeli manager_weekly_requirements
+    try {
+      const masterInfo = db.exec("SELECT sql FROM sqlite_master WHERE type='table' AND name='manager_weekly_requirements'");
+      const tableSql = (masterInfo.length > 0 && masterInfo[0].values.length > 0 && masterInfo[0].values[0][0])
+        ? String(masterInfo[0].values[0][0])
+        : '';
+
+      const needsRebuild = !tableSql ||
+        !tableSql.includes('effective_from_year') ||
+        !tableSql.includes('effective_from_month') ||
+        !tableSql.includes('PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)');
+
+      if (needsRebuild) {
+        db.run(`
+          CREATE TABLE IF NOT EXISTS manager_weekly_requirements_v2 (
+            effective_from_year INTEGER NOT NULL DEFAULT 2026,
+            effective_from_month INTEGER NOT NULL DEFAULT 1,
+            day_of_week INTEGER NOT NULL,
+            day_name TEXT NOT NULL,
+            is_open INTEGER DEFAULT 1,
+            manager_count INTEGER DEFAULT 2,
+            start_time TEXT DEFAULT '07:00',
+            end_time TEXT DEFAULT '22:30',
+            shift_length_hours REAL DEFAULT 8.0,
+            min_handover_minutes INTEGER DEFAULT 60,
+            required_hours REAL DEFAULT 16.0,
+            notes TEXT,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
+          );
+        `);
+
+        // Sprawdź kolumny istniejącej tabeli, aby bezpiecznie przepisać
+        if (tableSql) {
+          const pragma = db.exec("PRAGMA table_info(manager_weekly_requirements)");
+          const existingCols = pragma.length > 0 ? pragma[0].values.map((v: any[]) => String(v[1])) : [];
+          const hasEffY = existingCols.includes('effective_from_year');
+          const hasEffM = existingCols.includes('effective_from_month');
+          const hasLen = existingCols.includes('shift_length_hours');
+          const hasHandover = existingCols.includes('min_handover_minutes');
+          const hasNotes = existingCols.includes('notes');
+          const hasUpdated = existingCols.includes('updated_at');
+
+          const selectSql = `
+            SELECT
+              ${hasEffY ? 'COALESCE(effective_from_year, 2026)' : '2026'},
+              ${hasEffM ? 'COALESCE(effective_from_month, 1)' : '1'},
+              day_of_week,
+              day_name,
+              is_open,
+              manager_count,
+              start_time,
+              end_time,
+              ${hasLen ? 'COALESCE(shift_length_hours, 8.0)' : '8.0'},
+              ${hasHandover ? 'COALESCE(min_handover_minutes, 60)' : '60'},
+              required_hours,
+              ${hasNotes ? 'notes' : 'NULL'},
+              ${hasUpdated ? 'updated_at' : 'CURRENT_TIMESTAMP'}
+            FROM manager_weekly_requirements
+          `;
+
+          db.run(`
+            INSERT OR IGNORE INTO manager_weekly_requirements_v2 (
+              effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes, updated_at
+            ) ${selectSql};
+          `);
+
+          db.run("DROP TABLE manager_weekly_requirements;");
+        }
+
+        db.run("ALTER TABLE manager_weekly_requirements_v2 RENAME TO manager_weekly_requirements;");
+      }
+
+      // Zawsze upewnij się, że istnieje jednoznaczny unikalny indeks
+      db.run(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_mgr_weekly_req_v2
+        ON manager_weekly_requirements (effective_from_year, effective_from_month, day_of_week);
+      `);
+
+      // Jeśli tabela jest pusta, zaseeduj standardowe 8 wierszy
+      const countRes = db.exec("SELECT COUNT(*) FROM manager_weekly_requirements");
+      const c = (countRes.length > 0 && countRes[0].values.length > 0) ? Number(countRes[0].values[0][0]) : 0;
+      if (c === 0) {
+        const defaults = [
+          [2026, 1, 1, 'Poniedziałek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 2, 'Wtorek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 3, 'Środa', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 4, 'Czwartek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Pn–Czw (2 MGR)'],
+          [2026, 1, 5, 'Piątek', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Piątek (2 MGR)'],
+          [2026, 1, 6, 'Sobota', 1, 2, '07:00', '22:30', 8.0, 60, 16.0, 'Standard Sobota (2 MGR)'],
+          [2026, 1, 0, 'Niedziela', 1, 2, '08:00', '21:00', 7.0, 60, 14.0, 'Niedziela Wolna od Handlu (2 MGR)'],
+          [2026, 1, 7, 'Niedziela Handlowa', 1, 2, '08:00', '21:00', 8.0, 60, 16.0, 'Niedziela Handlowa (2 MGR)']
+        ];
+        const s = db.prepare(`
+          INSERT INTO manager_weekly_requirements (
+            effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const row of defaults) {
+          s.run(row);
+        }
+        s.free();
+      }
+    } catch (e) {
+      console.warn('[SchemaIntegrity] Błąd samonaprawy manager_weekly_requirements:', e);
+    }
+  }
+
   private createSchema(): void {
     if (!this.db) return;
 
@@ -1908,50 +2038,8 @@ export class DatabaseManager {
       `);
     } catch (_) {}
 
-    // Migracja manager_weekly_requirements do wersji z wersjonowaniem roczno-miesięcznym
-    try {
-      const tableInfo = this.db.exec("PRAGMA table_info(manager_weekly_requirements)");
-      if (tableInfo.length > 0 && tableInfo[0].values.length > 0) {
-        const cols = tableInfo[0].values.map((v: any[]) => String(v[1]));
-        if (!cols.includes('effective_from_year')) {
-          this.db.run(`
-            CREATE TABLE IF NOT EXISTS manager_weekly_requirements_v2 (
-              effective_from_year INTEGER NOT NULL DEFAULT 2026,
-              effective_from_month INTEGER NOT NULL DEFAULT 1,
-              day_of_week INTEGER NOT NULL,
-              day_name TEXT NOT NULL,
-              is_open INTEGER DEFAULT 1,
-              manager_count INTEGER DEFAULT 2,
-              start_time TEXT DEFAULT '07:00',
-              end_time TEXT DEFAULT '22:30',
-              shift_length_hours REAL DEFAULT 8.0,
-              min_handover_minutes INTEGER DEFAULT 60,
-              required_hours REAL DEFAULT 16.0,
-              notes TEXT,
-              updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-              PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
-            );
-            INSERT OR IGNORE INTO manager_weekly_requirements_v2 (
-              effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes, updated_at
-            )
-            SELECT
-              2026, 1, day_of_week, day_name, is_open, manager_count, start_time, end_time, 8.0, 60, required_hours, notes, updated_at
-            FROM manager_weekly_requirements;
-            DROP TABLE manager_weekly_requirements;
-            ALTER TABLE manager_weekly_requirements_v2 RENAME TO manager_weekly_requirements;
-          `);
-        } else {
-          if (!cols.includes('shift_length_hours')) {
-            try { this.db.run('ALTER TABLE manager_weekly_requirements ADD COLUMN shift_length_hours REAL DEFAULT 8.0'); } catch (_) {}
-          }
-          if (!cols.includes('min_handover_minutes')) {
-            try { this.db.run('ALTER TABLE manager_weekly_requirements ADD COLUMN min_handover_minutes INTEGER DEFAULT 60'); } catch (_) {}
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Migracja manager_weekly_requirements:', e);
-    }
+    // Samonaprawa integralności schematu (Shift Hours, custom times, composite PKs)
+    DatabaseManager.ensureSchemaIntegrity(this.db);
 
     // Inicjalizacja domyślnych reguł Floor Hours
     this.db.run(`

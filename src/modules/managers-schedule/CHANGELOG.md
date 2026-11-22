@@ -17,6 +17,16 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+## [v2.9.28] — 2026-11-22
+- **Self-Healing SQLite Schema & Naprawa Persystencji Shift Hours i Zmian Grafiku**:
+  - Wdrożenie automatycznej samonaprawy schematu bazy danych (`DatabaseManager.ensureSchemaIntegrity`):
+    - Migracja tabeli `manager_weekly_requirements` do klucza złożonego `PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)` oraz unikalnego indeksu `idx_mgr_weekly_req_v2`.
+    - Zapewnienie obecności kolumn `custom_start_time`, `custom_end_time` i `disposition` w `manager_schedule_shifts`.
+  - Usunięcie błędu SQLite `ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint` blokującego zapis godzin.
+  - Zabezpieczenie transakcyjne `BEGIN TRANSACTION ... COMMIT` przy zapisie profilu tygodniowego z natychmiastowym zrzutem do pliku bazy wybranej kawiarni floty.
+  - Dynamiczne dociąganie profilu w `WeeklyRequirementsModal` przy zmianie roku/miesiąca w selektorze.
+  - Dodanie wizualnego feedbacku (komunikat sukcesu toast i baner błędu w razie niepowodzenia) w oknie Shift Hours.
+
 ## [v2.9.27] — 2026-11-22
 - **Dopracowanie Funkcji Shift Hours, Wersjonowanie Czasowe i Przekazanie Zmiany (Handover Overlap)**:
   - **Wersjonowanie Czasowe Shift Hours (`effective_from_year`, `effective_from_month`)**:

@@ -1,6 +1,6 @@
 # ⚡ Samonaprawialny Rejestr Kontraktów IPC i Tabel SQLite
 > **Plik generowany automatycznie przez `scripts/generate-contracts-doc.js`**  
-> Ostatnia synchronizacja: `2026-11-22T18:42:33.638Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
+> Ostatnia synchronizacja: `2026-11-22T21:38:19.121Z` (Zawsze zgodny ze stanem faktycznym w kodzie).
 
 ---
 
@@ -167,6 +167,26 @@
 
 ## 🗄️ 2. Schemat Tabel Bazy SQLite (`store_${safeId}.db`)
 Łącznie wykrytych tabel w `electron/database/db.ts`: **23**.
+
+### Tabela: `manager_weekly_requirements_v2`
+```sql
+CREATE TABLE IF NOT EXISTS manager_weekly_requirements_v2 (
+  effective_from_year INTEGER NOT NULL DEFAULT 2026,
+  effective_from_month INTEGER NOT NULL DEFAULT 1,
+  day_of_week INTEGER NOT NULL,
+  day_name TEXT NOT NULL,
+  is_open INTEGER DEFAULT 1,
+  manager_count INTEGER DEFAULT 2,
+  start_time TEXT DEFAULT '07:00',
+  end_time TEXT DEFAULT '22:30',
+  shift_length_hours REAL DEFAULT 8.0,
+  min_handover_minutes INTEGER DEFAULT 60,
+  required_hours REAL DEFAULT 16.0,
+  notes TEXT,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
+);
+```
 
 ### Tabela: `app_settings`
 ```sql
@@ -522,26 +542,6 @@ CREATE TABLE IF NOT EXISTS daily_kpi_actuals_log (
   tplh REAL NOT NULL,
   delivery_trx INTEGER DEFAULT 0,
   imported_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### Tabela: `manager_weekly_requirements_v2`
-```sql
-CREATE TABLE IF NOT EXISTS manager_weekly_requirements_v2 (
-  effective_from_year INTEGER NOT NULL DEFAULT 2026,
-  effective_from_month INTEGER NOT NULL DEFAULT 1,
-  day_of_week INTEGER NOT NULL,
-  day_name TEXT NOT NULL,
-  is_open INTEGER DEFAULT 1,
-  manager_count INTEGER DEFAULT 2,
-  start_time TEXT DEFAULT '07:00',
-  end_time TEXT DEFAULT '22:30',
-  shift_length_hours REAL DEFAULT 8.0,
-  min_handover_minutes INTEGER DEFAULT 60,
-  required_hours REAL DEFAULT 16.0,
-  notes TEXT,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)
 );
 ```
 

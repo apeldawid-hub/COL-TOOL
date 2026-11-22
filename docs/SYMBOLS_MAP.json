@@ -1881,7 +1881,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 1404,
+    "line": 1434,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1896,7 +1896,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 1389,
+    "line": 1419,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1911,7 +1911,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 1396,
+    "line": 1426,
     "kind": "function"
   },
   "isManagerInTraining": {

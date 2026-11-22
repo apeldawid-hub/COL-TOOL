@@ -24,6 +24,36 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.28',
+    date: '2026-11-22',
+    title: 'Self-Healing SQLite Schema & Naprawa Persystencji Modułu Shift Hours i Grafiku Menedżerskiego',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Samonaprawa schematu bazy danych (DatabaseManager.ensureSchemaIntegrity): Automatyczna migracja istniejących tabel manager_weekly_requirements do composite PRIMARY KEY (effective_from_year, effective_from_month, day_of_week) oraz dodawanie brakujących kolumn bez ryzyka utraty danych.',
+      'Odporny zapis profilu tygodniowego (Shift Hours): Eliminacja błędu SQLite ON CONFLICT mismatch, transakcyjny zapis BEGIN/COMMIT z bezpośrednim zrzutem do pliku bazy wybranej kawiarni floty.',
+      'Dynamiczne wczytywanie profilu w oknie Shift Hours: Po zmianie roku/miesiąca w selektorze modal natychmiast wczytuje właściwy profil z bazy danych dla wskazanego okresu.',
+      'Precyzyjny feedback UI i obsługa błędów: Wyraźne komunikaty sukcesu i błędów w modalu Shift Hours oraz brak cichego połykania wyjątków w widoku grafiku menedżerskiego.',
+    ],
+    items: [
+      {
+        type: 'fix',
+        module: 'database',
+        description: 'Wdrożenie metody DatabaseManager.ensureSchemaIntegrity chroniącej przed błędem braku kolumn custom_start_time / custom_end_time oraz nieprawidłowym kluczem ON CONFLICT w SQLite.'
+      },
+      {
+        type: 'fix',
+        module: 'managers_schedule',
+        description: 'Naprawa persystencji profilu Shift Hours w WeeklyRequirementsModal i ManagerScheduleView wraz z obsługą zapisu dla dowolnej kawiarni w dashboardzie Floty.'
+      },
+      {
+        type: 'enhancement',
+        module: 'managers_schedule',
+        description: 'Dodanie dynamicznego przeładowywania profilu w modalu przy zmianie okresu obowiązywania oraz powiadomień toast o pomyślnym zapisie.'
+      }
+    ]
+  },
+  {
     version: '2.9.27',
     date: '2026-11-22',
     title: 'Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą',

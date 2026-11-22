@@ -248,7 +248,7 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
 - `manager_schedule_versions`: rejestr wersji grafiku i publikacji (id, year, month, version_num, version_type, title, description, shifts_json, events_json, is_published, created_at).
 - `manager_monthly_norms`: oficjalne normy miesięczne na -10 i +10 lat (lata 2016–2036, 252 miesiące) z możliwością manualnego override (`year, month, working_days, off_days, full_time_hours, is_custom, notes, updated_at`).
 - `manager_day_requirements`: niestandardowe wymogi obecności menedżera per dzień (`year, month, day, date, is_open, manager_count, start_time, end_time, required_hours, notes`) — np. Wigilia 1 MGR 07:00-16:00 (9.0h), Boże Narodzenie 0 MGR (0h).
-- `manager_weekly_requirements`: wzorzec tygodniowy godzin i obsady kawiarni z wersjonowaniem czasowym (`effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes`). Klucz główny: `(effective_from_year, effective_from_month, day_of_week)`.
+- `manager_weekly_requirements`: wzorzec tygodniowy godzin i obsady kawiarni z wersjonowaniem czasowym (`effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes`). Klucz główny: `(effective_from_year, effective_from_month, day_of_week)`. Samonaprawa: chroniona przez `DatabaseManager.ensureSchemaIntegrity` gwarantującą brak konfliktów ON CONFLICT i wsteczną migrację starych schematów.
 
 ---
 

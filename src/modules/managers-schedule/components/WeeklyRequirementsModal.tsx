@@ -1,5 +1,5 @@
 // src/modules/managers-schedule/components/WeeklyRequirementsModal.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Clock, Users, Sparkles, Check, RotateCcw, AlertCircle, ShieldAlert, Calendar, ArrowRight, ShieldCheck, RefreshCw } from 'lucide-react';
 import { ManagerWeeklyRequirement } from '../../../types';
 import { DEFAULT_WEEKLY_REQUIREMENTS } from '../constants/defaultWeeklyRequirements';
@@ -65,6 +65,42 @@ export const WeeklyRequirementsModal: React.FC<WeeklyRequirementsModalProps> = (
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isAdaptingDraft, setIsAdaptingDraft] = useState<boolean>(false);
   const [adaptResultMsg, setAdaptResultMsg] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Dynamiczne pobieranie profilu dla wybranego okresu obowiązywania (zabezpieczenie przed nadpisywaniem historii)
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchProfileForPeriod = async () => {
+      try {
+        const api = (window as any).api;
+        if (api?.getManagerWeeklyRequirements) {
+          const list = await api.getManagerWeeklyRequirements({
+            year: effectiveYear,
+            month: effectiveMonth,
+            storeId
+          });
+          if (!isCancelled && Array.isArray(list) && list.length > 0) {
+            const map = new Map(list.map((r: any) => [r.day_of_week, r]));
+            setRequirements(prev =>
+              prev.map(item => {
+                const existing = map.get(item.day_of_week);
+                return existing ? { ...item, ...existing } : item;
+              })
+            );
+            if (list[0]?.shift_length_hours) setGlobalShiftLength(Number(list[0].shift_length_hours));
+            if (list[0]?.min_handover_minutes) setGlobalMinHandover(Number(list[0].min_handover_minutes));
+          }
+        }
+      } catch (err) {
+        console.warn('Nie udało się pobrać profilu dla okresu:', err);
+      }
+    };
+    fetchProfileForPeriod();
+    return () => {
+      isCancelled = true;
+    };
+  }, [effectiveYear, effectiveMonth, storeId]);
 
   if (!isOpen) return null;
 
@@ -220,6 +256,9 @@ export const WeeklyRequirementsModal: React.FC<WeeklyRequirementsModalProps> = (
     if (isReadOnly || isSubmitting) return;
     try {
       setIsSubmitting(true);
+      setErrorMessage(null);
+      setSuccessToast(null);
+
       // Przypisz okres obowiązywania do każdego wiersza
       const finalizedReqs: ManagerWeeklyRequirement[] = requirements.map(r => ({
         ...r,
@@ -230,7 +269,13 @@ export const WeeklyRequirementsModal: React.FC<WeeklyRequirementsModalProps> = (
       }));
 
       await onSave(finalizedReqs, { year: effectiveYear, month: effectiveMonth, storeId });
-      onClose();
+      setSuccessToast(`Pomyślnie zapisano profil tygodniowy Shift Hours (od ${MONTH_NAMES[effectiveMonth - 1]} ${effectiveYear}).`);
+      setTimeout(() => {
+        onClose();
+      }, 700);
+    } catch (err: any) {
+      console.error('Błąd zapisu profilu tygodniowego:', err);
+      setErrorMessage(err?.message || 'Wystąpił błąd podczas zapisywania profilu w bazie danych.');
     } finally {
       setIsSubmitting(false);
     }
@@ -374,6 +419,20 @@ export const WeeklyRequirementsModal: React.FC<WeeklyRequirementsModalProps> = (
             </button>
           </div>
         </div>
+
+        {/* KOMUNIKAT BŁĘDU / SUKCESU ZAPISU */}
+        {errorMessage && (
+          <div className="px-6 py-2.5 bg-rose-50 border-b border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+        {successToast && (
+          <div className="px-6 py-2.5 bg-emerald-50 border-b border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{successToast}</span>
+          </div>
+        )}
 
         {/* KOMUNIKAT DOPASOWANIA SZKICU */}
         {adaptResultMsg && (

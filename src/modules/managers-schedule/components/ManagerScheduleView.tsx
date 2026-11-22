@@ -453,15 +453,19 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
   ) => {
     try {
       if ((window as any).api?.saveManagerWeeklyRequirements) {
-        await (window as any).api.saveManagerWeeklyRequirements({
+        const ok = await (window as any).api.saveManagerWeeklyRequirements({
           requirements: reqs,
           year: options?.year || selectedYear,
           month: options?.month || selectedMonth
         });
+        if (!ok) {
+          throw new Error('Operacja zapisu profilu tygodniowego w bazie danych nie powiodła się.');
+        }
         await loadScheduleData();
       }
     } catch (err) {
       console.error('Błąd zapisu profilu tygodniowego:', err);
+      throw err;
     }
   };
 

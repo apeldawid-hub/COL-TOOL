@@ -99,4 +99,56 @@ describe('Shift Hours & Handover Overlap (Moduł 2: Managers Schedule)', () => {
     const mayProfile = getEffectiveProfileFor(2026, 5);
     assert.strictEqual(mayProfile.open, '08:00');
   });
+
+  it('7. Samonaprawa schematu tabeli manager_weekly_requirements w SQLite (migracja ze starego PK i brakujących kolumn)', async () => {
+    const initSqlJs = (await import('sql.js')).default;
+    const SQL = await initSqlJs();
+    const db = new SQL.Database();
+
+    // Utwórz starą tabelę sprzed aktualizacji (pojedynczy PK na day_of_week, brak effective_from_year itp.)
+    db.run(`
+      CREATE TABLE manager_weekly_requirements (
+        day_of_week INTEGER PRIMARY KEY,
+        day_name TEXT NOT NULL,
+        is_open INTEGER DEFAULT 1,
+        manager_count INTEGER DEFAULT 2,
+        start_time TEXT DEFAULT '07:00',
+        end_time TEXT DEFAULT '22:30',
+        required_hours REAL DEFAULT 16.0,
+        notes TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO manager_weekly_requirements (day_of_week, day_name) VALUES (1, 'Poniedziałek');
+    `);
+
+    // Zaimportuj DatabaseManager i przetestuj samonaprawę
+    const { DatabaseManager } = await import('../../electron/database/db');
+    DatabaseManager.ensureSchemaIntegrity(db as any);
+
+    // Weryfikacja: tabela musi posiadać composite primary key i unikalny indeks
+    const tableInfo = db.exec("PRAGMA table_info(manager_weekly_requirements)");
+    const cols = tableInfo[0].values.map((v: any[]) => String(v[1]));
+    assert.ok(cols.includes('effective_from_year'), 'Tabela powinna posiadać kolumnę effective_from_year');
+    assert.ok(cols.includes('effective_from_month'), 'Tabela powinna posiadać kolumnę effective_from_month');
+    assert.ok(cols.includes('shift_length_hours'), 'Tabela powinna posiadać kolumnę shift_length_hours');
+    assert.ok(cols.includes('min_handover_minutes'), 'Tabela powinna posiadać kolumnę min_handover_minutes');
+
+    // Weryfikacja zapisu z klauzulą ON CONFLICT(effective_from_year, effective_from_month, day_of_week)
+    const stmt = db.prepare(`
+      INSERT INTO manager_weekly_requirements (
+        effective_from_year, effective_from_month, day_of_week, day_name, is_open, manager_count, start_time, end_time, shift_length_hours, min_handover_minutes, required_hours, notes
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(effective_from_year, effective_from_month, day_of_week) DO UPDATE SET
+        day_name = excluded.day_name,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    stmt.run([2026, 4, 1, 'Poniedziałek Nowy', 1, 2, '08:00', '21:00', 8.5, 90, 17.0, 'Test']);
+    stmt.free();
+
+    const checkRes = db.exec("SELECT day_name, start_time, shift_length_hours FROM manager_weekly_requirements WHERE effective_from_year = 2026 AND effective_from_month = 4 AND day_of_week = 1");
+    assert.strictEqual(checkRes[0].values[0][0], 'Poniedziałek Nowy');
+    assert.strictEqual(checkRes[0].values[0][1], '08:00');
+    assert.strictEqual(checkRes[0].values[0][2], 8.5);
+  });
 });

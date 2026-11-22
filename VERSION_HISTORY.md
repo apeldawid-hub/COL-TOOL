@@ -7,7 +7,8 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **[v2.9.27](#v2.9.27--2026-11-22)** | 2026-11-22 | Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą | `patch` | 🚀 Aktywna |
+| **[v2.9.28](#v2.9.28--2026-11-22)** | 2026-11-22 | Self-Healing SQLite Schema & Naprawa Persystencji Modułu Shift Hours i Grafiku Menedżerskiego | `patch` | 🚀 Aktywna |
+| **[v2.9.27](#v2.9.27--2026-11-22)** | 2026-11-22 | Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą | `patch` | 🚀 Opublikowana |
 | **[v2.9.25](#v2.9.25--2026-11-22)** | 2026-11-22 | Faza I & II Rozwoju Modułu M2: Zaznaczanie Blokowe, Type-Ahead Buffer, Asystent Kryzysowy L4 i Split-Screen TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.23](#v2.9.23--2026-11-22)** | 2026-11-22 | Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (effective_from, art. 130 KP) | `patch` | 🚀 Opublikowana |
 | **[v2.9.22](#v2.9.22--2026-11-22)** | 2026-11-22 | Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR | `patch` | 🚀 Opublikowana |
@@ -51,6 +52,24 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.28] — 2026-11-22
+**Tytuł:** Self-Healing SQLite Schema & Naprawa Persystencji Modułu Shift Hours i Grafiku Menedżerskiego  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- **Samonaprawa Schematu SQLite (`DatabaseManager.ensureSchemaIntegrity`)**:
+  - Automatyczna migracja istniejących tabel `manager_weekly_requirements` do klucza złożonego `PRIMARY KEY (effective_from_year, effective_from_month, day_of_week)`.
+  - Usunięcie błędu SQLite `ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`, który blokował zapis profilu tygodniowego w bazie.
+  - Weryfikacja i automatyczne dodawanie brakujących kolumn `custom_start_time`, `custom_end_time` oraz `disposition` w `manager_schedule_shifts`.
+- **Niezawodna Persystencja Profilu Tygodniowego**:
+  - Transakcyjny zapis `BEGIN TRANSACTION ... COMMIT` przy zapisie profilu tygodniowego.
+  - Obsługa zapisu dla dowolnej kawiarni z poziomu panelu Floty (`FleetMasterDashboard`) z bezpośrednim zrzutem zmian do właściwego pliku SQLite.
+- **Dynamiczne Wczytywanie Profilu w Oknie Shift Hours**:
+  - Przy przełączeniu miesiąca/roku w oknie modalu `WeeklyRequirementsModal`, dane automatycznie dociągają się z bazy dla wskazanego okresu.
+  - Pełny feedback UI: powiadomienie o sukcesie (toast) oraz czytelny baner w razie błędu zamiast cichego zamykania okna.
+
+---
 
 ### [v2.9.27] — 2026-11-22
 **Tytuł:** Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą  
