@@ -56,7 +56,7 @@
   },
   "AppModule": {
     "file": "src/types/index.ts",
-    "line": 637,
+    "line": 653,
     "kind": "type"
   },
   "AppRuntimeMode": {
@@ -461,7 +461,7 @@
   },
   "DatabaseHealthStatus": {
     "file": "src/types/index.ts",
-    "line": 657,
+    "line": 673,
     "kind": "interface"
   },
   "DatabaseManager": {
@@ -471,7 +471,7 @@
   },
   "DatabaseOptimizationResult": {
     "file": "src/types/index.ts",
-    "line": 682,
+    "line": 698,
     "kind": "interface"
   },
   "DatabaseStatus": {
@@ -481,7 +481,7 @@
   },
   "DatabaseTableStat": {
     "file": "src/types/index.ts",
-    "line": 651,
+    "line": 667,
     "kind": "interface"
   },
   "DayCoverageSummary": {
@@ -1571,23 +1571,33 @@
   },
   "TorEmployeeRow": {
     "file": "src/types/index.ts",
-    "line": 616,
+    "line": 631,
     "kind": "interface"
   },
   "TorEngine": {
     "file": "src/modules/managers-schedule/services/torEngine.ts",
-    "line": 12,
+    "line": 14,
     "kind": "class"
+  },
+  "TorMonthStatus": {
+    "file": "src/types/index.ts",
+    "line": 599,
+    "kind": "interface"
   },
   "TorMonthSummary": {
     "file": "src/types/index.ts",
-    "line": 597,
+    "line": 609,
     "kind": "interface"
   },
   "TorQuarterData": {
     "file": "src/types/index.ts",
-    "line": 623,
+    "line": 638,
     "kind": "interface"
+  },
+  "TorRcpMode": {
+    "file": "src/types/index.ts",
+    "line": 597,
+    "kind": "type"
   },
   "TorView": {
     "file": "src/modules/managers-schedule/components/TorView.tsx",
@@ -1861,7 +1871,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 1238,
+    "line": 1268,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1876,7 +1886,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 1223,
+    "line": 1253,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1891,7 +1901,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 1230,
+    "line": 1260,
     "kind": "function"
   },
   "isManagerInTraining": {

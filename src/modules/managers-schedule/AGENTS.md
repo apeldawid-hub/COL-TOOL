@@ -141,22 +141,31 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
      3. Spójnego kanonicznego imienia i nazwiska (`matchesEmployeeIdentity`).
    - Pobrane z obcych baz zmiany (`manager_schedule_shifts`) są automatycznie mapowane na identyfikator pracownika w bieżącej kawiarni (`employee_id = localEmpId`) i oznaczane flagą `is_cross_store: true`.
    - Silnik `TorEngine` grupuje zmiany tablicowo per dzień (`shiftsByEmpMonthDay`), sumując godziny dyżurów (w tym wsparcia międzykawiarniane i zastępstwa dni wolnych `OFF`), a w interfejsie `TorView` wyświetla odznakę `Sieć` z tooltipem informacyjnym.
-2. **Reguła pierwszeństwa L4 nad H (art. 166 KP)**:
+2. **Model Projekcji Kroczącej (Rolling Forecast) i Dniowe Odcięcie RCP**:
+   - W trwającym miesiącu (`isMonthClosed === false`):
+     - Dni do dnia ostatniego logowania ($d \le \text{maxRcpDay}$) zasilane są rzeczywistym czasem pracy z importu MAPAL Fichajes (`actualRcpByMonth`).
+     - Dni po dniu odcięcia ($d > \text{maxRcpDay}$) dopełniane są planowanymi dyżurami z grafiku (`shiftsByEmpMonthDay`), zapobiegając powstawaniu fałszywych deficytów w trakcie trwania miesiąca.
+     - Status: `ROLLING_PROJECTION` (żółta kontrolka i plakietka `RCP do {dzień} + Grafik`).
+   - W miesiącu zakończonym / minionym (`isMonthClosed === true`):
+     - Gdy zaimportowano pełny raport ($\text{maxRcpDay} \ge \text{daysInMonth} - 1$): kolumna `RCP (h)` opiera się w 100% na zarejestrowanych logowaniach (Status: `FULL_RCP`, zielona kontrolka).
+     - Gdy zaimportowano raport tylko do połowy miesiąca ($\text{maxRcpDay} < \text{daysInMonth} - 1$): system odcina doliczanie z grafiku. Dni bez logowań liczone są jako $0.0\text{ h}$, generując deficyt dyscyplinujący Store Managera do wgrania pełnego raportu za cały miesiąc (Status: `PARTIAL_RCP_CLOSED`, czerwona kontrolka ostrzegawcza).
+     - Gdy brak logowań w minionym miesiącu: system zachowuje godziny planowane z grafiku jako fallback z oznaczeniem `PLAN_ONLY`.
+3. **Reguła pierwszeństwa L4 nad H (art. 166 KP)**:
    - Czasowa niezdolność do pracy wskutek choroby przerywa bieg urlopu wypoczynkowego.
    - Jeśli pracownik w danym dniu choruje (`L4`), godziny zaliczane są wyłącznie do kolumny `L4`, a kolumna `H` dla tego dnia wynosi $0.0\text{ h}$.
-3. **Czysty układ 3 kolumn godzinowych per miesiąc**:
+4. **Czysty układ 3 kolumn godzinowych per miesiąc**:
    - Kolumna `ETAT` występuje jednorazowo przy danych menedżera.
    - W każdym z 3 miesięcy kwartału (Q1–Q4) prezentowane są wyłącznie 3 sumaryczne kolumny godzinowe:
      - `RCP (h)`: wypracowane godziny dyżurów operacyjnych na sali (oraz support/NC),
      - `H (h)`: godziny płatnego urlopu wypoczynkowego w dniach roboczych ($8\text{h} \times \text{etat}$),
      - `L4 (h)`: godziny usprawiedliwionej nieobecności chorobowej w dniach roboczych ($8\text{h} \times \text{etat}$),
      - `BILANS`: różnica między sumą wypracowanych godzin ($\text{RCP} + \text{H} + \text{L4}$) a normą miesiąca dla danego etatu.
-4. **Saldo kwartału**: Suma bilansów z 3 miesięcy danego kwartału.
-5. **Status kwartalny**:
+5. **Saldo kwartału**: Suma bilansów z 3 miesięcy danego kwartału.
+6. **Status kwartalny**:
    - $\text{Saldo} > 0.1\text{ h} \rightarrow$ **Nadgodziny** (do wypłaty lub odbioru w kolejnym okresie).
    - $\text{Saldo} < -0.1\text{ h} \rightarrow$ **Niedogodziny** (niedopracowanie wymiaru).
    - $\text{Saldo} \in [-0.1, 0.1]\text{ h} \rightarrow$ **OK** (idealne zrównoważenie czasu pracy).
-6. **Eksport Excel**: Generator pliku `.xlsx` odwzorowujący arkusz `TOR` z 3-kolumnowym układem miesięcy i podsumowaniem zespołu.
+7. **Eksport Excel**: Generator pliku `.xlsx` odwzorowujący arkusz `TOR` z 3-kolumnowym układem miesięcy i podsumowaniem zespołu.
 
 ### Algorytm 6: Blokada Edycji Zamkniętych Miesięcy (`isMonthClosed`)
 1. **Status zamknięcia miesiąca**:

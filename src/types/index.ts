@@ -594,6 +594,18 @@ export interface BoundaryShiftsContext {
 // Trzymiesięczny Okres Rozliczeniowy (TOR)
 // ----------------------------------------------------
 
+export type TorRcpMode = 'FULL_RCP' | 'PARTIAL_RCP_CLOSED' | 'ROLLING_PROJECTION' | 'PLAN_ONLY';
+
+export interface TorMonthStatus {
+  month: number;
+  monthName: string;
+  isClosed: boolean;
+  hasRcp: boolean;
+  maxRcpDay: number;
+  daysInMonth: number;
+  mode: TorRcpMode;
+}
+
 export interface TorMonthSummary {
   year: number;
   month: number;
@@ -611,6 +623,9 @@ export interface TorMonthSummary {
   isRcpFromActuals?: boolean; // true jeśli rcpHours pochodzi z zarejestrowanych logowań MAPAL
   isActiveInMonth?: boolean; // false jeśli pracownik nie był w składzie managerskim w tym miesiącu
   hasCrossStoreShifts?: boolean; // true jeśli miesiąc zawiera dyżury z innej kawiarni (Cross-Store TOR)
+  rcpMode?: TorRcpMode;  // Tryb zasilania godzin: pełne RCP, projekcja krocząca, niepełne RCP lub plan
+  maxRcpDay?: number;    // Ostatni dzień z logowaniami w miesiącu
+  isClosed?: boolean;    // Czy miesiąc jest miniony (zamknięty)
 }
 
 export interface TorEmployeeRow {
@@ -626,6 +641,7 @@ export interface TorQuarterData {
   quarterName: string;    // np. 'Q3 (Lipiec – Wrzesień)'
   monthNames: [string, string, string];
   monthNorms: [number, number, number]; // Normy 100% etatu dla 3 miesięcy
+  monthStatuses?: [TorMonthStatus, TorMonthStatus, TorMonthStatus]; // Statusy zasilania RCP dla 3 miesięcy
   rows: TorEmployeeRow[];
   totalTeamRcp: number;
   totalTeamH: number;

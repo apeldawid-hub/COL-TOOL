@@ -85,6 +85,7 @@ export interface IElectronAPI {
     months: number[];
     actualRcpByMonth?: Record<number, Record<number, number>>;
     hasActualRcpByMonth?: Record<number, boolean>;
+    maxRcpDayByMonth?: Record<number, number>;
   }>;
   getGlobalEmployees: () => Promise<any[]>;
   // Backupy bazy danych SQLite

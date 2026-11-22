@@ -5,6 +5,42 @@ Zawiera pełną chronologię aktualizacji platformy desktopowej, wprowadzonych f
 
 ---
 
+## [v2.9.22] — 2026-11-22: Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR
+*Autor: Dawid Apel & Antigravity Agent Squad*
+
+### 🌟 Główne Atuty Wydania:
+- **Projekcja krocząca w bieżącym miesiącu: Dni do dnia ostatniego logowania zasilane są z RCP, a dni pozostałe do końca miesiąca dopełniane zaplanowanym grafikiem.**
+- **Dyscyplina zamknięcia minionych miesięcy: W zamkniętych miesiącach system odcina doliczanie z grafiku, wymuszając wgranie pełnego raportu MAPAL Fichajes.**
+- **Wskaźniki zasilania w tabeli TOR: Kontrolki [Pełne RCP], [RCP do {dzień}. + Grafik], [Niepełne RCP (do {dzień}.) ⚠️] oraz [Plan z grafiku].**
+- **Precyzyjny dzień odcięcia RCP: Rozszerzenie kanału IPC getTorQuarterData o storeMaxDay z bazy labor_actuals_log.**
+
+### ✨ Nowe Funkcje (Features):
+- `[managers_schedule]` Wdrożenie algorytmu hybrydowego w TorEngine.calculateQuarterData łączącego rzeczywiste RCP do dnia odcięcia z planowanym grafikiem.
+- `[managers_schedule]` Wskaźniki statusu RCP oraz dedykowane tooltipy informacyjne w widoku TorView.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[managers_schedule]` Blokada doliczania grafiku po dniu odcięcia dla minionych miesięcy kalendarzowych w module TOR.
+
+---
+
+## [v2.9.19] — 2026-11-22: Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR
+*Autor: Dawid Apel & Antigravity Agent Squad*
+
+### 🌟 Główne Atuty Wydania:
+- **Cross-Store TOR Aggregation: Automatyczna agregacja dyżurów z innych kawiarni (np. Kalisz w listopadzie) w kwartalnym rozliczeniu TOR w Zakopanem.**
+- **Globalna identyfikacja menedżerów: Powiązanie pracowników w bazach store_*.db wg Global Partner ID, firmowego emaila lub znormalizowanego imienia i nazwiska.**
+- **Obsługa wielokrotnych dyżurów: Elastyczne sumowanie zmian i wsparć międzykawiarnianych w obrębie jednego dnia w silniku TorEngine.**
+- **Wskaźnik w widoku TOR: Odznaka [Sieć] w komórkach z godzinami wypracowanymi w innej kawiarni z czytelnym dymkiem informacyjnym.**
+
+### ✨ Nowe Funkcje (Features):
+- `[database]` Implementacja getCrossStoreTorData w DatabaseManager skanującej wszystkie lokalne bazy kawiarni i mapującej dyżury na ID w bieżącym lokalu.
+- `[managers_schedule]` Rozszerzenie silnika TorEngine o tablicowe indeksowanie zmian dziennych i sumowanie godzin dyżurów cross-store oraz wsparć.
+
+### ⚡ Usprawnienia & Ergonomia (UI/UX):
+- `[managers_schedule]` Wskaźnik [Sieć] i informacyjny tooltip w tabeli TorView informujący o uwzględnieniu dyżurów z innych kawiarni w saldzie miesiąca.
+
+---
+
 ## [v2.9.18] — 2026-11-22: Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku
 *Autor: Dawid Apel & Antigravity Agent Squad*
 

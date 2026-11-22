@@ -1209,6 +1209,7 @@ function setupIpcHandlers() {
     // Pobranie rzeczywistych logowań RCP dla menedżerów w kwartale
     const actualRcpByMonth: Record<number, Record<number, number>> = {}; // empId -> month -> totalHours
     const hasActualRcpByMonth: Record<number, boolean> = {}; // month -> boolean
+    const maxRcpDayByMonth: Record<number, number> = {}; // month -> ostatni dzień z logowaniami w kawiarni
 
     for (const m of months) {
       const dPrefix = `${y}-${String(m).padStart(2, '0')}-%`;
@@ -1226,8 +1227,13 @@ function setupIpcHandlers() {
         const matchedEmp = employees.find(e => matchesManager(rcpEmpName, e.name));
         if (matchedEmp) {
           const dStr = String(rcp.date || '');
-          const day = parseInt(dStr.split('-')[2], 10);
-          mRcpDays.add(day);
+          const parts = dStr.split('-');
+          if (parts.length === 3) {
+            const day = parseInt(parts[2], 10);
+            if (!isNaN(day) && day > 0) {
+              mRcpDays.add(day);
+            }
+          }
 
           if (!actualRcpByMonth[matchedEmp.id]) {
             actualRcpByMonth[matchedEmp.id] = {};
@@ -1238,8 +1244,27 @@ function setupIpcHandlers() {
       }
       mRcpStmt.free();
 
-      const daysInM = new Date(y, m, 0).getDate();
-      hasActualRcpByMonth[m] = mRcpDays.has(daysInM) || (mRcpDays.size >= 15);
+      // Wyznaczamy maksymalny dzień logowań w kawiarni dla danego miesiąca
+      let storeMaxDay = mRcpDays.size > 0 ? Math.max(...Array.from(mRcpDays)) : 0;
+      try {
+        const storeDayStmt = db.prepare(`SELECT date FROM labor_actuals_log WHERE date LIKE ?`);
+        storeDayStmt.bind([dPrefix]);
+        while (storeDayStmt.step()) {
+          const row = storeDayStmt.getAsObject();
+          const dStr = String(row.date || '');
+          const parts = dStr.split('-');
+          if (parts.length === 3) {
+            const day = parseInt(parts[2], 10);
+            if (!isNaN(day) && day > storeMaxDay) {
+              storeMaxDay = day;
+            }
+          }
+        }
+        storeDayStmt.free();
+      } catch (_) {}
+
+      maxRcpDayByMonth[m] = storeMaxDay;
+      hasActualRcpByMonth[m] = storeMaxDay > 0;
     }
 
     // Cross-Store TOR Aggregation: pobranie zmian i godzin z pozostałych kawiarni sieci dla pracowników składu
@@ -1264,7 +1289,7 @@ function setupIpcHandlers() {
       console.error('Błąd agregacji Cross-Store TOR:', err);
     }
 
-    return { employees, shifts, monthlyNorms, months, actualRcpByMonth, hasActualRcpByMonth };
+    return { employees, shifts, monthlyNorms, months, actualRcpByMonth, hasActualRcpByMonth, maxRcpDayByMonth };
   });
 
   // Zapis / nadpisanie normy miesięcznej

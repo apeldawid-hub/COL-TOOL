@@ -46,7 +46,8 @@ export const TorView: React.FC<TorViewProps> = ({
           res.shifts || [],
           res.monthlyNorms || {},
           res.actualRcpByMonth,
-          res.hasActualRcpByMonth
+          res.hasActualRcpByMonth,
+          res.maxRcpDayByMonth
         );
         setTorData(calculated);
       }
@@ -263,22 +264,68 @@ export const TorView: React.FC<TorViewProps> = ({
                   </span>
                 </th>
 
-                {torData?.monthNames.map((mName, idx) => (
-                  <th
-                    key={`m-header-${idx}`}
-                    colSpan={4}
-                    className="px-3 py-2 text-center border-r border-emerald-800 bg-[#1E3932]"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="font-black text-white text-xs uppercase tracking-wider">
-                        {mName}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-800/80 text-emerald-200 text-[10px] font-semibold border border-emerald-700">
-                        Norma: {torData.monthNorms[idx]}h
-                      </span>
-                    </div>
-                  </th>
-                ))}
+                {torData?.monthNames.map((mName, idx) => {
+                  const mStatus = torData.monthStatuses ? torData.monthStatuses[idx] : null;
+                  return (
+                    <th
+                      key={`m-header-${idx}`}
+                      colSpan={4}
+                      className="px-3 py-2 text-center border-r border-emerald-800 bg-[#1E3932]"
+                    >
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="font-black text-white text-xs uppercase tracking-wider">
+                            {mName}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-800/80 text-emerald-200 text-[10px] font-semibold border border-emerald-700">
+                            Norma: {torData.monthNorms[idx]}h
+                          </span>
+                        </div>
+
+                        {/* Status zasilania miesiąca */}
+                        {mStatus && (
+                          <div className="flex items-center justify-center">
+                            {mStatus.mode === 'FULL_RCP' && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-900/90 text-emerald-200 border border-emerald-600/60"
+                                title="Pełny import logowań RCP z systemu MAPAL Fichajes"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                Pełne RCP
+                              </span>
+                            )}
+                            {mStatus.mode === 'ROLLING_PROJECTION' && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-950/90 text-amber-300 border border-amber-600/60"
+                                title={`Projekcja krocząca: logowania RCP do ${mStatus.maxRcpDay}. dnia + zaplanowany grafik do końca miesiąca`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                RCP do {mStatus.maxRcpDay}. + Grafik
+                              </span>
+                            )}
+                            {mStatus.mode === 'PARTIAL_RCP_CLOSED' && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-950/90 text-rose-300 border border-rose-500/70"
+                                title={`Miesiąc miniony. Zaimportowano RCP tylko do ${mStatus.maxRcpDay}. dnia — grafik po tym dniu nie jest doliczany. Wymagany pełny import z MAPAL!`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                Niepełne RCP (do {mStatus.maxRcpDay}.) ⚠️
+                              </span>
+                            )}
+                            {mStatus.mode === 'PLAN_ONLY' && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-950/40 text-emerald-300/80 border border-emerald-800/40"
+                                title="Godziny w 100% z planowanego grafiku"
+                              >
+                                Plan z grafiku
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
 
                 {/* Kolumny podsumowania kwartału */}
                 <th
@@ -366,8 +413,12 @@ export const TorView: React.FC<TorViewProps> = ({
                               ? "Pracownik nie był w składzie w tym miesiącu"
                               : m.hasCrossStoreShifts
                               ? "Godziny uwzględniają dyżury z innej kawiarni sieci (Cross-Store TOR)"
-                              : m.isRcpFromActuals
+                              : m.rcpMode === 'FULL_RCP'
                               ? "Godziny RCP zarejestrowane w systemie MAPAL (nieedytowalne)"
+                              : m.rcpMode === 'ROLLING_PROJECTION'
+                              ? `Projekcja: Rzeczywiste logowania MAPAL do ${m.maxRcpDay}. dnia + zaplanowany grafik do końca miesiąca`
+                              : m.rcpMode === 'PARTIAL_RCP_CLOSED'
+                              ? `Niepełne RCP: Logowania tylko do ${m.maxRcpDay}. dnia. Miesiąc zamknięty — brak doliczania z grafiku (wymagany import całego miesiąca z MAPAL)`
                               : "Planowane godziny dyżurów z grafiku"
                           }
                         >
@@ -376,8 +427,14 @@ export const TorView: React.FC<TorViewProps> = ({
                           ) : (
                             <div className="flex items-center justify-center gap-1">
                               <span>{m.rcpHours > 0 ? `${m.rcpHours}h` : '-'}</span>
-                              {m.isRcpFromActuals && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="Zarejestrowane logowania w systemie MAPAL" />
+                              {m.rcpMode === 'FULL_RCP' && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="Pełne zarejestrowane logowania w systemie MAPAL" />
+                              )}
+                              {m.rcpMode === 'ROLLING_PROJECTION' && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title={`Projekcja krocząca: RCP do ${m.maxRcpDay}. + grafik do końca miesiąca`} />
+                              )}
+                              {m.rcpMode === 'PARTIAL_RCP_CLOSED' && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title={`Niepełne RCP (do ${m.maxRcpDay}. dnia) — miesiąc zamknięty`} />
                               )}
                               {m.hasCrossStoreShifts && (
                                 <span className="px-1 py-0.2 rounded text-[9px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300" title="Zawiera godziny dyżurów z innej kawiarni sieci (Cross-Store TOR)">

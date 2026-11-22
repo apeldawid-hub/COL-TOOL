@@ -7,6 +7,7 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
+| **[v2.9.22](#v2.9.22--2026-11-22)** | 2026-11-22 | Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.19](#v2.9.19--2026-11-22)** | 2026-11-22 | Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.18](#v2.9.18--2026-11-22)** | 2026-11-22 | Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku | `patch` | 🚀 Opublikowana |
 | **[v2.9.17](#v2.9.17--2026-11-21)** | 2026-11-21 | Aprowizacja Godzin Zmian i Profilu Tygodnia w Silosach Chmury Firestore per Jednostka Floty | `patch` | 🚀 Opublikowana |
@@ -48,21 +49,43 @@
 
 ## Szczegółowa Historia Wydań
 
+### [v2.9.22] — 2026-11-22
+**Tytuł:** Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- Projekcja krocząca w bieżącym miesiącu: Dni do dnia ostatniego logowania zasilane są z RCP, a dni pozostałe do końca miesiąca dopełniane zaplanowanym grafikiem.
+- Dyscyplina zamknięcia minionych miesięcy: W zamkniętych miesiącach system odcina doliczanie z grafiku, wymuszając wgranie pełnego raportu MAPAL Fichajes.
+- Wskaźniki zasilania w tabeli TOR: Kontrolki [Pełne RCP], [RCP do {dzień}. + Grafik], [Niepełne RCP (do {dzień}.) ⚠️] oraz [Plan z grafiku].
+- Precyzyjny dzień odcięcia RCP: Rozszerzenie kanału IPC getTorQuarterData o storeMaxDay z bazy labor_actuals_log.
+
+#### ✨ Nowe Funkcje:
+- Wdrożenie algorytmu hybrydowego w TorEngine.calculateQuarterData łączącego rzeczywiste RCP do dnia odcięcia z planowanym grafikiem.
+- Wskaźniki statusu RCP oraz dedykowane tooltipy informacyjne w widoku TorView.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Blokada doliczania grafiku po dniu odcięcia dla minionych miesięcy kalendarzowych w module TOR.
+
+---
+
 ### [v2.9.19] — 2026-11-22
 **Tytuł:** Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR  
 **Autorzy:** Dawid Apel & Antigravity Agent Squad  
 
 #### 🌟 Co Wprowadziliśmy:
-- **Rozwiązanie problemu rozliczania menedżerów pracujących w wielu kawiarniach**: Grafik wprowadzony w Kaliszu (lub dowolnej innej kawiarni) automatycznie zaciąga się do Trzymiesięcznego Okresu Rozliczeniowego (TOR) w Zakopanem (i na odwrót).
-- **Automatyczna agregacja międzykawiarniana (Cross-Store TOR Aggregation)**:
-  - Silnik `DatabaseManager.getCrossStoreTorData` automatycznie skanuje wszystkie bazy lokalne kawiarni (`store_*.db`) w katalogu aplikacji.
-  - Identyfikuje pracowników wg spójnego identyfikatora: Global Partner ID (`partner_id`), firmowego adresu email (`email`) lub spójnego imienia i nazwiska (`matchesEmployeeIdentity`).
-  - Przepisuje zmiany na lokalne ID pracownika w kawiarni bieżącej i oznacza je flagą `is_cross_store: true`.
-- **Wielokrotne zmiany i wsparcia międzykawiarniane w jednym dniu**:
-  - Silnik `TorEngine` grupuje zmiany tablicowo per dzień (`shiftsByEmpMonthDay`).
-  - Poprawnie sumuje godziny dyżurów, wsparcia międzykawiarniane i nadpisuje puste/wolne dni `OFF` dyżurami wypracowanymi w obcym lokalu.
-- **Wskaźnik w widoku TOR (`TorView`)**:
-  - Kolumny godzinowe zawierające dyżury z innej kawiarni prezentują dyskretną odznakę `Sieć` oraz dedykowany tooltip informacyjny.
+- Cross-Store TOR Aggregation: Automatyczna agregacja dyżurów z innych kawiarni (np. Kalisz w listopadzie) w kwartalnym rozliczeniu TOR w Zakopanem.
+- Globalna identyfikacja menedżerów: Powiązanie pracowników w bazach store_*.db wg Global Partner ID, firmowego emaila lub znormalizowanego imienia i nazwiska.
+- Obsługa wielokrotnych dyżurów: Elastyczne sumowanie zmian i wsparć międzykawiarnianych w obrębie jednego dnia w silniku TorEngine.
+- Wskaźnik w widoku TOR: Odznaka [Sieć] w komórkach z godzinami wypracowanymi w innej kawiarni z czytelnym dymkiem informacyjnym.
+
+#### ✨ Nowe Funkcje:
+- Implementacja getCrossStoreTorData w DatabaseManager skanującej wszystkie lokalne bazy kawiarni i mapującej dyżury na ID w bieżącym lokalu.
+- Rozszerzenie silnika TorEngine o tablicowe indeksowanie zmian dziennych i sumowanie godzin dyżurów cross-store oraz wsparć.
+
+#### ⚡ Usprawnienia & Ergonomia:
+- Wskaźnik [Sieć] i informacyjny tooltip w tabeli TorView informujący o uwzględnieniu dyżurów z innych kawiarni w saldzie miesiąca.
+
+---
 
 ### [v2.9.18] — 2026-11-22
 **Tytuł:** Globalny Rejestr Tożsamości Pracowników (Partner ID & Email) oraz Tarcza Ochrony Historii Grafiku  

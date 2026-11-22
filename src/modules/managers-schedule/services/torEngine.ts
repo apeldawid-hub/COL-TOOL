@@ -5,7 +5,9 @@ import {
   MonthlyNormRecord,
   TorQuarterData,
   TorEmployeeRow,
-  TorMonthSummary
+  TorMonthSummary,
+  TorMonthStatus,
+  TorRcpMode
 } from '../../../types';
 import { ManagerScheduleEngine, POLISH_MONTH_NAMES, getPolishHolidays } from './managerScheduleEngine';
 
@@ -54,7 +56,8 @@ export class TorEngine {
     shifts: ManagerScheduleShift[],
     monthlyNorms: Record<number, MonthlyNormRecord | null>,
     actualRcpByMonth?: Record<number, Record<number, number>>,
-    hasActualRcpByMonth?: Record<number, boolean>
+    hasActualRcpByMonth?: Record<number, boolean>,
+    maxRcpDayByMonth?: Record<number, number>
   ): TorQuarterData {
     const months = this.getQuarterMonths(quarter);
     const holidays = getPolishHolidays(year);
@@ -71,6 +74,37 @@ export class TorEngine {
       monthlyNorms[months[2]]?.full_time_hours ?? ManagerScheduleEngine.calculateMonthNorms(year, months[2]).fullTimeNominalHours
     ];
 
+    // Statusy zasilania RCP dla 3 miesięcy
+    const monthStatuses: [TorMonthStatus, TorMonthStatus, TorMonthStatus] = months.map((m, idx) => {
+      const daysInMonth = new Date(year, m, 0).getDate();
+      const isClosed = ManagerScheduleEngine.isMonthClosed(year, m);
+      const maxRcpDay = maxRcpDayByMonth?.[m] ?? (hasActualRcpByMonth?.[m] ? (isClosed ? daysInMonth : 0) : 0);
+      const hasRcp = (maxRcpDay > 0) || Boolean(hasActualRcpByMonth?.[m]);
+
+      let mode: TorRcpMode = 'PLAN_ONLY';
+      if (hasRcp) {
+        if (isClosed) {
+          // Jeśli miesiąc jest zamknięty: pełny import to min. daysInMonth - 1 (uwzględniając niedzielę niehandlową/święto)
+          mode = maxRcpDay >= (daysInMonth - 1) ? 'FULL_RCP' : 'PARTIAL_RCP_CLOSED';
+        } else {
+          // Miesiąc w toku (bieżący): rzeczywiste logowania do maxRcpDay + grafik do końca miesiąca
+          mode = 'ROLLING_PROJECTION';
+        }
+      } else {
+        mode = 'PLAN_ONLY';
+      }
+
+      return {
+        month: m,
+        monthName: monthNames[idx],
+        isClosed,
+        hasRcp,
+        maxRcpDay,
+        daysInMonth,
+        mode
+      };
+    }) as [TorMonthStatus, TorMonthStatus, TorMonthStatus];
+
     // Indeksowanie zmian po kluczu: `${employee_id}_${month}_${day}` -> tablica zmian
     const shiftsByEmpMonthDay = new Map<string, ManagerScheduleShift[]>();
     for (const s of shifts) {
@@ -85,6 +119,11 @@ export class TorEngine {
 
     const rows: TorEmployeeRow[] = sortedEmployees.map(emp => {
       const empMonthSummaries: TorMonthSummary[] = months.map((m, idx) => {
+        const monthStatus = monthStatuses[idx];
+        const isMonthClosed = monthStatus.isClosed;
+        const maxRcpDay = monthStatus.maxRcpDay;
+        const rcpMode = monthStatus.mode;
+
         const isActiveInMonth = emp.activeMonths ? emp.activeMonths.includes(m) : true;
         const contractRatio = (emp.monthlyRatios && emp.monthlyRatios[m] !== undefined)
           ? emp.monthlyRatios[m]
@@ -92,9 +131,10 @@ export class TorEngine {
 
         const fullTimeHours = monthNorms[idx];
         const normHours = isActiveInMonth ? Number((fullTimeHours * contractRatio).toFixed(1)) : 0.0;
-        const daysInMonth = new Date(year, m, 0).getDate();
+        const daysInMonth = monthStatus.daysInMonth;
 
-        let rcpHours = 0;
+        let rcpHoursFromAllShifts = 0;
+        let rcpHoursFromFutureShifts = 0;
         let hDays = 0;
         let hHours = 0;
         let l4Days = 0;
@@ -134,24 +174,36 @@ export class TorEngine {
               }
               const code = s.shift_code;
               if (s.hours > 0 && !['OFF', 'M', 'Z', 'FULL', 'H', 'L4'].includes(code)) {
-                rcpHours += s.hours;
+                rcpHoursFromAllShifts += s.hours;
+                if (d > maxRcpDay) {
+                  rcpHoursFromFutureShifts += s.hours;
+                }
               }
             }
           }
         }
 
-        const isMonthClosed = ManagerScheduleEngine.isMonthClosed(year, m);
-        const hasActualRcp = isActiveInMonth && Boolean(
-          hasActualRcpByMonth?.[m] || 
-          (isMonthClosed && actualRcpByMonth?.[emp.id]?.[m] !== undefined)
-        );
-
-        // Jeśli są zarejestrowane godziny logowań z systemu MAPAL — zasilają one kolumnę RCP
-        if (hasActualRcp && actualRcpByMonth?.[emp.id]?.[m] !== undefined) {
-          rcpHours = actualRcpByMonth[emp.id][m];
+        let rcpHours = 0;
+        if (rcpMode === 'FULL_RCP' || rcpMode === 'PARTIAL_RCP_CLOSED') {
+          // Miesiąc zamknięty: liczą się TYLKO godziny z zaimportowanego RCP.
+          // Jeśli zaimportowano tylko do połowy miesiąca, system NIE dolicza grafiku dla reszty miesiąca!
+          rcpHours = actualRcpByMonth?.[emp.id]?.[m] !== undefined
+            ? Number(actualRcpByMonth[emp.id][m].toFixed(1))
+            : 0.0;
+        } else if (rcpMode === 'ROLLING_PROJECTION') {
+          // Miesiąc trwający: rzeczywiste logowania RCP do dnia odcięcia + zaplanowane godziny z grafiku po dniu odcięcia
+          const actualHours = actualRcpByMonth?.[emp.id]?.[m] || 0.0;
+          rcpHours = Number((actualHours + rcpHoursFromFutureShifts).toFixed(1));
         } else {
-          rcpHours = Number(rcpHours.toFixed(1));
+          // PLAN_ONLY (miesiąc przyszły lub brak logowań RCP)
+          rcpHours = Number(rcpHoursFromAllShifts.toFixed(1));
         }
+
+        const hasActualRcp = isActiveInMonth && (
+          rcpMode === 'FULL_RCP' || 
+          rcpMode === 'PARTIAL_RCP_CLOSED' || 
+          (rcpMode === 'ROLLING_PROJECTION' && (actualRcpByMonth?.[emp.id]?.[m] ?? 0) > 0)
+        );
 
         hHours = Number(hHours.toFixed(1));
         l4Hours = Number(l4Hours.toFixed(1));
@@ -174,7 +226,10 @@ export class TorEngine {
           balanceHours,
           isRcpFromActuals: hasActualRcp,
           isActiveInMonth,
-          hasCrossStoreShifts
+          hasCrossStoreShifts,
+          rcpMode,
+          maxRcpDay,
+          isClosed: isMonthClosed
         };
       });
 
@@ -220,6 +275,7 @@ export class TorEngine {
       quarterName: this.getQuarterName(quarter),
       monthNames,
       monthNorms,
+      monthStatuses,
       rows,
       totalTeamRcp: Number(totalTeamRcp.toFixed(1)),
       totalTeamH: Number(totalTeamH.toFixed(1)),

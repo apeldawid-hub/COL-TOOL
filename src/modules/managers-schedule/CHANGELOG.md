@@ -14,8 +14,20 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
-## [v2.9.21] — 2026-11-22
+
+## [v2.9.23] — 2026-11-22
 - Bieżąca synchronizacja i optymalizacje modułu.
+
+## [v2.9.22] — 2026-11-22
+- **Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR**:
+  - **Miesiąc bieżący (w toku)**: Wprowadzenie hybrydowego zasilania kolumny `RCP (h)` w widoku TOR (`TorEngine.calculateQuarterData`). Do ostatniego dnia zaimportowanego raportu Fichajes godziny pobierane są z rzeczywistych logowań RCP (`actualRcpByMonth`), a od kolejnego dnia do końca miesiąca doliczane są godziny zaplanowane w grafiku (`shifts`), eliminując sztuczne deficyty w trwającym miesiącu.
+  - **Miesiąc zakończony (miniony)**: W przypadku zamkniętych miesięcy system odcina doliczanie godzin z planowanego grafiku po dniu odcięcia RCP. Jeśli wgrano raport tylko do połowy miesiąca, dni bez logowań traktowane są jako $0.0\text{ h}$, co wymusza dyscyplinę wgrania pełnego raportu za cały miesiąc z MAPAL.
+  - **Kontrolki i statusy zasilania w nagłówku i tabeli TOR (`TorView`)**:
+    - 🟢 `Pełne RCP` (`FULL_RCP`) — kompletne logowania z MAPAL za cały miesiąc.
+    - 🟡 `RCP do {dzień}. + Grafik` (`ROLLING_PROJECTION`) — projekcja krocząca w bieżącym okresie.
+    - 🔴 `Niepełne RCP (do {dzień}.) ⚠️` (`PARTIAL_RCP_CLOSED`) — alert o niepełnym raporcie w zakończonym miesiącu bez doliczania grafiku.
+    - ⚪ `Plan z grafiku` (`PLAN_ONLY`) — miesiąc przyszły lub brak logowań.
+  - Rozszerzenie kontraktu IPC `db:get-tor-quarter-data` o `maxRcpDayByMonth` (dokładny dzień odcięcia logowań w kawiarni).
 
 ## [v2.9.20] — 2026-11-22
 - Bieżąca synchronizacja i optymalizacje modułu.

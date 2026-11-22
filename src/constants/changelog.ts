@@ -24,6 +24,36 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.22',
+    date: '2026-11-22',
+    title: 'Model Projekcji Kroczącej (Rolling Forecast) & Dniowe Odcięcie RCP w TOR',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Projekcja krocząca w bieżącym miesiącu: Dni do dnia ostatniego logowania zasilane są z RCP, a dni pozostałe do końca miesiąca dopełniane zaplanowanym grafikiem.',
+      'Dyscyplina zamknięcia minionych miesięcy: W zamkniętych miesiącach system odcina doliczanie z grafiku, wymuszając wgranie pełnego raportu MAPAL Fichajes.',
+      'Wskaźniki zasilania w tabeli TOR: Kontrolki [Pełne RCP], [RCP do {dzień}. + Grafik], [Niepełne RCP (do {dzień}.) ⚠️] oraz [Plan z grafiku].',
+      'Precyzyjny dzień odcięcia RCP: Rozszerzenie kanału IPC getTorQuarterData o storeMaxDay z bazy labor_actuals_log.'
+    ],
+    items: [
+      {
+        type: 'feature',
+        description: 'Wdrożenie algorytmu hybrydowego w TorEngine.calculateQuarterData łączącego rzeczywiste RCP do dnia odcięcia z planowanym grafikiem.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'enhancement',
+        description: 'Blokada doliczania grafiku po dniu odcięcia dla minionych miesięcy kalendarzowych w module TOR.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'feature',
+        description: 'Wskaźniki statusu RCP oraz dedykowane tooltipy informacyjne w widoku TorView.',
+        module: 'managers_schedule'
+      }
+    ]
+  },
+  {
     version: '2.9.19',
     date: '2026-11-22',
     title: 'Cross-Store TOR Aggregation: Automatyczne Zaciąganie Dyżurów i Logowań Międzykawiarnianych w TOR',
