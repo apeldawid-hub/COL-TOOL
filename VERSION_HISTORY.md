@@ -7,7 +7,8 @@
 
 | Wersja | Data | Tytuł Wydania | Typ | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **[v2.9.28](#v2.9.28--2026-11-22)** | 2026-11-22 | Self-Healing SQLite Schema & Naprawa Persystencji Modułu Shift Hours i Grafiku Menedżerskiego | `patch` | 🚀 Aktywna |
+| **[v2.9.29](#v2.9.29--2026-11-23)** | 2026-11-23 | Tarcza Odpoczynku Tygodniowego 35h (art. 133 KP) & Synchronizacja Godzin AM/PM z Profilem Lokalu | `patch` | 🚀 Aktywna |
+| **[v2.9.28](#v2.9.28--2026-11-22)** | 2026-11-22 | Self-Healing SQLite Schema & Naprawa Persystencji Modułu Shift Hours i Grafiku Menedżerskiego | `patch` | 🚀 Opublikowana |
 | **[v2.9.27](#v2.9.27--2026-11-22)** | 2026-11-22 | Dopracowanie Funkcji Shift Hours: Wersjonowanie Czasowe, Długości Zmian (8h/9h), Przekazanie Zmiany (Handover) & Zarządzanie Flotą | `patch` | 🚀 Opublikowana |
 | **[v2.9.25](#v2.9.25--2026-11-22)** | 2026-11-22 | Faza I & II Rozwoju Modułu M2: Zaznaczanie Blokowe, Type-Ahead Buffer, Asystent Kryzysowy L4 i Split-Screen TOR | `patch` | 🚀 Opublikowana |
 | **[v2.9.23](#v2.9.23--2026-11-22)** | 2026-11-22 | Obsługa Dołączenia w Trakcie Kwartału i Proporcjonalna Norma Etatu (effective_from, art. 130 KP) | `patch` | 🚀 Opublikowana |
@@ -52,6 +53,25 @@
 ---
 
 ## Szczegółowa Historia Wydań
+
+### [v2.9.29] — 2026-11-23
+**Tytuł:** Tarcza Odpoczynku Tygodniowego 35h (art. 133 KP) & Synchronizacja Godzin AM/PM z Profilem Lokalu  
+**Autorzy:** Dawid Apel & Antigravity Agent Squad  
+
+#### 🌟 Co Wprowadziliśmy:
+- **Precyzyjny Walidator Odpoczynku Tygodniowego 35h (art. 133 § 1 KP)**:
+  - Rozszerzenie silnika `ManagerScheduleEngine.validateLaborLaw` o ciągły pomiar przerw wypoczynkowych wokół dni wolnych:
+    $$\text{Odpoczynek} = (24.0 - T_{\text{end}}) + (\text{gapDays} \times 24.0) + T_{\text{start}}$$
+  - Wykrywanie naruszeń przy pojedynczym dniu wolnym `OFF` (np. PM do 22:30 $\rightarrow$ OFF $\rightarrow$ start AM 09:00 = 34.5h), gdy w danym tygodniu brak innego odpoczynku $\ge 35.0$h.
+  - Inteligentna rekomendacja naprawcza w treści błędu podająca bezpieczną minimalną godzinę startu kolejnej zmiany (np. *„kolejna zmiana musi rozpocząć się nie wcześniej niż o 09:30”*).
+  - Nowy zestaw testów jednostkowych w `tests/unit/weeklyRest35h.test.ts`.
+- **Dynamiczna Synchronizacja Zmian AM/PM z Profilem Kawiarni (Shift Hours)**:
+  - Okno wyboru zmian (`ShiftPickerPopover`) oraz skróty klawiaturowe (`ManagerScheduleGrid`) dynamicznie odczytują profil kawiarni (`weeklyRequirements` / `dayRequirements`) dla klikniętego dnia.
+  - Dla kawiarni o niestandardowych godzinach (np. Zakopane 07:00–22:00) karta `PM` automatycznie wyświetla i przypisuje godziny dopasowane do zamknięcia lokalu (**14:00–22:00** dla 8h zamiast sztywnego szablonu sieciowego 14:30–22:30).
+- **Naprawa Dopasowania Szkicu w WeeklyRequirementsModal**:
+  - Poprawka funkcji masowej adaptacji szkicu: przekazywanie aktualnie edytowanego miesiąca z widoku (`targetMonth`) zamiast daty utworzenia profilu (`effective_from_month`).
+
+---
 
 ### [v2.9.28] — 2026-11-22
 **Tytuł:** Self-Healing SQLite Schema & Naprawa Persystencji Modułu Shift Hours i Grafiku Menedżerskiego  

@@ -21,6 +21,9 @@ Skill odpowiada za weryfikację poprawności grafiku menedżerskiego, ochronę p
 
 2. **Odpoczynek Tygodniowy (art. 133 KP)**:
    - W każdym tygodniu pracy pracownik musi mieć zapewnione minimum **35 godzin nieprzerwanego odpoczynku** (11h dobowego + 24h wolnego).
+   - *Precyzyjne okno godzinowe przy 1 dniu `OFF`:* $\text{Odpoczynek} = (24.0 - T_{\text{end}}) + 24.0 + T_{\text{start}}$.
+   - Przykładowo: po `PM` (koniec 22:30) przez 1 dzień `OFF`, kolejna zmiana może rozpocząć się najwcześniej o **09:30** ($1.5\text{h} + 24\text{h} + 9.5\text{h} = 35.0\text{h}$). Start o 09:00 daje tylko 34.5h i wyzwala błąd `weekly_rest_35h`.
+   - Ochrona przed serią $\ge 7$ dni ciągłej pracy bez dnia wolnego.
 
 3. **Niedziele i Święta (Zasada 4 Niedzieli)**:
    - Pracownik pracujący w niedziele ma prawo do **co najmniej jednej wolnej niedzieli na 4 tygodnie** (maksymalnie 3 pracujące niedziele z rzędu).

@@ -216,6 +216,43 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
 
     const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+    let finalStartTime = customStartTime;
+    let finalEndTime = customEndTime;
+
+    // Automatyczna synchronizacja godzin otwarcia/zamknięcia (AM/PM) z profilem lokalu
+    if (!finalStartTime || !finalEndTime) {
+      const dayReq = scheduleData.dayRequirements?.[day] || (() => {
+        if (!scheduleData.weeklyRequirements || scheduleData.weeklyRequirements.length === 0) return null;
+        const dateObj = new Date(selectedYear, selectedMonth - 1, day);
+        const dow = dateObj.getDay();
+        const daySummary = scheduleData.daySummaries.find(d => d.day === day);
+        const weeklyKey = daySummary?.isTradingSunday ? 7 : dow;
+        return scheduleData.weeklyRequirements.find(w => w.day_of_week === weeklyKey);
+      })();
+
+      if (dayReq && dayReq.is_open) {
+        const shiftLen = Number(dayReq.shift_length_hours) || 8.0;
+        if ((shiftCode === 'AM' || shiftCode === 'AMN') && dayReq.start_time) {
+          finalStartTime = finalStartTime || dayReq.start_time;
+          const [sh, sm] = dayReq.start_time.split(':').map(Number);
+          const endMins = (sh * 60 + sm) + Math.round(shiftLen * 60);
+          const eh = Math.floor(endMins / 60) % 24;
+          const em = endMins % 60;
+          finalEndTime = finalEndTime || `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+          if (customHours === undefined) hours = shiftLen;
+        } else if ((shiftCode === 'PM' || shiftCode === 'PMN') && dayReq.end_time) {
+          finalEndTime = finalEndTime || dayReq.end_time;
+          const [eh, em] = dayReq.end_time.split(':').map(Number);
+          let startMins = (eh * 60 + em) - Math.round(shiftLen * 60);
+          if (startMins < 0) startMins += 1440;
+          const sh = Math.floor(startMins / 60) % 24;
+          const sm = startMins % 60;
+          finalStartTime = finalStartTime || `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+          if (customHours === undefined) hours = shiftLen;
+        }
+      }
+    }
+
     const shiftPayload = {
       year: selectedYear,
       month: selectedMonth,
@@ -224,8 +261,8 @@ export const ManagerScheduleView: React.FC<ManagerScheduleViewProps> = ({
       employee_id: empId,
       shift_code: shiftCode,
       hours,
-      custom_start_time: customStartTime || null,
-      custom_end_time: customEndTime || null
+      custom_start_time: finalStartTime || null,
+      custom_end_time: finalEndTime || null
     };
 
     // Feature F18: Write-Through (SQLite + Realtime Cloud Event + Outbox)

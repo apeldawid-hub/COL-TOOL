@@ -357,6 +357,40 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
     }
 
     // Pre-flight walidacja Kodeksu Pracy
+    let customStartTime: string | undefined;
+    let customEndTime: string | undefined;
+    let customHours: number | undefined;
+
+    const dayReq = data.dayRequirements?.[selectedCell.day] || (() => {
+      if (!data.weeklyRequirements || data.weeklyRequirements.length === 0) return null;
+      const dateObj = new Date(data.year, data.month - 1, selectedCell.day);
+      const dow = dateObj.getDay();
+      const weeklyKey = daySummary?.isTradingSunday ? 7 : dow;
+      return data.weeklyRequirements.find(w => w.day_of_week === weeklyKey);
+    })();
+
+    if (dayReq && dayReq.is_open) {
+      const shiftLen = Number(dayReq.shift_length_hours) || 8.0;
+      if ((targetCode === 'AM' || targetCode === 'AMN') && dayReq.start_time) {
+        customStartTime = dayReq.start_time;
+        const [sh, sm] = dayReq.start_time.split(':').map(Number);
+        const endMins = (sh * 60 + sm) + Math.round(shiftLen * 60);
+        const eh = Math.floor(endMins / 60) % 24;
+        const em = endMins % 60;
+        customEndTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+        customHours = shiftLen;
+      } else if ((targetCode === 'PM' || targetCode === 'PMN') && dayReq.end_time) {
+        customEndTime = dayReq.end_time;
+        const [eh, em] = dayReq.end_time.split(':').map(Number);
+        let startMins = (eh * 60 + em) - Math.round(shiftLen * 60);
+        if (startMins < 0) startMins += 1440;
+        const sh = Math.floor(startMins / 60) % 24;
+        const sm = startMins % 60;
+        customStartTime = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+        customHours = shiftLen;
+      }
+    }
+
     const testResult = ManagerScheduleEngine.testShiftCompliance(
       data.year,
       data.month,
@@ -365,7 +399,10 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
       targetCode,
       data.rows,
       data.shiftDefinitions,
-      boundaryShifts
+      boundaryShifts,
+      customHours,
+      customStartTime,
+      customEndTime
     );
 
     if (!testResult.isValid && testResult.primaryViolation) {
@@ -375,12 +412,15 @@ export const ManagerScheduleGrid: React.FC<ManagerScheduleGridProps> = ({
         day: selectedCell.day,
         dayName: daySummary?.dayName,
         attemptedCode: targetCode,
+        customHours,
+        customStartTime,
+        customEndTime,
         violation: testResult.primaryViolation
       });
       return;
     }
 
-    await onUpdateShift(selectedCell.empId, selectedCell.day, targetCode);
+    await onUpdateShift(selectedCell.empId, selectedCell.day, targetCode, customHours, customStartTime, customEndTime);
   }, [selectedCell, isReadOnly, data, boundaryShifts, onUpdateShift]);
 
   // Wklejenie skopiowanej zmiany (Ctrl+V) z pre-flight walidacją Kodeksu Pracy

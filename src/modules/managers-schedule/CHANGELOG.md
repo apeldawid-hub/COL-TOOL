@@ -17,6 +17,20 @@ Rejestr zmian, aktualizacji algorytmicznych i usprawnień technicznych wprowadza
 
 
 
+## [v2.9.29] — 2026-11-23
+- **Dynamiczne Dopasowanie Zmian AM/PM w Popoverze i Klawiaturze do Profilu Kawiarni (Shift Hours)**:
+  - Rozwiązanie problemu sztywnych godzin `14:30–22:30` dla zmiany `PM` w oknie wyboru zmian (`ShiftPickerPopover`) i przypisywaniu ze skrótów klawiaturowych.
+  - Okno wyboru zmian oraz funkcja `handleUpdateShift` dynamicznie odczytują profil kawiarni (`weeklyRequirements` / `dayRequirements`) dla wybranego dnia i kawiarni (np. Zakopane: 07:00–22:00).
+  - Karta `PM` automatycznie wyświetla i przypisuje godziny dopasowane do zamknięcia lokalu (np. `14:00–22:00` dla 8h), a `AM` godziny od otwarcia (`07:00–15:00`).
+- **Precyzyjny Walidator Odpoczynku Tygodniowego 35h (art. 133 § 1 KP)**:
+  - Rozszerzenie silnika `ManagerScheduleEngine.validateLaborLaw` o precyzyjną kalkulację przerw wypoczynkowych wokół dni wolnych (`OFF` / absencje).
+  - Wyliczanie rzeczywistej ciągłości odpoczynku: `(24.0 - endHour) + gapDays * 24.0 + startHour`.
+  - Wykrywanie naruszeń gdy odpoczynek przy pojedynczym dniu wolnym wynosi `< 35.0h` (np. PM do 22:30 $\rightarrow$ OFF $\rightarrow$ start AM 09:00 = 34.5h), jeśli w danym tygodniu brak innego odpoczynku $\ge 35$h.
+  - Generowanie rekomendacji naprawczej dla Store Managera z wyliczoną bezpieczną godziną rozpoczęcia zmiany (np. *„kolejna zmiana musi rozpocząć się nie wcześniej niż o 09:30”*).
+  - Zachowanie ochrony przed pracą $\ge 7$ dni z rzędu bez dnia wolnego oraz integracja ze stykami miesięcy ($M-1$ i $M+1$).
+- **Naprawa Dopasowania Szkicu w WeeklyRequirementsModal**:
+  - Poprawka funkcji masowej adaptacji szkicu: przekazywanie aktualnie edytowanego miesiąca z widoku (`targetMonth`) zamiast daty utworzenia profilu (`effective_from_month`).
+
 ## [v2.9.28] — 2026-11-22
 - **Self-Healing SQLite Schema & Naprawa Persystencji Shift Hours i Zmian Grafiku**:
   - Wdrożenie automatycznej samonaprawy schematu bazy danych (`DatabaseManager.ensureSchemaIntegrity`):

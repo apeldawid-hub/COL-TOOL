@@ -766,6 +766,7 @@ export class ManagerScheduleEngine {
     // ----------------------------------------------------
     // REGULA 4: Co najmniej 35h nieprzerwanego odpoczynku tygodniowego (art. 133 KP)
     // ----------------------------------------------------
+    // 4a. Blokada pracy >= 7 dni z rzędu bez ani jednego dnia wolnego
     let consecutiveWorkingDaysCount = 0;
 
     // Uwzględnienie dni ciągłej pracy z końca poprzedniego miesiąca
@@ -793,7 +794,7 @@ export class ManagerScheduleEngine {
             employeeId: employee.id,
             employeeName: employee.name,
             ruleType: 'weekly_rest_35h',
-            severity: 'warning',
+            severity: 'error',
             day,
             title: `Brak 35h odpoczynku tygodniowego (${consecutiveWorkingDaysCount} dni pracy z rzędu)`,
             message: `Menedżer pracuje ${consecutiveWorkingDaysCount} dni z rzędu bez co najmniej 35-godzinnej ciągłej przerwy wypoczynkowej (wliczając ciągłość z poprzedniego miesiąca).`,
@@ -802,6 +803,159 @@ export class ManagerScheduleEngine {
         }
       } else {
         consecutiveWorkingDaysCount = 0;
+      }
+    }
+
+    // 4b. Precyzyjna kalkulacja okna odpoczynku tygodniowego (min. 35h) wokół dni wolnych
+    // Zgodnie z art. 133 § 1 KP w każdym tygodniu pracownik musi mieć zapewnione co najmniej 35h
+    // nieprzerwanego odpoczynku. Przy 1 dniu wolnym (OFF): restHours = (24 - endHour) + 24 + startHour.
+    interface WorkingShiftNode {
+      dayIndex: number; // 1..totalDays; <= 0 dla M-1; > totalDays dla M+1
+      displayDay: number;
+      shift: ManagerScheduleShift;
+      startHour: number;
+      endHour: number;
+    }
+
+    const workingTimeline: WorkingShiftNode[] = [];
+
+    // Dodanie ostatniej zmiany pracującej z poprzedniego miesiąca (jeśli dostępna)
+    if (boundaryShifts?.prevMonthShifts && boundaryShifts.prevMonthShifts.length > 0) {
+      const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
+      for (let d = prevMonthLastDay; d >= Math.max(1, prevMonthLastDay - 6); d--) {
+        const prevS = boundaryShifts.prevMonthShifts.find(s => s.employee_id === employee.id && s.day === d);
+        if (prevS && prevS.hours > 0 && !nonWorkingCodes.has(prevS.shift_code)) {
+          const defPrev = shiftDefMap.get(prevS.shift_code);
+          const tPrev = resolveEffectiveShiftTimes(prevS, defPrev, null, null);
+          if (tPrev.startHour !== null && tPrev.endHour !== null) {
+            workingTimeline.push({
+              dayIndex: d - prevMonthLastDay, // np. 0 dla ostatniego dnia M-1
+              displayDay: d,
+              shift: prevS,
+              startHour: tPrev.startHour,
+              endHour: tPrev.endHour
+            });
+          }
+          break;
+        }
+      }
+    }
+
+    // Dodanie zmian pracujących z bieżącego miesiąca
+    for (let day = 1; day <= totalDays; day++) {
+      const s = shiftsByDay[day];
+      if (s && s.hours > 0 && !nonWorkingCodes.has(s.shift_code)) {
+        const def = shiftDefMap.get(s.shift_code);
+        const t = resolveEffectiveShiftTimes(s, def, null, null);
+        if (t.startHour !== null && t.endHour !== null) {
+          workingTimeline.push({
+            dayIndex: day,
+            displayDay: day,
+            shift: s,
+            startHour: t.startHour,
+            endHour: t.endHour
+          });
+        }
+      }
+    }
+
+    // Dodanie pierwszej zmiany pracującej z kolejnego miesiąca (jeśli dostępna)
+    if (boundaryShifts?.nextMonthShifts && boundaryShifts.nextMonthShifts.length > 0) {
+      for (let d = 1; d <= 7; d++) {
+        const nextS = boundaryShifts.nextMonthShifts.find(s => s.employee_id === employee.id && s.day === d);
+        if (nextS && nextS.hours > 0 && !nonWorkingCodes.has(nextS.shift_code)) {
+          const defNext = shiftDefMap.get(nextS.shift_code);
+          const tNext = resolveEffectiveShiftTimes(nextS, defNext, null, null);
+          if (tNext.startHour !== null && tNext.endHour !== null) {
+            workingTimeline.push({
+              dayIndex: totalDays + d,
+              displayDay: d,
+              shift: nextS,
+              startHour: tNext.startHour,
+              endHour: tNext.endHour
+            });
+          }
+          break;
+        }
+      }
+    }
+
+    // Wyznacz wszystkie nieprzerwane okresy odpoczynku pomiędzy zmianami
+    interface RestInterval {
+      fromDayIndex: number;
+      toDayIndex: number;
+      offDaysCount: number;
+      firstOffDayIndex: number;
+      prevNode: WorkingShiftNode;
+      currNode: WorkingShiftNode;
+      restHours: number;
+    }
+
+    const restIntervals: RestInterval[] = [];
+    for (let i = 0; i < workingTimeline.length - 1; i++) {
+      const prevNode = workingTimeline[i];
+      const currNode = workingTimeline[i + 1];
+      const gapDays = currNode.dayIndex - prevNode.dayIndex - 1;
+      if (gapDays > 0) {
+        const restHours = Number(((24.0 - prevNode.endHour) + (gapDays * 24.0) + currNode.startHour).toFixed(1));
+        restIntervals.push({
+          fromDayIndex: prevNode.dayIndex,
+          toDayIndex: currNode.dayIndex,
+          offDaysCount: gapDays,
+          firstOffDayIndex: prevNode.dayIndex + 1,
+          prevNode,
+          currNode,
+          restHours
+        });
+      }
+    }
+
+    // Weryfikacja dla każdego bloku dni wolnych w bieżącym miesiącu:
+    // Jeśli odpoczynek wynosi < 35.0h, sprawdzamy czy w tym samym tygodniu (Pn-Nd)
+    // pracownik ma zapewniony JAKIKOLWIEK INNY odpoczynek >= 35.0h.
+    // Jeśli nie ma innego odpoczynku >= 35h, jest to twarde naruszenie art. 133 § 1 KP!
+    const reportedOffDays = new Set<number>();
+
+    for (const interval of restIntervals) {
+      if (interval.restHours < 35.0) {
+        const offDay = interval.firstOffDayIndex;
+        // Interesują nas dni wolne przypadające w bieżącym miesiącu
+        if (offDay >= 1 && offDay <= totalDays && !reportedOffDays.has(offDay)) {
+          // Wyznacz tydzień kalendarzowy (Pn-Nd) dla tego dnia wolnego
+          const offDate = new Date(year, month - 1, offDay);
+          const dayOfWeek = (offDate.getDay() + 6) % 7; // 0 = Pn, 6 = Nd
+          const weekMondayIndex = offDay - dayOfWeek;
+          const weekSundayIndex = weekMondayIndex + 6;
+
+          // Sprawdź czy w tym samym tygodniu jest INNY odpoczynek >= 35.0h
+          const hasOtherValidWeeklyRest = restIntervals.some(other => {
+            if (other === interval) return false;
+            if (other.restHours < 35.0) return false;
+            // Odpoczynek spełnia tydzień, jeśli zaczyna się lub kończy w tym tygodniu lub obejmuje ten tydzień
+            return other.toDayIndex >= weekMondayIndex && other.fromDayIndex <= weekSundayIndex;
+          });
+
+          if (!hasOtherValidWeeklyRest) {
+            reportedOffDays.add(offDay);
+            const neededStartHour = Number((35.0 - (24.0 - interval.prevNode.endHour) - (interval.offDaysCount * 24.0)).toFixed(2));
+            const formattedNeededStart = neededStartHour >= 0 && neededStartHour <= 24 ? formatHoursToTimeString(neededStartHour) : '';
+            const minStartAdvice = formattedNeededStart
+              ? ` Aby spełnić wymóg przy ${interval.offDaysCount} dniu wolnym, kolejna zmiana musi rozpocząć się nie wcześniej niż o ${formattedNeededStart} lub zmiana poprzednia musi zakończyć się wcześniej.`
+              : '';
+
+            addViolation({
+              id: `weekly_rest_short_${employee.id}_${offDay}`,
+              employeeId: employee.id,
+              employeeName: employee.name,
+              ruleType: 'weekly_rest_35h',
+              severity: 'error',
+              day: offDay,
+              title: `Zbyt krótki odpoczynek tygodniowy (${interval.restHours}h < 35h)`,
+              message: `Przerwa po zmianie ${interval.prevNode.shift.shift_code} (koniec ${interval.prevNode.shift.custom_end_time || formatHoursToTimeString(interval.prevNode.endHour)}) w dniu ${interval.prevNode.displayDay} przez dzień wolny ${offDay} do zmiany ${interval.currNode.shift.shift_code} (początek ${interval.currNode.shift.custom_start_time || formatHoursToTimeString(interval.currNode.startHour)}) w dniu ${interval.currNode.displayDay} wynosi tylko ${interval.restHours}h.`,
+              details: `Kodeks Pracy (art. 133 § 1 KP) wymaga w każdym tygodniu co najmniej 35 godzin nieprzerwanego odpoczynku.${minStartAdvice}`
+            });
+          }
+        }
       }
     }
 

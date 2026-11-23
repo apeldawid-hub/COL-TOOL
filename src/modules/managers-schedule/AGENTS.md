@@ -277,6 +277,9 @@ Moduł implementuje kwartalne rozliczenie menedżerów (Q1: Sty-Mar, Q2: Kwi-Cze
    - Wiersz „Obsada (Dziennie)” prezentuje odrębną fioletową odznakę `+X NC` dla pełnej przejrzystości podziału Floor vs Non-Coverage.
 7. **Masowe Zastosowanie z Poziomu Dnia (`db:apply-day-requirement-to-weekday`)**:
    - W oknie `DayRequirementsModal` użytkownik może zaznaczyć opcję *„Zastosuj te godziny dla wszystkich dni [Dzień] w tym miesiącu”*, co automatycznie propaguje skonfigurowane godziny na cały miesiąc.
+8. **Dynamiczna Adaptacja w Popoverze Wyboru Zmian (`ShiftPickerPopover`) i Skrótach Klawiaturowych**:
+   - Karty zmian `AM` i `PM` w selektorze grafiku dynamicznie odczytują profil kawiarni (`weeklyRequirements` / `dayRequirements`) dla danego dnia i lokalu.
+   - Jeśli kawiarnia (np. Zakopane) jest czynna w godzinach 07:00–22:00, zmiana `PM` prezentuje i przypisuje godziny `14:00–22:00` (8h), a `AM` `07:00–15:00` (8h), zamiast statycznego szablonu sieciowego `14:30–22:30`.
 - Indeksy: `idx_mgr_roster_ym`, `idx_mgr_roster_emp`, `idx_mgr_shifts_ym`, `idx_mgr_shifts_emp`, `idx_mgr_events_ym`, `idx_mgr_versions_ym`, `idx_mgr_day_req_ym`.
 
 ---
@@ -291,7 +294,12 @@ Moduł automatycznie weryfikuje 4 kluczowe normy polskiego Kodeksu Pracy dla ka�
    - Flaga błędu, jeśli $\text{Odpoczynek} < 11.0\text{ h}$ (np. po zmianie PM kończącej się o 22:30 kolejna zmiana nie może rozpocząć się przed 09:30).
 
 2. **🛌 Min. 35h Nieprzerwanego Odpoczynku Tygodniowego (art. 133 § 1 KP)**:
-   - Weryfikacja ciągłości pracy — zakaz planowania 7 kolejnych dni pracy z rzędu bez co najmniej 35-godzinnej ciągłej przerwy wypoczynkowej (obejmującej 11h odpoczynku dobowego).
+   - **Precyzyjna kalkulacja okna odpoczynku wokół dni wolnych (`OFF`)**:
+     $$\text{Odpoczynek} = (24.0 - T_{end}) + (\text{gapDays} \times 24.0) + T_{start}$$
+     Dla pojedynczego dnia wolnego (`gapDays = 1`):
+     - Jeśli np. PM kończy się o 22:30 ($T_{end} = 22.5$), a kolejna zmiana zaczyna się o 09:00 ($T_{start} = 9.0$), to $\text{Odpoczynek} = 34.5\text{ h} < 35.0\text{ h}$.
+     - Jeśli w danym tygodniu kalendarzowym (Pn–Nd) pracownik nie ma innego odpoczynku $\ge 35.0\text{ h}$, silnik zgłasza błąd `weekly_rest_35h` z precyzyjną wyliczoną godziną bezpiecznego startu (np. min. 09:30).
+   - **Tarcza ciągłości pracy**: zakaz planowania $\ge 7$ dni pracy z rzędu bez co najmniej 35-godzinnej ciągłej przerwy wypoczynkowej (wliczając styk z poprzednim miesiącem).
 
 3. **⏱️ Maks. 12h Pracy w Dobie (art. 135 KP)**:
    - Flaga błędu w przypadku przypisania zmiany przekraczającej 12.0 godzin w jednej dobie pracowniczej.

@@ -119,7 +119,50 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
   const [selectedShiftCode, setSelectedShiftCode] = useState<string>(currentShiftCode || 'OFF');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const initialDef = shiftDefinitions.find(s => s.code === currentShiftCode);
+  // Dynamiczne dopasowanie nominalnych godzin AM/PM do profilu kawiarni (Skład managerski / Shift Hours)
+  const effectiveShiftDefs = useMemo(() => {
+    const dayReq = scheduleData?.dayRequirements?.[day] || (() => {
+      if (!scheduleData?.weeklyRequirements || scheduleData.weeklyRequirements.length === 0) return null;
+      const dateObj = new Date(scheduleData.year, scheduleData.month - 1, day);
+      const dow = dateObj.getDay(); // 0 = Sun, 1 = Mon ...
+      const daySummary = scheduleData.daySummaries?.find(d => d.day === day);
+      const weeklyKey = daySummary?.isTradingSunday ? 7 : dow;
+      return scheduleData.weeklyRequirements.find(w => w.day_of_week === weeklyKey);
+    })();
+
+    if (!dayReq || !dayReq.is_open) {
+      return shiftDefinitions;
+    }
+
+    const openTime = dayReq.start_time;
+    const closeTime = dayReq.end_time;
+    const shiftLen = Number(dayReq.shift_length_hours) || 8.0;
+
+    return shiftDefinitions.map(s => {
+      if ((s.code === 'AM' || s.code === 'AMN') && openTime) {
+        return {
+          ...s,
+          hours: shiftLen,
+          start_time: openTime,
+          end_time: addHoursToTime(openTime, shiftLen)
+        };
+      }
+      if ((s.code === 'PM' || s.code === 'PMN') && closeTime) {
+        const closeMins = parseTimeToMinutes(closeTime);
+        let startMins = closeMins - Math.round(shiftLen * 60);
+        if (startMins < 0) startMins += 1440;
+        return {
+          ...s,
+          hours: shiftLen,
+          start_time: formatMinutesToTime(startMins),
+          end_time: closeTime
+        };
+      }
+      return s;
+    });
+  }, [shiftDefinitions, scheduleData, day]);
+
+  const initialDef = effectiveShiftDefs.find(s => s.code === currentShiftCode);
   const [selectedHours, setSelectedHours] = useState<number>(
     currentHours !== undefined ? currentHours : (initialDef ? initialDef.hours : 8.0)
   );
@@ -197,14 +240,14 @@ export const ShiftPickerPopover: React.FC<ShiftPickerPopoverProps> = ({
 
   // Filtrowanie zmian wg wyszukiwarki
   const filteredShifts = useMemo(() => {
-    if (!searchQuery.trim()) return shiftDefinitions;
+    if (!searchQuery.trim()) return effectiveShiftDefs;
     const q = searchQuery.toLowerCase().trim();
-    return shiftDefinitions.filter(s =>
+    return effectiveShiftDefs.filter(s =>
       s.code.toLowerCase().includes(q) ||
       s.name.toLowerCase().includes(q) ||
       (s.category && s.category.toLowerCase().includes(q))
     );
-  }, [shiftDefinitions, searchQuery]);
+  }, [effectiveShiftDefs, searchQuery]);
 
   // Podgląd obsady pozostałych menedżerów w wybranym dniu (Floating Context)
   const otherManagersToday = useMemo(() => {

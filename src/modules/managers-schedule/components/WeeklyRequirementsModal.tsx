@@ -231,18 +231,20 @@ export const WeeklyRequirementsModal: React.FC<WeeklyRequirementsModalProps> = (
     try {
       setIsAdaptingDraft(true);
       setAdaptResultMsg(null);
+      const targetYear = year;
+      const targetMonth = month;
       let updatedCount = 0;
       if (onAdaptDraft) {
-        const res = await onAdaptDraft({ year: effectiveYear, month: effectiveMonth });
+        const res = await onAdaptDraft({ year: targetYear, month: targetMonth });
         updatedCount = res.updated;
       } else if ((window as any).api?.adaptScheduleToWeeklyRequirements) {
         const res = await (window as any).api.adaptScheduleToWeeklyRequirements({
-          year: effectiveYear,
-          month: effectiveMonth
+          year: targetYear,
+          month: targetMonth
         });
         updatedCount = res.updated;
       }
-      setAdaptResultMsg(`Pomyślnie zsynchronizowano ${updatedCount} zmian AM/PM w szkicu (${MONTH_NAMES[effectiveMonth - 1]} ${effectiveYear}).`);
+      setAdaptResultMsg(`Pomyślnie zsynchronizowano ${updatedCount} zmian AM/PM w szkicu (${MONTH_NAMES[targetMonth - 1]} ${targetYear}).`);
       setTimeout(() => setAdaptResultMsg(null), 6000);
     } catch (e: any) {
       setAdaptResultMsg(`Błąd dopasowania szkicu: ${e?.message || 'Nieznany błąd'}`);

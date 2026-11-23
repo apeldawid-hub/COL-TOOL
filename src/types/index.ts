@@ -455,6 +455,7 @@ export interface ManagerDayRequirement {
   manager_count: number;       // wymagana liczba menedżerów: 0, 1 lub 2
   start_time?: string;         // wymagane godziny obecności menedżera (początek), np. '07:00'
   end_time?: string;           // wymagane godziny obecności menedżera (koniec), np. '16:00'
+  shift_length_hours?: number; // nominalna długość zmiany menedżera (np. 8.0, 9.0)
   required_hours?: number;     // wyliczone godziny obecności: np. 9.0 (16:00 - 07:00)
   notes?: string;              // etykieta, np. 'Wigilia'
 }

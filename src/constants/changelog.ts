@@ -24,6 +24,35 @@ export interface ReleaseEntry {
 
 export const APP_CHANGELOG: ReleaseEntry[] = [
   {
+    version: '2.9.29',
+    date: '2026-11-23',
+    title: 'Tarcza Odpoczynku Tygodniowego 35h (art. 133 KP) & Synchronizacja Godzin AM/PM z Profilem Lokalu',
+    type: 'patch',
+    author: 'Dawid Apel & Antigravity Agent Squad',
+    highlights: [
+      'Precyzyjny Walidator Odpoczynku Tygodniowego 35h (art. 133 § 1 KP): Ciągły pomiar godzin odpoczynku wokół każdego bloku dni wolnych ((24.0 - end) + gapDays * 24.0 + start), wykrywanie luk < 35.0h przy pojedynczym dniu OFF oraz rekomendacja bezpiecznej godziny rozpoczęcia pracy.',
+      'Dynamiczna Synchronizacja Zmian AM/PM z Profilem Kawiarni (Shift Hours): Popover wyboru zmian (ShiftPickerPopover) oraz skróty klawiaturowe automatycznie dopasowują godziny otwarcia i zamknięcia do profilu lokalu (np. Zakopane 07:00–22:00 -> PM automatycznie 14:00–22:00 zamiast 14:30–22:30).',
+      'Naprawa Dopasowania Szkicu w WeeklyRequirementsModal: Usunięcie błędu przekazywania miesiąca wejścia profilu zamiast aktualnie edytowanego miesiąca grafiku przy masowej adaptacji dyżurów.',
+    ],
+    items: [
+      {
+        type: 'compliance',
+        description: 'Weryfikacja art. 133 § 1 KP w ManagerScheduleEngine: ciągły pomiar okna odpoczynku tygodniowego przy pojedynczych dniach OFF z wyliczaniem bezpiecznej godziny startu.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'fix',
+        description: 'Dynamiczne dopasowanie godzin AM i PM w ShiftPickerPopover i ManagerScheduleGrid do aktywnego profilu kawiarni z weekly_requirements.',
+        module: 'managers_schedule'
+      },
+      {
+        type: 'fix',
+        description: 'Naprawa przycisku Dopasuj szkic do godzin kawiarni w WeeklyRequirementsModal — adaptacja aktualnie wybranego miesiąca z widoku.',
+        module: 'managers_schedule'
+      }
+    ]
+  },
+  {
     version: '2.9.28',
     date: '2026-11-22',
     title: 'Self-Healing SQLite Schema & Naprawa Persystencji Modułu Shift Hours i Grafiku Menedżerskiego',

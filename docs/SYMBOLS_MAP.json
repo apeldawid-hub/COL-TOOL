@@ -56,7 +56,7 @@
   },
   "AppModule": {
     "file": "src/types/index.ts",
-    "line": 669,
+    "line": 670,
     "kind": "type"
   },
   "AppRuntimeMode": {
@@ -186,7 +186,7 @@
   },
   "BoundaryShiftsContext": {
     "file": "src/types/index.ts",
-    "line": 600,
+    "line": 601,
     "kind": "interface"
   },
   "COL_PILLARS": {
@@ -461,7 +461,7 @@
   },
   "DatabaseHealthStatus": {
     "file": "src/types/index.ts",
-    "line": 689,
+    "line": 690,
     "kind": "interface"
   },
   "DatabaseManager": {
@@ -471,7 +471,7 @@
   },
   "DatabaseOptimizationResult": {
     "file": "src/types/index.ts",
-    "line": 714,
+    "line": 715,
     "kind": "interface"
   },
   "DatabaseStatus": {
@@ -481,12 +481,12 @@
   },
   "DatabaseTableStat": {
     "file": "src/types/index.ts",
-    "line": 683,
+    "line": 684,
     "kind": "interface"
   },
   "DayCoverageSummary": {
     "file": "src/types/index.ts",
-    "line": 477,
+    "line": 478,
     "kind": "interface"
   },
   "DayOfWeekHoursTrend": {
@@ -961,7 +961,7 @@
   },
   "ManagerScheduleMonthData": {
     "file": "src/types/index.ts",
-    "line": 514,
+    "line": 515,
     "kind": "interface"
   },
   "ManagerScheduleShift": {
@@ -986,7 +986,7 @@
   },
   "ManagerWeeklyRequirement": {
     "file": "src/types/index.ts",
-    "line": 462,
+    "line": 463,
     "kind": "interface"
   },
   "MasterCredentialService": {
@@ -1066,7 +1066,7 @@
   },
   "MonthlyNormRecord": {
     "file": "src/types/index.ts",
-    "line": 503,
+    "line": 504,
     "kind": "interface"
   },
   "NcRuleRecord": {
@@ -1226,7 +1226,7 @@
   },
   "PublicationStatusInfo": {
     "file": "src/types/index.ts",
-    "line": 578,
+    "line": 579,
     "kind": "interface"
   },
   "PublishEventInput": {
@@ -1241,7 +1241,7 @@
   },
   "RcpAbsenceConflict": {
     "file": "src/types/index.ts",
-    "line": 545,
+    "line": 546,
     "kind": "interface"
   },
   "RcpAbsenceConflictDialog": {
@@ -1321,12 +1321,12 @@
   },
   "ScheduleVersionRecord": {
     "file": "src/types/index.ts",
-    "line": 563,
+    "line": 564,
     "kind": "interface"
   },
   "ScheduleVersionType": {
     "file": "src/types/index.ts",
-    "line": 561,
+    "line": 562,
     "kind": "type"
   },
   "ScheduleWriteThroughRepository": {
@@ -1346,7 +1346,7 @@
   },
   "ShiftComplianceTestResult": {
     "file": "src/types/index.ts",
-    "line": 590,
+    "line": 591,
     "kind": "interface"
   },
   "ShiftConfigModal": {
@@ -1576,7 +1576,7 @@
   },
   "TorEmployeeRow": {
     "file": "src/types/index.ts",
-    "line": 647,
+    "line": 648,
     "kind": "interface"
   },
   "TorEngine": {
@@ -1586,22 +1586,22 @@
   },
   "TorMonthStatus": {
     "file": "src/types/index.ts",
-    "line": 611,
+    "line": 612,
     "kind": "interface"
   },
   "TorMonthSummary": {
     "file": "src/types/index.ts",
-    "line": 621,
+    "line": 622,
     "kind": "interface"
   },
   "TorQuarterData": {
     "file": "src/types/index.ts",
-    "line": 654,
+    "line": 655,
     "kind": "interface"
   },
   "TorRcpMode": {
     "file": "src/types/index.ts",
-    "line": 609,
+    "line": 610,
     "kind": "type"
   },
   "TorSplitDrawer": {
@@ -1881,7 +1881,7 @@
   },
   "formatReleaseMarkdown": {
     "file": "src/constants/changelog.ts",
-    "line": 1434,
+    "line": 1463,
     "kind": "function"
   },
   "generateCsprngOtp": {
@@ -1896,7 +1896,7 @@
   },
   "getLatestRelease": {
     "file": "src/constants/changelog.ts",
-    "line": 1419,
+    "line": 1448,
     "kind": "function"
   },
   "getPolishHolidays": {
@@ -1911,7 +1911,7 @@
   },
   "getReleaseByVersion": {
     "file": "src/constants/changelog.ts",
-    "line": 1426,
+    "line": 1455,
     "kind": "function"
   },
   "isManagerInTraining": {
